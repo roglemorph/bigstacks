@@ -90,10 +90,17 @@
 				.btn:hover { border-color: #00ff88; color: #00ff88; }
 				.btn:disabled { opacity: 0.3; cursor: not-allowed; }
 				.btn.primary  { border-color: #00ff88; color: #00ff88; }
+				.btn.primary.work { border-color: #ffcc00; color: #ffcc00; font-size: 0.9em; padding: 8px 12px; }
+				.btn.primary.work:hover { background: #ffcc0015; }
 				.btn.danger   { border-color: #ff4444; color: #ff4444; }
 				.btn.danger:hover { background: #ff444415; }
 				.btn.work     { border-color: #ffcc00; color: #ffcc00; font-size: 0.9em; padding: 8px 12px; }
 				.btn.work:hover { background: #ffcc0015; }
+				.job-apply-btns { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+				.job-apply-btns .btn { font-size: 0.68em; padding: 5px 8px; border-color: #555; color: #aaa; }
+				.job-apply-btns .btn:hover { border-color: #ffcc00; color: #ffcc00; background: #ffcc0010; }
+				.job-apply-btns .btn:disabled { opacity: 0.45; cursor: not-allowed; border-color: #333; color: #555; }
+				.job-apply-btns .btn:disabled:hover { background: transparent; color: #555; border-color: #333; }
 				.btn-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
 				.amount-input {
@@ -206,6 +213,13 @@
 				</div>
 
 				<div class="side-stat">
+					<div class="side-label">Job</div>
+					<div class="side-value white" id="s-job-title"></div>
+					<div class="side-label" style="margin-top:6px; font-size:0.75em;" id="s-job-pay"></div>
+					<div class="job-apply-btns" id="job-apply-btns"></div>
+				</div>
+
+				<div class="side-stat">
 					<div class="side-label">Cash</div>
 					<div class="side-value" id="s-cash"></div>
 				</div>
@@ -223,11 +237,10 @@
 				<hr class="side-divider">
 
 					<div class="side-actions">
-						<button class="btn work" id="work-btn">💼 Work (+$100)</button>
-						<button class="btn primary" id="next-btn">⏩ Next Day</button>
-						<button class="btn" id="autoplay-btn">▶ Auto</button>
+						<button class="btn primary work" id="day-btn">⏭ Next day</button>
+						<button class="btn" id="autoplay-btn">▶ Auto (Work)</button>
 						<div class="auto-row">
-							<label>ms / day</label>
+							<label>ms / tick</label>
 							<input id="auto-interval" class="amount-input" type="number" value="200" min="16" style="width:60px">
     </div>
 						<button class="btn" id="reset-btn">↺ New Run</button>
@@ -317,6 +330,7 @@
 
 					<div class="section">
 						<div class="section-title">Yield Curve</div>
+						<p style="font-size:0.72em; color:#555; margin:-6px 0 10px 0;">Shifts daily (mean-reverting); new bonds price off the current curve.</p>
 						<canvas id="bonds-yield-curve" style="width:100%;height:120px;display:block;background:#111;border-radius:3px;"></canvas>
 						<div class="yield-labels" id="yield-labels"></div>
 					</div>
@@ -404,8 +418,8 @@
 						<div class="debug-grid">
 							<label>Starting Cash ($)</label>
 							<input class="amount-input" id="dbg-start-cash" type="number" value="10000" min="0" step="1000">
-								<label>Work Payout ($)</label>
-								<input class="amount-input" id="dbg-work-payout" type="number" value="100" min="1" step="10">
+								<label>Starting Job</label>
+								<select class="amount-input" id="dbg-start-job" style="width:100%; max-width:220px;"></select>
         </div>
 					</div>
 
@@ -449,14 +463,24 @@
 		</div>
 
 		<script type="module">
-			import { newState, buy, sell, buyBond, sellBondEarly, buyCrypto, sellCrypto, nextDay, work, portfolioValue, netWorth, YIELD_CURVE, yieldForTerm } from "./game.js";
+			import { newState, buy, sell, buyBond, sellBondEarly, buyCrypto, sellCrypto, work, applyForJob, portfolioValue, netWorth, YIELD_CURVE, yieldForTerm, JOBS, jobUnlockedAtNetWorth } from "./game.js?v=jobs";
 
 			const fmt = n => "$" + Math.round(n).toLocaleString();
+
+			const dbgJobSelect = document.getElementById("dbg-start-job");
+			JOBS.forEach(j => {
+				const opt = document.createElement("option");
+				opt.value = j.id;
+				opt.textContent = j.minNetWorth <= 0
+					? `${j.title} ($${j.dailyPay}/day)`
+					: `${j.title} ($${j.dailyPay}/day) — ${fmt(j.minNetWorth)}+ NW`;
+				dbgJobSelect.appendChild(opt);
+			});
 
 			function readParams() {
 			return {
 			startCash:   parseFloat(document.getElementById("dbg-start-cash").value)   || 10000,
-			workPayout:  parseFloat(document.getElementById("dbg-work-payout").value)  || 100,
+			startJobId:  dbgJobSelect.value || "intern",
 			volIndex:    parseFloat(document.getElementById("dbg-vol-index").value)     / 100 || 0.0126,
 			volBonds:    parseFloat(document.getElementById("dbg-vol-bonds").value)     / 100 || 0.0025,
 			volCrypto:   parseFloat(document.getElementById("dbg-vol-crypto").value)    / 100 || 0.04,
@@ -502,8 +526,27 @@
     document.getElementById("s-cash").textContent      = fmt(s.cash);
     document.getElementById("s-portfolio").textContent = fmt(portfolioValue(s));
     document.getElementById("s-networth").textContent  = fmt(netWorth(s));
-    document.getElementById("next-btn").disabled       = s.day >= s.maxDays;
-    document.getElementById("work-btn").disabled       = s.day >= s.maxDays;
+    const dayBtn = document.getElementById("day-btn");
+    dayBtn.disabled = s.day >= s.maxDays;
+    dayBtn.textContent = `⏭ Next day (+${fmt(s.job.dailyPay)})`;
+    document.getElementById("s-job-title").textContent = s.job.title;
+    document.getElementById("s-job-pay").textContent   = `${fmt(s.job.dailyPay)} when you advance a day`;
+
+    const jobBtns = document.getElementById("job-apply-btns");
+    jobBtns.innerHTML = "";
+    const nwNow = netWorth(s);
+    JOBS.forEach(j => {
+      if (j.id === s.job.id) return;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn";
+      const unlocked = jobUnlockedAtNetWorth(j, nwNow);
+      b.disabled = !unlocked;
+      b.title = unlocked ? `Apply for ${j.title}` : `Requires net worth ${fmt(j.minNetWorth)}+`;
+      b.textContent = unlocked ? `Apply: ${j.title}` : `🔒 ${j.title} (${fmt(j.minNetWorth)}+)`;
+      b.onclick = () => { if (!b.disabled) { state = applyForJob(state, j.id); render(state); } };
+      jobBtns.appendChild(b);
+    });
 
     // Index Fund
     document.getElementById("if-price").textContent  = s.indexFund.price.toFixed(2);
@@ -511,8 +554,8 @@
     document.getElementById("if-value").textContent  = fmt(s.indexFund.shares * s.indexFund.price);
     setChange("if-change", s.indexFund.history);
 
-    // Bonds — yield curve preview
-    updateBondPreview();
+    // Bonds — yield curve preview (uses live curve from state)
+    updateBondPreview(s);
     renderBondHoldings(s);
 
     // Crypto
@@ -588,7 +631,7 @@
 			}
 			}
 
-			function drawYieldCurve() {
+			function drawYieldCurve(s) {
 			const canvas = document.getElementById("bonds-yield-curve");
 			if (!canvas) return;
 			const ctx = canvas.getContext("2d");
@@ -601,14 +644,15 @@
 			ctx.scale(dpr, dpr);
 			ctx.clearRect(0, 0, w, h);
 
-			const yields = YIELD_CURVE.map(p => p.yield);
+			const curve = (s && s.yieldCurve && s.yieldCurve.length) ? s.yieldCurve : YIELD_CURVE;
+			const yields = curve.map(p => p.yield);
 			const minY = Math.min(...yields) * 0.8;
 			const maxY = Math.max(...yields) * 1.1;
-			const range = maxY - minY;
+			const range = Math.max(1e-6, maxY - minY);
 			const pad = { t: 8, b: 8, l: 4, r: 4 };
 			const pw = w - pad.l - pad.r;
 			const ph = h - pad.t - pad.b;
-			const maxTerm = YIELD_CURVE[YIELD_CURVE.length - 1].term;
+			const maxTerm = curve[curve.length - 1].term;
 
 			// Gridlines
 			ctx.strokeStyle = "#1e1e1e";
@@ -620,7 +664,7 @@
 
 			// Curve
 			ctx.beginPath();
-			YIELD_CURVE.forEach((p, i) => {
+			curve.forEach((p, i) => {
 			const x = pad.l + (p.term / maxTerm) * pw;
 			const y = pad.t + ph - ((p.yield - minY) / range) * ph;
 			i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
@@ -630,7 +674,7 @@
 			ctx.stroke();
 
 			// Dots + yield labels on canvas
-			YIELD_CURVE.forEach(p => {
+			curve.forEach(p => {
 			const x = pad.l + (p.term / maxTerm) * pw;
 			const y = pad.t + ph - ((p.yield - minY) / range) * ph;
 			ctx.beginPath();
@@ -645,17 +689,17 @@
 			// X axis labels via DOM
 			const labelsEl = document.getElementById("yield-labels");
 			if (labelsEl) {
-			labelsEl.innerHTML = YIELD_CURVE.map(p => `<span>${p.term}yr</span>`).join("");
+			labelsEl.innerHTML = curve.map(p => `<span>${p.term}yr</span>`).join("");
 			}
 			}
 
-			function updateBondPreview() {
+			function updateBondPreview(s) {
 			const termEl = document.getElementById("bond-term");
 			const faceEl = document.getElementById("bond-face-value");
 			if (!termEl || !faceEl) return;
 			const term = parseInt(termEl.value);
 			const face = parseFloat(faceEl.value) || 0;
-			const y = yieldForTerm(term);
+			const y = yieldForTerm(s, term);
 			const yieldEl = document.getElementById("bond-preview-yield");
 			const incomeEl = document.getElementById("bond-preview-income");
 			if (yieldEl) yieldEl.textContent = (y * 100).toFixed(2) + "%";
@@ -736,7 +780,7 @@
 			);
 			drawChart(document.getElementById("crypto-graph"),   s.crypto.history,    "#ff66cc", null, null, null);
 			drawChart(document.getElementById("networth-graph"), s.netWorthHistory,   "#ffcc00", null, null, null);
-			drawYieldCurve();
+			drawYieldCurve(s);
 			}
 
 			const getQty = id => parseInt(document.getElementById(id).value) || 1;
@@ -744,9 +788,9 @@
 			function startAuto() {
 			if (autoplayInterval) clearInterval(autoplayInterval);
 			const ms = Math.max(16, parseInt(document.getElementById("auto-interval").value) || 200);
-			document.getElementById("autoplay-btn").textContent = "⏸ Stop";
+			document.getElementById("autoplay-btn").textContent = "⏸ Stop (Work)";
 			autoplayInterval = setInterval(() => {
-			state = nextDay(state, params);
+			state = work(state, params);
 			render(state);
 			if (state.day >= state.maxDays) stopAuto();
 			}, ms);
@@ -755,11 +799,10 @@
 			function stopAuto() {
 			clearInterval(autoplayInterval);
 			autoplayInterval = null;
-			document.getElementById("autoplay-btn").textContent = "▶ Auto";
+			document.getElementById("autoplay-btn").textContent = "▶ Auto (Work)";
 			}
 
-			document.getElementById("work-btn").onclick        = () => { state = work(state, params);                              render(state); };
-			document.getElementById("next-btn").onclick        = () => { state = nextDay(state, params);                            render(state); };
+			document.getElementById("day-btn").onclick         = () => { state = work(state, params); render(state); };
 			document.getElementById("buy-btn").onclick         = () => { state = buy(state, getQty("if-amount"));                   render(state); };
 			document.getElementById("sell-btn").onclick        = () => { state = sell(state, getQty("if-amount"));                  render(state); };
 			document.getElementById("buy-bonds-btn").onclick   = () => {
@@ -773,9 +816,8 @@
 			document.getElementById("autoplay-btn").onclick    = () => { autoplayInterval ? stopAuto() : startAuto(); };
 
 			// Bond preview updates live
-			document.getElementById("bond-term").addEventListener("change", updateBondPreview);
-			document.getElementById("bond-face-value").addEventListener("input", updateBondPreview);
-			document.getElementById("autoplay-btn").onclick    = () => { autoplayInterval ? stopAuto() : startAuto(); };
+			document.getElementById("bond-term").addEventListener("change", () => updateBondPreview(state));
+			document.getElementById("bond-face-value").addEventListener("input", () => updateBondPreview(state));
 			document.getElementById("reset-btn").onclick       = () => {
 			stopAuto();
 			state = { ...newState(params), log: [{ msg: "New run started.", type: "info", day: 1 }] };

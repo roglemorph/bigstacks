@@ -2,8 +2,7 @@
 // GAME LOGIC — no DOM, no rendering, pure state + functions
 // ============================================================
 
-// Yield curve: term (years) → annual yield
-// Simple static upward-sloping curve
+// Yield curve baseline: term (years) → annual yield (curve in state mean-reverts here over time)
 export const YIELD_CURVE = [
   { term: 1,  yield: 0.030 },
   { term: 2,  yield: 0.035 },
@@ -12,26 +11,86 @@ export const YIELD_CURVE = [
   { term: 30, yield: 0.052 },
 ];
 
-export function yieldForTerm(term) {
-  const exact = YIELD_CURVE.find(p => p.term === term);
+/** Interpolate annual yield for a term (years) from a pillar curve. */
+export function interpolateYield(curve, term) {
+  const exact = curve.find(p => p.term === term);
   if (exact) return exact.yield;
-  // linear interpolation for any term between curve points
-  const below = [...YIELD_CURVE].reverse().find(p => p.term <= term);
-  const above = YIELD_CURVE.find(p => p.term >= term);
+  const below = [...curve].reverse().find(p => p.term <= term);
+  const above = curve.find(p => p.term >= term);
   if (!below) return above.yield;
   if (!above) return below.yield;
   const t = (term - below.term) / (above.term - below.term);
   return below.yield + t * (above.yield - below.yield);
 }
 
+/** Current market yield for `term` using the state's evolving curve (falls back to baseline). */
+export function yieldForTerm(state, term) {
+  const curve = state && state.yieldCurve && state.yieldCurve.length ? state.yieldCurve : YIELD_CURVE;
+  return interpolateYield(curve, term);
+}
+
+function cloneYieldCurve(curve) {
+  return curve.map(p => ({ term: p.term, yield: p.yield }));
+}
+
+/** One-day random walk + mean reversion toward YIELD_CURVE pillars. */
+function evolveYieldCurve(state, params = {}) {
+  const vol = params.yieldCurveVol ?? 0.00014;
+  const kappa = params.yieldCurveKappa ?? 0.018;
+  const yMin = params.yieldCurveMin ?? 0.002;
+  const yMax = params.yieldCurveMax ?? 0.20;
+  const curve = state.yieldCurve && state.yieldCurve.length ? state.yieldCurve : YIELD_CURVE;
+  return YIELD_CURVE.map((base, i) => {
+    const current = curve[i]?.yield ?? base.yield;
+    const shock = randn() * vol;
+    let y = current + shock + kappa * (base.yield - current);
+    y = Math.max(yMin, Math.min(yMax, y));
+    return { term: base.term, yield: y };
+  });
+}
+
+// Jobs — daily pay when you click Work (before advancing the day)
+// minNetWorth: minimum net worth to apply (or start with, via debug)
+const JOBS = [
+  { id: "intern", title: "Intern", dailyPay: 10, minNetWorth: 0 },
+  { id: "clerk", title: "Clerk", dailyPay: 40, minNetWorth: 100_000 },
+  { id: "analyst", title: "Analyst", dailyPay: 95, minNetWorth: 100_000 },
+  { id: "director", title: "Director", dailyPay: 220, minNetWorth: 1_000_000 },
+];
+export { JOBS };
+
+export function jobById(id) {
+  return JOBS.find(j => j.id === id) ?? JOBS[0];
+}
+
+/** Highest-tier job the player qualifies for at this net worth (JOBS ordered low → high). */
+export function highestJobForNetWorth(nw) {
+  let pick = JOBS[0];
+  for (const j of JOBS) {
+    if (nw >= j.minNetWorth) pick = j;
+  }
+  return pick;
+}
+
+export function jobUnlockedAtNetWorth(job, nw) {
+  return nw >= job.minNetWorth;
+}
+
 export function newState(params = {}) {
   const cash = params.startCash ?? 10_000;
+  const startNw = cash;
+  const wanted = jobById(params.startJobId ?? "intern");
+  const job = jobUnlockedAtNetWorth(wanted, startNw)
+    ? { ...wanted }
+    : { ...highestJobForNetWorth(startNw) };
   return {
     day: 1,
     maxDays: 365 * 30,
     cash,
+    job,
     indexFund: { shares: 0, price: 100.0, history: [100.0], monthlyHistory: [100.0] },
     bondHoldings: [],   // list of individual bond purchases
+    yieldCurve: cloneYieldCurve(YIELD_CURVE),
     crypto:    { coins: 0, price: 50.0, history: [50.0] },
     netWorthHistory: [cash],
     log: [],
@@ -73,7 +132,7 @@ export function sell(state, qty) {
 // Each bond holding: { id, faceValue, term, yield, purchaseDay, maturityDay, couponAccrued }
 export function buyBond(state, faceValue, term) {
   if (faceValue > state.cash) return appendLog(state, `Need ${fmt(faceValue)} — only have ${fmt(state.cash)}.`, "bad");
-  const y = yieldForTerm(term);
+  const y = yieldForTerm(state, term);
   const bond = {
     id: state.day + "_" + Math.random().toString(36).slice(2, 6),
     faceValue,
@@ -121,10 +180,23 @@ export function sellCrypto(state, qty) {
 
 // ── work ──
 export function work(state, params = {}) {
-  const payout = params.workPayout ?? 100;
+  const payout = state.job.dailyPay;
   const withWage = { ...state, cash: state.cash + payout };
-  const logged = appendLog(withWage, `Worked — earned $${payout}.`, "info");
+  const logged = appendLog(withWage, `Worked (${state.job.title}) — earned $${payout}.`, "info");
   return nextDay(logged, params);
+}
+
+export function applyForJob(state, jobId) {
+  const job = jobById(jobId);
+  if (state.job.id === job.id) {
+    return appendLog(state, `Already employed as ${job.title}.`, "info");
+  }
+  const nw = netWorth(state);
+  if (!jobUnlockedAtNetWorth(job, nw)) {
+    return appendLog(state, `${job.title} requires net worth ${fmt(job.minNetWorth)}+ (you have ${fmt(nw)}).`, "bad");
+  }
+  const next = { ...state, job: { ...job } };
+  return appendLog(next, `New job: ${job.title} — $${job.dailyPay}/day when you Work.`, "good");
 }
 
 // ── advance one day ──
@@ -172,11 +244,13 @@ export function nextDay(state, params = {}) {
 
   const newDay = s.day + 1;
   const isMonthEnd = newDay % 30 === 0;
+  const yieldCurve = evolveYieldCurve(s, params);
 
   const updated = {
     ...s,
     day: newDay,
     cash,
+    yieldCurve,
     indexFund: {
       ...s.indexFund,
       price: ifPrice,
