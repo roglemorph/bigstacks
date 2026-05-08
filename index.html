@@ -5,9 +5,11 @@
 			<title>Investment Roguelike</title>
 			<style>
 				* { box-sizing: border-box; margin: 0; padding: 0; }
+				html { font-size: 18px; }
 
 				body {
 				font-family: monospace;
+				font-size: 1rem;
 				background: #0f0f0f;
 				color: #e0e0e0;
 				display: flex;
@@ -17,13 +19,13 @@
 
 				/* ── SIDEBAR ── */
 				#sidebar {
-				width: 180px;
-				min-width: 180px;
+				width: 260px;
+				min-width: 260px;
 				background: #111;
 				border-right: 1px solid #2a2a2a;
 				display: flex;
 				flex-direction: column;
-				padding: 20px 14px;
+				padding: 24px 18px;
 				gap: 20px;
 				overflow-y: auto;
 				}
@@ -31,15 +33,27 @@
 				#sidebar h1 { color: #00ff88; font-size: 0.95em; line-height: 1.4; }
 
 				.side-stat { display: flex; flex-direction: column; gap: 3px; }
-				.side-label { font-size: 0.65em; color: #555; text-transform: uppercase; letter-spacing: 1px; }
-				.side-value { font-size: 1.05em; color: #00ff88; }
+				.side-label { font-size: 0.78em; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+				.side-value { font-size: 1.15em; color: #00ff88; }
 				.side-value.yellow { color: #ffcc00; }
 				.side-value.white  { color: #e0e0e0; }
+				.side-value-line {
+					display: flex;
+					flex-wrap: wrap;
+					align-items: baseline;
+					gap: 10px;
+					font-size: 1.15em;
+				}
+				.side-value-line .side-val-main { color: #e0e0e0; }
+				.side-value-line .side-pl { font-size: 0.95em; }
 
 				.year-bar { height: 3px; background: #222; border-radius: 2px; margin-top: 4px; }
 				.year-fill { height: 100%; background: #00ff88; border-radius: 2px; transition: width 0.1s; }
 				.side-divider { border: none; border-top: 1px solid #1e1e1e; }
 				.side-actions { display: flex; flex-direction: column; gap: 6px; }
+				.side-action-row { display: flex; gap: 6px; align-items: center; }
+				.side-action-row .btn { flex: 1; }
+				.side-action-row .amount-input { width: 64px; }
 
 				/* ── MAIN ── */
 				#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -47,9 +61,9 @@
 				/* ── TOP NAV ── */
 				#topnav { display: flex; border-bottom: 1px solid #2a2a2a; background: #111; flex-shrink: 0; }
 				.nav-tab {
-				padding: 12px 20px;
+				padding: 14px 22px;
 				font-family: monospace;
-				font-size: 0.82em;
+				font-size: 0.95em;
 				color: #555;
 				cursor: pointer;
 				border: none;
@@ -62,29 +76,81 @@
 				.nav-tab.active { color: #00ff88; border-bottom-color: #00ff88; }
 
 				/* ── CONTENT ── */
-				#content { flex: 1; overflow-y: auto; padding: 24px; }
+				#content { flex: 1; overflow-y: auto; padding: 30px; }
+				#content { padding-bottom: 42px; }
 				.page { display: none; }
 				.page.active { display: block; }
-				.page-title { font-size: 0.7em; color: #555; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; }
+				.page-title { font-size: 0.82em; color: #555; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 22px; }
+				#news-ticker {
+				position: fixed;
+				left: 260px;
+				right: 0;
+				bottom: 0;
+				height: 28px;
+				border-top: 1px solid #2a2a2a;
+				background: #0c0c0c;
+				overflow: hidden;
+				z-index: 10;
+				}
+				#news-ticker .ticker-track {
+				display: inline-block;
+				white-space: nowrap;
+				padding-left: 100%;
+				animation: ticker-scroll 34s linear infinite;
+				font-size: 0.72em;
+				line-height: 28px;
+				color: #aaa;
+				}
+				@keyframes ticker-scroll {
+					0% { transform: translateX(0); }
+					100% { transform: translateX(-100%); }
+				}
 
 				/* ── SHARED ── */
 				.section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; padding: 16px; margin-bottom: 14px; }
-				.section-title { font-size: 0.68em; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+				.section-title { font-size: 0.8em; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+				.section-row { display: flex; gap: 14px; align-items: stretch; margin-bottom: 14px; }
+				.section-row .section { flex: 1; margin-bottom: 0; min-width: 0; }
 
 				.stat-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
 				.stat-box { display: flex; flex-direction: column; gap: 3px; }
-				.stat-label { font-size: 0.65em; color: #555; text-transform: uppercase; letter-spacing: 1px; }
-				.stat-value { font-size: 1.05em; color: #00ff88; }
+				.stat-label { font-size: 0.78em; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+				.stat-value { font-size: 1.15em; color: #00ff88; }
 				.stat-value.yellow { color: #ffcc00; }
 				.stat-value.white  { color: #e0e0e0; }
+				.stat-value-line {
+					display: flex;
+					flex-wrap: wrap;
+					align-items: baseline;
+					gap: 14px;
+				}
+				.stat-value-line .stat-pl { font-size: 1.15em; }
+				.overview-holdings-header,
+				.overview-holdings-row {
+				display: grid;
+				grid-template-columns: 0.85fr 1.55fr 0.8fr 0.85fr 0.85fr 0.8fr;
+				gap: 0 10px;
+				align-items: center;
+				}
+				.overview-holdings-header {
+				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
+				padding-bottom: 6px; border-bottom: 1px solid #1e1e1e; margin-bottom: 2px;
+				}
+				.overview-holdings-row {
+				padding: 7px 0;
+				border-bottom: 1px solid #1e1e1e;
+				font-size: 0.78em;
+				color: #888;
+				}
+				.overview-holdings-row:last-child { border-bottom: none; }
 
 				.inv-change { font-size: 0.82em; }
 				.pos { color: #00ff88; } .neg { color: #ff4444; }
 
 				.btn {
 				background: #1a1a1a; border: 1px solid #333; color: #aaa;
-				padding: 6px 12px; border-radius: 3px; cursor: pointer;
-				font-family: monospace; font-size: 0.82em;
+				padding: 8px 14px; border-radius: 3px; cursor: pointer;
+				font-family: monospace; font-size: 0.92em;
 				transition: border-color 0.15s, color 0.15s;
 				}
 				.btn:hover { border-color: #00ff88; color: #00ff88; }
@@ -105,8 +171,8 @@
 
 				.amount-input {
 				background: #111; border: 1px solid #333; color: #e0e0e0;
-				padding: 5px 8px; border-radius: 3px;
-				font-family: monospace; font-size: 0.82em; width: 80px;
+				padding: 7px 10px; border-radius: 3px;
+				font-family: monospace; font-size: 0.92em; width: 90px;
 				}
 
 				canvas.spark {
@@ -127,6 +193,8 @@
 				.log-entry.info  { color: #66aaff; }
 
 				.auto-row { display: flex; gap: 8px; align-items: center; font-size: 0.78em; color: #555; }
+				.chart-toggle-row { display: flex; gap: 8px; margin-bottom: 10px; }
+				.chart-toggle-row .btn.active { border-color: #00ff88; color: #00ff88; background: #00ff8812; }
 
 				/* ── CHARTS ── */
 				.chart-wrap { display: flex; gap: 6px; }
@@ -144,6 +212,9 @@
 				font-size: 0.62em; color: #444;
 				padding: 3px 0 0 0;
 				height: 16px;
+				}
+				@media (max-width: 1200px) {
+					.section-row { flex-direction: column; }
 				}
 				canvas.spark { width: 100%; height: 110px; display: block; background: #111; border-radius: 3px; }
 
@@ -166,6 +237,24 @@
 				display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;
 				}
 				.bond-field { display: flex; flex-direction: column; gap: 5px; }
+				.corp-bond-header,
+				.corp-bond-row {
+				display: grid;
+				grid-template-columns: 1.5fr 0.8fr 0.7fr 0.8fr 0.7fr auto;
+				gap: 0 10px;
+				align-items: center;
+				}
+				.corp-bond-header {
+				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
+				padding-bottom: 6px; border-bottom: 1px solid #1e1e1e; margin-bottom: 2px;
+				}
+				.corp-bond-row {
+				padding: 7px 0;
+				border-bottom: 1px solid #1e1e1e;
+				font-size: 0.78em;
+				color: #888;
+				}
+				.corp-bond-row:last-child { border-bottom: none; }
 
 				.bond-holdings-row {
 				display: grid;
@@ -187,6 +276,218 @@
 				border-bottom: 1px solid #1e1e1e;
 				margin-bottom: 2px;
 				}
+				.asset-holdings-header {
+				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
+				display: grid;
+				grid-template-columns: 1.7fr 0.7fr 0.8fr 0.8fr;
+				gap: 0 12px;
+				padding-bottom: 6px;
+				border-bottom: 1px solid #1e1e1e;
+				margin-bottom: 2px;
+				}
+				.asset-holdings-row {
+				display: grid;
+				grid-template-columns: 1.7fr 0.7fr 0.8fr 0.8fr;
+				gap: 0 12px;
+				align-items: center;
+				padding: 7px 0;
+				border-bottom: 1px solid #1e1e1e;
+				font-size: 0.78em;
+				color: #888;
+				}
+				.asset-holdings-row:last-child { border-bottom: none; }
+				.asset-market-header {
+				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
+				display: grid;
+				grid-template-columns: 1.35fr 0.65fr 0.55fr 0.8fr 0.8fr 0.8fr 0.7fr auto auto;
+				gap: 0 10px;
+				padding-bottom: 6px;
+				border-bottom: 1px solid #1e1e1e;
+				margin-bottom: 2px;
+				}
+				.asset-market-row {
+				display: grid;
+				grid-template-columns: 1.35fr 0.65fr 0.55fr 0.8fr 0.8fr 0.8fr 0.7fr auto auto;
+				gap: 0 10px;
+				align-items: center;
+				padding: 7px 0;
+				border-bottom: 1px solid #1e1e1e;
+				font-size: 0.78em;
+				color: #888;
+				}
+				.asset-market-row:last-child { border-bottom: none; }
+				.asset-market-row .amount-input { width: 58px; }
+				.asset-market-row .market-pl { font-weight: bold; }
+				canvas.row-spark {
+				width: 100%;
+				height: 28px;
+				display: block;
+				background: #101010;
+				border-radius: 2px;
+				}
+				.options-chain-wrap { overflow-x: auto; }
+				.options-chain-header,
+				.options-chain-row {
+				display: grid;
+				grid-template-columns: minmax(420px, 1fr) 76px minmax(420px, 1fr);
+				gap: 0 8px;
+				align-items: stretch;
+				min-width: 980px;
+				}
+				.options-chain-header {
+				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
+				padding-bottom: 6px; border-bottom: 1px solid #1e1e1e; margin-bottom: 6px;
+				}
+				.options-chain-row {
+				padding: 6px 0;
+				border-bottom: 1px solid #1e1e1e;
+				font-size: 0.78em;
+				color: #888;
+				}
+				.options-chain-row:last-child { border-bottom: none; }
+				.options-strike {
+				color: #ffcc00;
+				text-align: center;
+				font-weight: bold;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: #111;
+				border: 1px solid #2a2a2a;
+				border-radius: 999px;
+				padding: 0 8px;
+				}
+				.options-side {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				grid-template-areas:
+					"name name"
+					"price held"
+					"chart chart"
+					"qty qty"
+					"actions actions";
+				gap: 6px 8px;
+				align-items: start;
+				background: #141414;
+				border: 1px solid #2a2a2a;
+				border-radius: 10px;
+				padding: 10px;
+				min-height: 170px;
+				}
+				.options-side.selected {
+				border-color: #00ff88;
+				background: #00ff8812;
+				}
+				.options-side-muted {
+				color: #333;
+				text-align: center;
+				}
+				.options-side-name { grid-area: name; font-size: 0.82em; }
+				.options-side-price { grid-area: price; }
+				.options-side-held { grid-area: held; text-align: right; }
+				canvas.options-side-chart { grid-area: chart; height: 168px; }
+				.options-side-qty { grid-area: qty; }
+				.options-side-actions {
+				grid-area: actions;
+				display: flex;
+				justify-content: flex-end;
+				gap: 6px;
+				margin-top: auto;
+				}
+				.options-side .amount-input { width: 44px; }
+				.options-side .btn { padding: 5px 8px; font-size: 0.8em; }
+				.options-ticket-grid {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 10px 14px;
+				font-size: 0.76em;
+				}
+				.options-ticket-item { display: flex; flex-direction: column; gap: 2px; }
+				.options-ticket-item .k { color: #555; text-transform: uppercase; letter-spacing: 1px; font-size: 0.72em; }
+				.options-ticket-item .v { color: #ddd; }
+				.options-ticket-item .v.emph { color: #ffcc00; font-weight: bold; }
+				.options-pos-header,
+				.options-pos-row {
+				display: grid;
+				grid-template-columns: 1.4fr 0.7fr 0.7fr 0.8fr 0.8fr 0.8fr auto;
+				gap: 0 10px;
+				align-items: center;
+				}
+				.options-pos-header {
+				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
+				padding-bottom: 6px; border-bottom: 1px solid #1e1e1e; margin-bottom: 2px;
+				}
+				.options-pos-row {
+				padding: 7px 0;
+				border-bottom: 1px solid #1e1e1e;
+				font-size: 0.78em;
+				color: #888;
+				}
+				.options-pos-row:last-child { border-bottom: none; }
+				.amount-stepper {
+				display: inline-flex;
+				gap: 4px;
+				align-items: center;
+				}
+				.amount-step-btn {
+				min-width: 24px;
+				padding: 3px 5px;
+				font-size: 0.75em;
+				}
+				.stocks-grid {
+				display: grid;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 12px;
+				}
+				.crypto-grid {
+				display: grid;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 12px;
+				}
+				.stock-card {
+				background: #151515;
+				border: 1px solid #2a2a2a;
+				border-radius: 4px;
+				padding: 10px;
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				}
+				.stock-card-title {
+				font-size: 0.75em;
+				color: #ddd;
+				font-weight: bold;
+				}
+				.stock-card-stats {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 6px 10px;
+				font-size: 0.7em;
+				color: #666;
+				}
+				.stock-card-stats .val {
+				color: #ddd;
+				font-size: 0.95em;
+				}
+				.stock-card-stats .val.pl { font-weight: bold; }
+				.stock-card .amount-stepper { margin-top: 2px; }
+				.stock-card .amount-input { width: 54px; }
+				.stock-card .btn-row { justify-content: flex-end; }
+				.stock-card .stock-mini-chart {
+				height: 72px;
+				background: #101010;
+				border-radius: 3px;
+				}
+				.crypto-card .crypto-mini-chart {
+				height: 72px;
+				background: #101010;
+				border-radius: 3px;
+				}
+				@media (max-width: 900px) {
+					.stocks-grid { grid-template-columns: 1fr; }
+					.crypto-grid { grid-template-columns: 1fr; }
+				}
+
 			</style>
 		</head>
 	<body>
@@ -213,13 +514,6 @@
 				</div>
 
 				<div class="side-stat">
-					<div class="side-label">Job</div>
-					<div class="side-value white" id="s-job-title"></div>
-					<div class="side-label" style="margin-top:6px; font-size:0.75em;" id="s-job-pay"></div>
-					<div class="job-apply-btns" id="job-apply-btns"></div>
-				</div>
-
-				<div class="side-stat">
 					<div class="side-label">Cash</div>
 					<div class="side-value" id="s-cash"></div>
 				</div>
@@ -227,22 +521,54 @@
 				<div class="side-stat">
 					<div class="side-label">Portfolio</div>
 					<div class="side-value yellow" id="s-portfolio"></div>
+					<div class="side-label" style="margin-top:6px;">Index Funds</div>
+					<div class="side-value-line">
+						<span class="side-val-main" id="s-portfolio-index"></span>
+						<span class="side-pl" id="s-pl-index"></span>
+					</div>
+					<div class="side-label">Bonds</div>
+					<div class="side-value-line">
+						<span class="side-val-main" id="s-portfolio-bonds"></span>
+						<span class="side-pl" id="s-pl-bonds"></span>
+					</div>
+					<div class="side-label">Crypto</div>
+					<div class="side-value-line">
+						<span class="side-val-main" id="s-portfolio-crypto"></span>
+						<span class="side-pl" id="s-pl-crypto"></span>
+					</div>
+					<div class="side-label">Stocks</div>
+					<div class="side-value-line">
+						<span class="side-val-main" id="s-portfolio-stocks"></span>
+						<span class="side-pl" id="s-pl-stocks"></span>
+					</div>
+					<div class="side-label">Options</div>
+					<div class="side-value-line">
+						<span class="side-val-main" id="s-portfolio-options"></span>
+						<span class="side-pl" id="s-pl-options"></span>
+					</div>
 				</div>
 
 				<div class="side-stat">
 					<div class="side-label">Net Worth</div>
 					<div class="side-value" id="s-networth"></div>
 				</div>
+				<div class="side-stat">
+					<div class="side-label">Total Return</div>
+					<div class="side-value white" id="s-return"></div>
+				</div>
 
 				<hr class="side-divider">
 
 					<div class="side-actions">
-						<button class="btn primary work" id="day-btn">⏭ Next day</button>
-						<button class="btn" id="autoplay-btn">▶ Auto (Work)</button>
-						<div class="auto-row">
-							<label>ms / tick</label>
-							<input id="auto-interval" class="amount-input" type="number" value="200" min="16" style="width:60px">
-    </div>
+						<div class="side-action-row">
+							<button class="btn primary work" id="day-btn">⏭ Next day</button>
+							<button class="btn" id="week-btn">+1 Week</button>
+						</div>
+						<div class="side-action-row">
+							<label>Days</label>
+							<input id="advance-days" class="amount-input" type="number" value="30" min="1" style="width:64px">
+							<button class="btn" id="advance-btn">Advance</button>
+						</div>
 						<button class="btn" id="reset-btn">↺ New Run</button>
 					</div>
 				</div>
@@ -254,6 +580,8 @@
 				<button class="nav-tab" data-page="index-fund">📊 Index Fund</button>
 				<button class="nav-tab" data-page="bonds">💵 Bonds</button>
 				<button class="nav-tab" data-page="crypto">🪙 Crypto</button>
+				<button class="nav-tab" data-page="stocks">📈 Stocks</button>
+				<button class="nav-tab" data-page="options">🧩 Options</button>
 				<button class="nav-tab" data-page="debug">⚙ Debug</button>
 			</nav>
 
@@ -267,6 +595,12 @@
 						<canvas id="networth-graph" class="spark"></canvas>
 					</div>
 					<div class="section">
+						<div class="section-title">All Holdings</div>
+						<div id="overview-holdings-list">
+							<div style="color:#444;font-size:0.8em;">No holdings yet.</div>
+						</div>
+					</div>
+					<div class="section">
 						<div class="section-title">Log</div>
 						<div class="log" id="log"></div>
 					</div>
@@ -278,48 +612,50 @@
 					<div class="section">
 						<div class="stat-row">
 							<div class="stat-box">
-								<div class="stat-label">Price / share</div>
+								<div class="stat-label">Avg price / share</div>
 								<div class="stat-value">
 									$<span id="if-price"></span>
 								</div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Shares held</div>
+								<div class="stat-label">Total shares held</div>
 								<div class="stat-value" id="if-shares"></div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Day change</div>
+								<div class="stat-label">Avg day change</div>
 								<div id="if-change" class="inv-change">—</div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Value</div>
-								<div class="stat-value yellow" id="if-value"></div>
+								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-value-line">
+									<span class="stat-value yellow" id="if-value"></span>
+									<span class="stat-pl" id="if-pl"></span>
+								</div>
 							</div>
 						</div>
-						<div class="btn-row">
-							<input type="number" class="amount-input" id="if-amount" value="1" min="1">
-								<button class="btn" id="buy-btn">Buy</button>
-								<button class="btn danger" id="sell-btn">Sell</button>
-							</div>
 					</div>
 					<div class="section">
-						<div class="section-title">Recent — Daily</div>
+						<div class="section-title">Funds Market</div>
+						<div id="if-market-list"></div>
+					</div>
+					<div class="section">
+						<div class="section-title">Price History</div>
+						<div class="chart-toggle-row">
+							<button class="btn active" id="if-chart-daily-btn">Daily</button>
+							<button class="btn" id="if-chart-monthly-btn">Monthly</button>
+						</div>
 						<div class="chart-wrap">
-							<div class="y-axis" id="if-daily-yaxis"></div>
+							<div class="y-axis" id="if-yaxis"></div>
 							<div class="chart-area">
 								<canvas id="price-graph" class="spark"></canvas>
-								<div class="x-axis" id="if-daily-xaxis"></div>
+								<div class="x-axis" id="if-xaxis"></div>
 							</div>
 						</div>
 					</div>
 					<div class="section">
-						<div class="section-title">Long Term — Monthly</div>
-						<div class="chart-wrap">
-							<div class="y-axis" id="if-monthly-yaxis"></div>
-							<div class="chart-area">
-								<canvas id="price-graph-monthly" class="spark"></canvas>
-								<div class="x-axis" id="if-monthly-xaxis"></div>
-							</div>
+						<div class="section-title">Holdings</div>
+						<div id="if-holdings-list">
+							<div style="color:#444;font-size:0.8em;">No index fund shares held.</div>
 						</div>
 					</div>
 				</div>
@@ -329,6 +665,15 @@
 					<div class="page-title">Bonds</div>
 
 					<div class="section">
+						<div class="stat-row">
+							<div class="stat-box">
+								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-value-line">
+									<span class="stat-value yellow" id="bonds-value"></span>
+									<span class="stat-pl" id="bonds-pl"></span>
+								</div>
+							</div>
+						</div>
 						<div class="section-title">Yield Curve</div>
 						<p style="font-size:0.72em; color:#555; margin:-6px 0 10px 0;">Shifts daily (mean-reverting); new bonds price off the current curve.</p>
 						<canvas id="bonds-yield-curve" style="width:100%;height:120px;display:block;background:#111;border-radius:3px;"></canvas>
@@ -336,7 +681,7 @@
 					</div>
 
 					<div class="section">
-						<div class="section-title">Purchase Bond</div>
+						<div class="section-title">Purchase U.S. Treasury Bond</div>
 						<div class="bond-buy-row">
 							<div class="bond-field">
 								<div class="stat-label">Face Value ($)</div>
@@ -363,6 +708,10 @@
 							<button class="btn primary" id="buy-bonds-btn" style="align-self:flex-end;">Buy Bond</button>
 						</div>
 					</div>
+					<div class="section">
+						<div class="section-title">Corporate Bond Listings</div>
+						<div id="corp-bond-market-list"></div>
+					</div>
 
 					<div class="section">
 						<div class="section-title">Holdings</div>
@@ -378,33 +727,127 @@
 					<div class="section">
 						<div class="stat-row">
 							<div class="stat-box">
-								<div class="stat-label">Price / coin</div>
+								<div class="stat-label">Avg price / coin</div>
 								<div class="stat-value">
 									$<span id="crypto-price"></span>
 								</div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Coins held</div>
+								<div class="stat-label">Total coins held</div>
 								<div class="stat-value" id="crypto-coins"></div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Day change</div>
+								<div class="stat-label">Avg day change</div>
 								<div id="crypto-change" class="inv-change">—</div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Value</div>
-								<div class="stat-value yellow" id="crypto-value"></div>
+								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-value-line">
+									<span class="stat-value yellow" id="crypto-value"></span>
+									<span class="stat-pl" id="crypto-pl"></span>
+								</div>
 							</div>
 						</div>
-						<div class="btn-row">
-							<input type="number" class="amount-input" id="crypto-amount" value="1" min="1">
-								<button class="btn" id="buy-crypto-btn">Buy</button>
-								<button class="btn danger" id="sell-crypto-btn">Sell</button>
-							</div>
 					</div>
 					<div class="section">
-						<div class="section-title">Price History</div>
-						<canvas id="crypto-graph" class="spark"></canvas>
+						<div class="section-title">Crypto Market</div>
+						<div id="crypto-market-list"></div>
+					</div>
+					<div class="section">
+						<div class="section-title">Holdings</div>
+						<div id="crypto-holdings-list">
+							<div style="color:#444;font-size:0.8em;">No crypto holdings.</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- STOCKS -->
+				<div class="page" id="page-stocks">
+					<div class="page-title">Stocks</div>
+					<div class="section">
+						<div class="stat-row">
+							<div class="stat-box">
+								<div class="stat-label">Avg price / share</div>
+								<div class="stat-value">
+									$<span id="stock-price"></span>
+								</div>
+							</div>
+							<div class="stat-box">
+								<div class="stat-label">Total shares held</div>
+								<div class="stat-value" id="stock-shares"></div>
+							</div>
+							<div class="stat-box">
+								<div class="stat-label">Avg day change</div>
+								<div id="stock-change" class="inv-change">—</div>
+							</div>
+							<div class="stat-box">
+								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-value-line">
+									<span class="stat-value yellow" id="stock-value"></span>
+									<span class="stat-pl" id="stock-pl"></span>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="section">
+						<div class="section-title">Stock Market</div>
+						<div id="stock-market-list"></div>
+					</div>
+					<div class="section">
+						<div class="section-title">Holdings</div>
+						<div id="stock-holdings-list">
+							<div style="color:#444;font-size:0.8em;">No stock holdings.</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- OPTIONS -->
+				<div class="page" id="page-options">
+					<div class="page-title">Options</div>
+					<div class="section">
+						<div class="stat-row">
+							<div class="stat-box">
+								<div class="stat-label">Avg price / contract</div>
+								<div class="stat-value">
+									$<span id="options-price"></span>
+								</div>
+							</div>
+							<div class="stat-box">
+								<div class="stat-label">Total contracts held</div>
+								<div class="stat-value" id="options-contracts"></div>
+							</div>
+							<div class="stat-box">
+								<div class="stat-label">Underlying (Index A)</div>
+								<div class="stat-value">
+									$<span id="options-underlying-price"></span>
+								</div>
+							</div>
+							<div class="stat-box">
+								<div class="stat-label">Avg day change</div>
+								<div id="options-change" class="inv-change">—</div>
+							</div>
+							<div class="stat-box">
+								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-value-line">
+									<span class="stat-value yellow" id="options-value"></span>
+									<span class="stat-pl" id="options-pl"></span>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="section">
+						<div class="section-title">Options Market</div>
+						<div id="options-market-list"></div>
+					</div>
+					<div class="section">
+						<div class="section-title">Trade Ticket</div>
+						<div id="options-ticket" style="color:#444;font-size:0.8em;">Select an option contract.</div>
+					</div>
+					<div class="section">
+						<div class="section-title">Holdings</div>
+						<div id="options-holdings-list">
+							<div style="color:#444;font-size:0.8em;">No options holdings.</div>
+						</div>
 					</div>
 				</div>
 
@@ -418,41 +861,42 @@
 						<div class="debug-grid">
 							<label>Starting Cash ($)</label>
 							<input class="amount-input" id="dbg-start-cash" type="number" value="10000" min="0" step="1000">
-								<label>Starting Job</label>
-								<select class="amount-input" id="dbg-start-job" style="width:100%; max-width:220px;"></select>
+							<label>Run Length (days)</label>
+							<input class="amount-input" id="dbg-max-days" type="number" value="2000" min="30" step="30">
         </div>
 					</div>
 
 					<div class="section">
 						<div class="section-title">Daily Volatility</div>
-						<p style="font-size:0.72em; color:#444; margin-bottom:10px;">Standard deviation of daily price move. Real-world approx: index 1.26%, bonds 0.25%, crypto 4%.</p>
+						<p style="font-size:0.72em; color:#444; margin-bottom:10px;">Standard deviation of daily price move for non-bond assets.</p>
 						<div class="debug-grid">
 							<label>Index Fund (%)</label>
 							<input class="amount-input" id="dbg-vol-index" type="number" value="1.26" min="0.01" step="0.1">
-								<label>Bonds (%)</label>
-								<input class="amount-input" id="dbg-vol-bonds" type="number" value="0.25" min="0.01" step="0.05">
-									<label>Crypto (%)</label>
-									<input class="amount-input" id="dbg-vol-crypto" type="number" value="4.0" min="0.1" step="0.5">
+							<label>Crypto (%)</label>
+							<input class="amount-input" id="dbg-vol-crypto" type="number" value="4.0" min="0.1" step="0.5">
+							<label>Stocks (%)</label>
+							<input class="amount-input" id="dbg-vol-stock" type="number" value="2.0" min="0.1" step="0.25">
+							<label>Options (%)</label>
+							<input class="amount-input" id="dbg-vol-options" type="number" value="7.5" min="0.1" step="0.5">
+							<label>Index Drift (% / day)</label>
+							<input class="amount-input" id="dbg-drift-index" type="number" value="0.025" min="-0.2" max="0.2" step="0.005">
         </div>
 					</div>
 
 					<div class="section">
-						<div class="section-title">Bond Coupon</div>
+						<div class="section-title">Bond Market Dynamics</div>
+						<p style="font-size:0.72em; color:#444; margin-bottom:10px;">Treasury curve evolves with volatility and mean reversion. Corporate offers scale with spread multiplier.</p>
 						<div class="debug-grid">
-							<label>Annual Coupon Rate (%)</label>
-							<input class="amount-input" id="dbg-coupon" type="number" value="3.0" min="0" step="0.5">
-        </div>
-					</div>
-
-					<div class="section">
-						<div class="section-title">Life Events</div>
-						<div class="debug-grid">
-							<label>Frequency (1 in N days)</label>
-							<input class="amount-input" id="dbg-event-freq" type="number" value="365" min="1" step="10">
-								<label>Min Cost ($)</label>
-								<input class="amount-input" id="dbg-event-min" type="number" value="800" min="0" step="100">
-									<label>Max Cost ($)</label>
-									<input class="amount-input" id="dbg-event-max" type="number" value="3300" min="0" step="100">
+							<label>Treasury Curve Vol (bps/day)</label>
+							<input class="amount-input" id="dbg-yield-vol-bps" type="number" value="7" min="1" step="1">
+							<label>Treasury Mean Reversion (%/day)</label>
+							<input class="amount-input" id="dbg-yield-kappa-pct" type="number" value="1.8" min="0" step="0.1">
+							<label>Min Treasury Yield (%)</label>
+							<input class="amount-input" id="dbg-yield-min-pct" type="number" value="0.2" min="0" step="0.1">
+							<label>Max Treasury Yield (%)</label>
+							<input class="amount-input" id="dbg-yield-max-pct" type="number" value="20" min="1" step="0.5">
+							<label>Corporate Spread Multiplier</label>
+							<input class="amount-input" id="dbg-corp-spread-mult" type="number" value="1.0" min="0.5" max="2.5" step="0.1">
         </div>
 					</div>
 
@@ -461,44 +905,51 @@
 
 			</div>
 		</div>
+		<div id="news-ticker">
+			<div class="ticker-track" id="news-ticker-track">Markets open quietly as traders watch the tape...</div>
+		</div>
 
 		<script type="module">
-			import { newState, buy, sell, buyBond, sellBondEarly, buyCrypto, sellCrypto, work, applyForJob, portfolioValue, netWorth, YIELD_CURVE, yieldForTerm, JOBS, jobUnlockedAtNetWorth } from "./game.js?v=jobs";
+			import { newState, nextDay, buyIndexFund, sellIndexFund, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, portfolioValue, netWorth, YIELD_CURVE, yieldForTerm } from "./game.js?v=jobs";
 
 			const fmt = n => "$" + Math.round(n).toLocaleString();
-
-			const dbgJobSelect = document.getElementById("dbg-start-job");
-			JOBS.forEach(j => {
-				const opt = document.createElement("option");
-				opt.value = j.id;
-				opt.textContent = j.minNetWorth <= 0
-					? `${j.title} ($${j.dailyPay}/day)`
-					: `${j.title} ($${j.dailyPay}/day) — ${fmt(j.minNetWorth)}+ NW`;
-				dbgJobSelect.appendChild(opt);
-			});
+			const fmtSigned = n => `${n >= 0 ? "+" : "-"}${fmt(Math.abs(n))}`;
+			function setPlDisplay(el, pl, baseClass) {
+				if (!el) return;
+				el.textContent = fmtSigned(pl);
+				el.className = baseClass + " " + (pl >= 0 ? "pos" : "neg");
+			}
 
 			function readParams() {
 			return {
 			startCash:   parseFloat(document.getElementById("dbg-start-cash").value)   || 10000,
-			startJobId:  dbgJobSelect.value || "intern",
+			maxDays:     parseInt(document.getElementById("dbg-max-days").value)       || 2000,
 			volIndex:    parseFloat(document.getElementById("dbg-vol-index").value)     / 100 || 0.0126,
-			volBonds:    parseFloat(document.getElementById("dbg-vol-bonds").value)     / 100 || 0.0025,
 			volCrypto:   parseFloat(document.getElementById("dbg-vol-crypto").value)    / 100 || 0.04,
-			coupon:      parseFloat(document.getElementById("dbg-coupon").value)        / 100 || 0.03,
-			eventFreq:   parseFloat(document.getElementById("dbg-event-freq").value)    || 365,
-			eventMin:    parseFloat(document.getElementById("dbg-event-min").value)     || 800,
-			eventMax:    parseFloat(document.getElementById("dbg-event-max").value)     || 3300,
+			volStock:    parseFloat(document.getElementById("dbg-vol-stock").value)     / 100 || 0.02,
+			volOptions:  parseFloat(document.getElementById("dbg-vol-options").value)   / 100 || 0.075,
+			driftIndex:  parseFloat(document.getElementById("dbg-drift-index").value)   / 100 || 0.00025,
+			yieldCurveVol:   parseFloat(document.getElementById("dbg-yield-vol-bps").value) / 10000 || 0.0007,
+			yieldCurveKappa: parseFloat(document.getElementById("dbg-yield-kappa-pct").value) / 100 || 0.018,
+			yieldCurveMin:   parseFloat(document.getElementById("dbg-yield-min-pct").value) / 100 || 0.002,
+			yieldCurveMax:   parseFloat(document.getElementById("dbg-yield-max-pct").value) / 100 || 0.20,
+			corporateSpreadMult: parseFloat(document.getElementById("dbg-corp-spread-mult").value) || 1.0,
 			};
 			}
 
 			let params = readParams();
 			let state = newState(params);
-			let autoplayInterval = null;
 			let renderedLogCount = 0;
+      const tradeQtyByInputId = {};
+      let indexChartMode = "daily";
+      let selectedOptionId = null;
+      let tickerItems = [];
+      let tickerIndex = 0;
 
 			// Tab switching
 			document.querySelectorAll(".nav-tab").forEach(tab => {
 			tab.addEventListener("click", () => {
+      if (tab.dataset.locked === "true") return;
 			document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
 			document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
 			tab.classList.add("active");
@@ -515,8 +966,63 @@
     el.className = "inv-change " + (pct >= 0 ? "pos" : "neg");
   }
 
+  function averageHistory(assets, historyKey = "history") {
+    const list = assets || [];
+    if (!list.length) return [];
+    const lengths = list.map(a => (a[historyKey] || []).length).filter(Boolean);
+    if (!lengths.length) return [];
+    const len = Math.min(...lengths);
+    const out = [];
+    for (let i = 0; i < len; i++) {
+      const sum = list.reduce((acc, a) => acc + (a[historyKey][i] || 0), 0);
+      out.push(sum / list.length);
+    }
+    return out;
+  }
+
+  function buildTickerItems(s) {
+    const index = (s.indexFunds || [])[0];
+    const stockLead = (s.stocks || [])[0];
+    const cryptoLead = (s.cryptos || [])[0];
+    const bondPillar = (s.yieldCurve || YIELD_CURVE)[2];
+    const optionsHeld = (s.options || []).reduce((sum, o) => sum + (o.contracts || 0), 0);
+    const indexPct = (index && index.history?.length > 1)
+      ? ((index.price - index.history[index.history.length - 2]) / index.history[index.history.length - 2] * 100)
+      : 0;
+    const bondPct = bondPillar ? (bondPillar.yield * 100) : 0;
+    return [
+      `Day ${s.day}: ${index?.name || "Index"} ${indexPct >= 0 ? "up" : "down"} ${Math.abs(indexPct).toFixed(2)}%`,
+      `Treasury 5yr yield around ${bondPct.toFixed(2)}%`,
+      `${stockLead?.name || "Lead stock"} trading near $${(stockLead?.price || 0).toFixed(2)}`,
+      `${cryptoLead?.name || "Lead crypto"} at $${(cryptoLead?.price || 0).toFixed(2)}`,
+      optionsHeld > 0 ? `Options desk active: ${optionsHeld} contracts open` : "Options desk quiet with no open contracts",
+      `Net worth snapshot: ${fmt(netWorth(s))}`,
+    ];
+  }
+
+  function renderTicker(s) {
+    const el = document.getElementById("news-ticker-track");
+    if (!el) return;
+    const items = buildTickerItems(s);
+    tickerItems = items;
+    if (!items.length) return;
+    tickerIndex = (tickerIndex + 1) % items.length;
+    const current = items[tickerIndex];
+    const next = items[(tickerIndex + 1) % items.length];
+    const after = items[(tickerIndex + 2) % items.length];
+    el.textContent = `${current}   •   ${next}   •   ${after}`;
+  }
+
+  function startTicker() {
+    const el = document.getElementById("news-ticker-track");
+    if (!el) return;
+    renderTicker(state);
+    el.addEventListener("animationiteration", () => renderTicker(state));
+  }
+
   function render(s) {
     const year = Math.floor((s.day - 1) / 365) + 1;
+    const tradingLocked = false;
 
     // Sidebar
     document.getElementById("s-day").textContent       = s.day.toLocaleString();
@@ -525,44 +1031,102 @@
     document.getElementById("s-day-fill").style.width  = (s.day / s.maxDays * 100) + "%";
     document.getElementById("s-cash").textContent      = fmt(s.cash);
     document.getElementById("s-portfolio").textContent = fmt(portfolioValue(s));
-    document.getElementById("s-networth").textContent  = fmt(netWorth(s));
+    const sidebarIndexValue = (s.indexFunds || []).reduce((sum, a) => sum + ((a.shares || 0) * (a.price || 0)), 0);
+    const sidebarBondsValue = (s.bondHoldings || []).reduce((sum, b) => sum + (b.faceValue || 0), 0);
+    const sidebarCryptoValue = (s.cryptos || []).reduce((sum, a) => sum + ((a.coins || 0) * (a.price || 0)), 0);
+    const sidebarStockValue = (s.stocks || []).reduce((sum, a) => sum + ((a.shares || 0) * (a.price || 0)), 0);
+    const sidebarOptionsValue = (s.options || []).reduce((sum, a) => sum + ((a.contracts || 0) * (a.price || 0)), 0);
+    const sidebarIndexPL = (s.indexFunds || []).reduce((sum, a) => sum + ((a.shares || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const sidebarBondsPL = (s.bondHoldings || []).reduce((sum, b) => sum + (b.couponAccrued || 0), 0);
+    const sidebarCryptoPL = (s.cryptos || []).reduce((sum, a) => sum + ((a.coins || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const sidebarStockPL = (s.stocks || []).reduce((sum, a) => sum + ((a.shares || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const sidebarOptionsPL = (s.options || []).reduce((sum, a) => sum + ((a.contracts || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    document.getElementById("s-portfolio-index").textContent = fmt(sidebarIndexValue);
+    document.getElementById("s-portfolio-bonds").textContent = fmt(sidebarBondsValue);
+    document.getElementById("s-portfolio-crypto").textContent = fmt(sidebarCryptoValue);
+    document.getElementById("s-portfolio-stocks").textContent = fmt(sidebarStockValue);
+    document.getElementById("s-portfolio-options").textContent = fmt(sidebarOptionsValue);
+    setPlDisplay(document.getElementById("s-pl-index"), sidebarIndexPL, "side-pl");
+    setPlDisplay(document.getElementById("s-pl-bonds"), sidebarBondsPL, "side-pl");
+    setPlDisplay(document.getElementById("s-pl-crypto"), sidebarCryptoPL, "side-pl");
+    setPlDisplay(document.getElementById("s-pl-stocks"), sidebarStockPL, "side-pl");
+    setPlDisplay(document.getElementById("s-pl-options"), sidebarOptionsPL, "side-pl");
+    const nw = netWorth(s);
+    const totalReturn = nw - (s.startCash || 0);
+    document.getElementById("s-networth").textContent  = fmt(nw);
+    document.getElementById("s-return").textContent    = fmt(totalReturn);
     const dayBtn = document.getElementById("day-btn");
     dayBtn.disabled = s.day >= s.maxDays;
-    dayBtn.textContent = `⏭ Next day (+${fmt(s.job.dailyPay)})`;
-    document.getElementById("s-job-title").textContent = s.job.title;
-    document.getElementById("s-job-pay").textContent   = `${fmt(s.job.dailyPay)} when you advance a day`;
-
-    const jobBtns = document.getElementById("job-apply-btns");
-    jobBtns.innerHTML = "";
-    const nwNow = netWorth(s);
-    JOBS.forEach(j => {
-      if (j.id === s.job.id) return;
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "btn";
-      const unlocked = jobUnlockedAtNetWorth(j, nwNow);
-      b.disabled = !unlocked;
-      b.title = unlocked ? `Apply for ${j.title}` : `Requires net worth ${fmt(j.minNetWorth)}+`;
-      b.textContent = unlocked ? `Apply: ${j.title}` : `🔒 ${j.title} (${fmt(j.minNetWorth)}+)`;
-      b.onclick = () => { if (!b.disabled) { state = applyForJob(state, j.id); render(state); } };
-      jobBtns.appendChild(b);
-    });
+    dayBtn.textContent = `⏭ Next day`;
 
     // Index Fund
-    document.getElementById("if-price").textContent  = s.indexFund.price.toFixed(2);
-    document.getElementById("if-shares").textContent = s.indexFund.shares;
-    document.getElementById("if-value").textContent  = fmt(s.indexFund.shares * s.indexFund.price);
-    setChange("if-change", s.indexFund.history);
+    const indexAvgHistory = averageHistory(s.indexFunds, "history");
+    const indexShares = (s.indexFunds || []).reduce((sum, a) => sum + (a.shares || 0), 0);
+    const indexValue = (s.indexFunds || []).reduce((sum, a) => sum + ((a.shares || 0) * (a.price || 0)), 0);
+    const indexPL = (s.indexFunds || []).reduce((sum, a) => sum + ((a.shares || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const indexAvgPrice = (s.indexFunds || []).length ? (s.indexFunds.reduce((sum, a) => sum + a.price, 0) / s.indexFunds.length) : 0;
+    document.getElementById("if-price").textContent  = indexAvgPrice.toFixed(2);
+    document.getElementById("if-shares").textContent = indexShares;
+    document.getElementById("if-value").textContent  = fmt(indexValue);
+    setPlDisplay(document.getElementById("if-pl"), indexPL, "stat-pl");
+    setChange("if-change", indexAvgHistory);
+    renderAssetMarket("if-market-list", s.indexFunds, "shares", "if", "share", tradingLocked);
+    renderOverviewHoldings(s);
 
     // Bonds — yield curve preview (uses live curve from state)
+    const bondsValue = (s.bondHoldings || []).reduce((sum, b) => sum + (b.faceValue || 0), 0);
+    const bondsPL = (s.bondHoldings || []).reduce((sum, b) => sum + (b.couponAccrued || 0), 0);
+    document.getElementById("bonds-value").textContent = fmt(bondsValue);
+    setPlDisplay(document.getElementById("bonds-pl"), bondsPL, "stat-pl");
     updateBondPreview(s);
+    renderCorporateBondMarket(s);
     renderBondHoldings(s);
+    renderAssetHoldings("if-holdings-list", s.indexFunds, "shares", "No index fund shares held.");
 
     // Crypto
-    document.getElementById("crypto-price").textContent = s.crypto.price.toFixed(2);
-    document.getElementById("crypto-coins").textContent  = s.crypto.coins;
-    document.getElementById("crypto-value").textContent  = fmt(s.crypto.coins * s.crypto.price);
-    setChange("crypto-change", s.crypto.history);
+    const cryptoAvgHistory = averageHistory(s.cryptos, "history");
+    const cryptoCoins = (s.cryptos || []).reduce((sum, a) => sum + (a.coins || 0), 0);
+    const cryptoValue = (s.cryptos || []).reduce((sum, a) => sum + ((a.coins || 0) * (a.price || 0)), 0);
+    const cryptoPL = (s.cryptos || []).reduce((sum, a) => sum + ((a.coins || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const cryptoAvgPrice = (s.cryptos || []).length ? (s.cryptos.reduce((sum, a) => sum + a.price, 0) / s.cryptos.length) : 0;
+    document.getElementById("crypto-price").textContent = cryptoAvgPrice.toFixed(2);
+    document.getElementById("crypto-coins").textContent  = cryptoCoins;
+    document.getElementById("crypto-value").textContent  = fmt(cryptoValue);
+    setPlDisplay(document.getElementById("crypto-pl"), cryptoPL, "stat-pl");
+    setChange("crypto-change", cryptoAvgHistory);
+    renderCryptoCards(s.cryptos, tradingLocked);
+    renderAssetHoldings("crypto-holdings-list", s.cryptos, "coins", "No crypto holdings.");
+
+    // Stocks
+    const stockAvgHistory = averageHistory(s.stocks, "history");
+    const stockShares = (s.stocks || []).reduce((sum, a) => sum + (a.shares || 0), 0);
+    const stockValue = (s.stocks || []).reduce((sum, a) => sum + ((a.shares || 0) * (a.price || 0)), 0);
+    const stockPL = (s.stocks || []).reduce((sum, a) => sum + ((a.shares || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const stockAvgPrice = (s.stocks || []).length ? (s.stocks.reduce((sum, a) => sum + a.price, 0) / s.stocks.length) : 0;
+    document.getElementById("stock-price").textContent = stockAvgPrice.toFixed(2);
+    document.getElementById("stock-shares").textContent = stockShares;
+    document.getElementById("stock-value").textContent = fmt(stockValue);
+    setPlDisplay(document.getElementById("stock-pl"), stockPL, "stat-pl");
+    setChange("stock-change", stockAvgHistory);
+    renderStockCards(s.stocks, tradingLocked);
+    renderAssetHoldings("stock-holdings-list", s.stocks, "shares", "No stock holdings.");
+
+    // Options
+    const optionsAvgHistory = averageHistory(s.options, "history");
+    const optionsContracts = (s.options || []).reduce((sum, a) => sum + (a.contracts || 0), 0);
+    const optionsValue = (s.options || []).reduce((sum, a) => sum + ((a.contracts || 0) * (a.price || 0)), 0);
+    const optionsPL = (s.options || []).reduce((sum, a) => sum + ((a.contracts || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const optionsAvgPrice = (s.options || []).length ? (s.options.reduce((sum, a) => sum + a.price, 0) / s.options.length) : 0;
+    const underlyingIndexA = (s.indexFunds || []).find(a => a.id === "spy");
+    document.getElementById("options-price").textContent = optionsAvgPrice.toFixed(2);
+    document.getElementById("options-contracts").textContent = optionsContracts;
+    document.getElementById("options-underlying-price").textContent = (underlyingIndexA?.price || 0).toFixed(2);
+    document.getElementById("options-value").textContent = fmt(optionsValue);
+    setPlDisplay(document.getElementById("options-pl"), optionsPL, "stat-pl");
+    setChange("options-change", optionsAvgHistory);
+    renderOptionsChain(s.options, tradingLocked);
+    renderOptionsTicket(s);
+    renderOptionsPositions(s);
 
     // Log — only append new entries
     const logEl = document.getElementById("log");
@@ -578,7 +1142,101 @@
     renderGraphs(s);
   }
 
-  function drawChart(canvas, data, color, yAxisEl, xAxisEl, xLabels) {
+  function renderOverviewHoldings(s) {
+    const el = document.getElementById("overview-holdings-list");
+    if (!el) return;
+    const rows = [];
+
+    (s.indexFunds || []).forEach(a => {
+      const qty = a.shares || 0;
+      if (qty <= 0) return;
+      const value = qty * (a.price || 0);
+      const pl = value - (a.costBasis || 0);
+      rows.push({
+        type: "Index",
+        name: a.name,
+        qty: `${qty} sh`,
+        metric: `$${(a.price || 0).toFixed(2)}`,
+        value,
+        pl,
+      });
+    });
+    (s.cryptos || []).forEach(a => {
+      const qty = a.coins || 0;
+      if (qty <= 0) return;
+      const value = qty * (a.price || 0);
+      const pl = value - (a.costBasis || 0);
+      rows.push({
+        type: "Crypto",
+        name: a.name,
+        qty: `${qty} c`,
+        metric: `$${(a.price || 0).toFixed(2)}`,
+        value,
+        pl,
+      });
+    });
+    (s.stocks || []).forEach(a => {
+      const qty = a.shares || 0;
+      if (qty <= 0) return;
+      const value = qty * (a.price || 0);
+      const pl = value - (a.costBasis || 0);
+      rows.push({
+        type: "Stock",
+        name: a.name,
+        qty: `${qty} sh`,
+        metric: `$${(a.price || 0).toFixed(2)}`,
+        value,
+        pl,
+      });
+    });
+    (s.options || []).forEach(a => {
+      const qty = a.contracts || 0;
+      if (qty <= 0) return;
+      const value = qty * (a.price || 0);
+      const pl = value - (a.costBasis || 0);
+      rows.push({
+        type: "Option",
+        name: a.name,
+        qty: `${qty} ctr`,
+        metric: `$${(a.price || 0).toFixed(2)}`,
+        value,
+        pl,
+      });
+    });
+    (s.bondHoldings || []).forEach(b => {
+      rows.push({
+        type: "Bond",
+        name: (b.type === "corporate" ? `${b.issuer} Bond` : "U.S. Treasury Bond"),
+        qty: `${b.term} yr`,
+        metric: `${((b.yield || 0) * 100).toFixed(2)}%`,
+        value: b.faceValue || 0,
+        pl: b.couponAccrued || 0,
+      });
+    });
+
+    if (!rows.length) {
+      el.innerHTML = `<div style="color:#444;font-size:0.8em;">No holdings yet.</div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="overview-holdings-header">
+        <span>Type</span><span>Asset</span><span>Qty / Term</span><span>Price / Yield</span><span>Value</span><span>P/L</span>
+      </div>
+      ${rows.map(r => `
+        <div class="overview-holdings-row">
+          <span>${r.type}</span>
+          <span class="white">${r.name}</span>
+          <span>${r.qty}</span>
+          <span>${r.metric}</span>
+          <span class="yellow">${fmt(r.value)}</span>
+          <span class="${r.pl >= 0 ? "pos" : "neg"}">${fmtSigned(r.pl)}</span>
+        </div>
+      `).join("")}
+    `;
+  }
+
+  function drawChart(canvas, data, color, yAxisEl, xAxisEl, xLabels, showInlineYLabels = false) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
@@ -615,6 +1273,17 @@
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.stroke();
+
+    // Inline y labels for sparkline-like charts
+    if (showInlineYLabels || !yAxisEl) {
+      const fmtCompact = v => v >= 1000 ? (v / 1000).toFixed(1) + "k" : v.toFixed(0);
+      ctx.fillStyle = "#666";
+      ctx.font = "9px monospace";
+      ctx.textAlign = "right";
+      ctx.fillText(fmtCompact(max), Math.max(16, w - 2), 10);
+      ctx.fillText(fmtCompact(min), Math.max(16, w - 2), h - 3);
+      ctx.textAlign = "left";
+    }
 
     // Y axis labels
     if (yAxisEl) {
@@ -735,7 +1404,7 @@
 				<span>${(b.yield * 100).toFixed(2)}%</span>
 				<span>Yr ${maturesYr}</span>
 				<span style="color:#66aaff">${fmt(b.couponAccrued)}</span>
-				<span style="color:#444">${yearsLeft}yr left</span>
+				<span style="color:#444">${yearsLeft}yr left · ${(b.type || "treasury") === "corporate" ? (b.issuer || "Corporate") : "U.S. Treasury"}</span>
 				<button class="btn danger" style="padding:3px 8px;font-size:0.75em;"
 				  onclick="window._sellBond('${b.id}')">Sell</button>
 			</div>`;
@@ -743,10 +1412,415 @@
 			`;
 			}
 
+      function renderCorporateBondMarket(s) {
+        const el = document.getElementById("corp-bond-market-list");
+        if (!el) return;
+        const offers = s.corporateBondOffers || [];
+        if (!offers.length) {
+          el.innerHTML = `<div style="color:#444;font-size:0.8em;">No corporate bonds available.</div>`;
+          return;
+        }
+        el.innerHTML = `
+          <div class="corp-bond-header">
+            <span>Issuer</span><span>Rating</span><span>Term</span><span>Yield</span><span>Face</span><span></span>
+          </div>
+          ${offers.map(o => `
+            <div class="corp-bond-row">
+              <span class="white">${o.issuer}</span>
+              <span>${o.rating}</span>
+              <span>${o.term}yr</span>
+              <span class="pos">${(o.yield * 100).toFixed(2)}%</span>
+              <span>${fmt(o.faceValue)}</span>
+              <button class="btn" onclick="window._buyCorporateBond('${o.id}')">Buy</button>
+            </div>
+          `).join("")}
+        `;
+      }
+
+			function renderAssetHoldings(listElId, assets, qtyKey, emptyText) {
+			const el = document.getElementById(listElId);
+			if (!el) return;
+			const holdings = (assets || []).filter(a => (a[qtyKey] || 0) > 0);
+			if (!holdings.length) {
+			el.innerHTML = `<div style="color:#444;font-size:0.8em;">${emptyText}</div>`;
+			return;
+			}
+			el.innerHTML = `
+			<div class="asset-holdings-header">
+				<span>Asset</span>
+				<span>Qty</span>
+				<span>Price</span>
+				<span>Value</span>
+			</div>
+			${holdings.map(a => `
+			<div class="asset-holdings-row">
+				<span class="white">${a.name}</span>
+				<span>${a[qtyKey]}</span>
+				<span>$${a.price.toFixed(2)}</span>
+				<span class="yellow">${fmt(a[qtyKey] * a.price)}</span>
+			</div>`).join("")}
+			`;
+			}
+
+			function renderAssetMarket(listElId, assets, qtyKey, prefix, unitLabel, isTradeLocked = false) {
+			const el = document.getElementById(listElId);
+			if (!el) return;
+			const list = assets || [];
+			if (!list.length) {
+			el.innerHTML = `<div style="color:#444;font-size:0.8em;">No assets available.</div>`;
+			return;
+			}
+			el.innerHTML = `
+			<div class="asset-market-header">
+				<span>Asset</span>
+				<span>Price</span>
+				<span>Held</span>
+				<span>Value</span>
+				<span>Avg Cost</span>
+				<span>P/L</span>
+				<span>Qty</span>
+				<span></span>
+				<span></span>
+			</div>
+			${list.map(a => {
+				const amountId = `${prefix}-amount-${a.id}`;
+        const qty = Math.max(1, tradeQtyByInputId[amountId] || 1);
+        const held = a[qtyKey] || 0;
+        const value = held * a.price;
+        const avgCost = held > 0 ? (a.costBasis || 0) / held : 0;
+        const pl = value - (a.costBasis || 0);
+        const plClass = pl >= 0 ? "pos" : "neg";
+				return `
+				<div class="asset-market-row">
+					<span class="white">${a.name}</span>
+					<span>$${a.price.toFixed(2)}</span>
+					<span>${held}</span>
+					<span class="yellow">${fmt(value)}</span>
+					<span>${held > 0 ? `$${avgCost.toFixed(2)}` : "—"}</span>
+					<span class="market-pl ${plClass}">${held > 0 ? fmtSigned(pl) : "—"}</span>
+					<div class="amount-stepper">
+						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', -5)">-5</button>
+						<input id="${amountId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${amountId}', this.value)">
+						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', 5)">+5</button>
+					</div>
+					<button class="btn" onclick="window._tradeAsset('${prefix}','buy','${a.id}')" ${isTradeLocked ? 'title="Auto will stop on buy."' : ""}>Buy</button>
+					<button class="btn danger" onclick="window._tradeAsset('${prefix}','sell','${a.id}')">Sell</button>
+				</div>`;
+			}).join("")}
+			`;
+			}
+
+			function renderStockCards(stocks, isTradeLocked = false) {
+			const el = document.getElementById("stock-market-list");
+			if (!el) return;
+			const list = stocks || [];
+			if (!list.length) {
+			el.innerHTML = `<div style="color:#444;font-size:0.8em;">No assets available.</div>`;
+			return;
+			}
+			el.innerHTML = `
+			<div class="stocks-grid">
+			${list.map(a => {
+				const amountId = `stock-amount-${a.id}`;
+				const qty = Math.max(1, tradeQtyByInputId[amountId] || 1);
+				const held = a.shares || 0;
+				const value = held * a.price;
+				const avgCost = held > 0 ? (a.costBasis || 0) / held : 0;
+				const pl = value - (a.costBasis || 0);
+				const plClass = pl >= 0 ? "pos" : "neg";
+				const sparkId = `stock-spark-${a.id}`;
+				return `
+				<div class="stock-card">
+					<div class="stock-card-title">${a.name}</div>
+					<div class="stock-card-stats">
+						<div>Price</div><div class="val">$${a.price.toFixed(2)}</div>
+						<div>Held</div><div class="val">${held}</div>
+						<div>Value</div><div class="val yellow">${fmt(value)}</div>
+						<div>Avg Cost</div><div class="val">${held > 0 ? `$${avgCost.toFixed(2)}` : "—"}</div>
+						<div>P/L</div><div class="val pl ${plClass}">${held > 0 ? fmtSigned(pl) : "—"}</div>
+					</div>
+					<canvas id="${sparkId}" class="spark stock-mini-chart"></canvas>
+					<div class="amount-stepper">
+						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', -5)">-5</button>
+						<input id="${amountId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${amountId}', this.value)">
+						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', 5)">+5</button>
+					</div>
+					<div class="btn-row">
+						<button class="btn" onclick="window._tradeAsset('stock','buy','${a.id}')" ${isTradeLocked ? 'title="Auto will stop on buy."' : ""}>Buy</button>
+						<button class="btn danger" onclick="window._tradeAsset('stock','sell','${a.id}')">Sell</button>
+					</div>
+				</div>`;
+			}).join("")}
+			</div>
+			`;
+			list.forEach(a => {
+				const sparkId = `stock-spark-${a.id}`;
+				drawChart(document.getElementById(sparkId), a.history || [], "#66aaff", null, null, null, true);
+			});
+			}
+
+			function renderCryptoCards(cryptos, isTradeLocked = false) {
+			const el = document.getElementById("crypto-market-list");
+			if (!el) return;
+			const list = cryptos || [];
+			if (!list.length) {
+			el.innerHTML = `<div style="color:#444;font-size:0.8em;">No assets available.</div>`;
+			return;
+			}
+			el.innerHTML = `
+			<div class="crypto-grid">
+			${list.map(a => {
+				const amountId = `crypto-amount-${a.id}`;
+				const qty = Math.max(1, tradeQtyByInputId[amountId] || 1);
+				const held = a.coins || 0;
+				const value = held * a.price;
+				const avgCost = held > 0 ? (a.costBasis || 0) / held : 0;
+				const pl = value - (a.costBasis || 0);
+				const plClass = pl >= 0 ? "pos" : "neg";
+				const sparkId = `crypto-spark-${a.id}`;
+				return `
+				<div class="stock-card crypto-card">
+					<div class="stock-card-title">${a.name}</div>
+					<div class="stock-card-stats">
+						<div>Price</div><div class="val">$${a.price.toFixed(2)}</div>
+						<div>Held</div><div class="val">${held}</div>
+						<div>Value</div><div class="val yellow">${fmt(value)}</div>
+						<div>Avg Cost</div><div class="val">${held > 0 ? `$${avgCost.toFixed(2)}` : "—"}</div>
+						<div>P/L</div><div class="val pl ${plClass}">${held > 0 ? fmtSigned(pl) : "—"}</div>
+					</div>
+					<canvas id="${sparkId}" class="spark crypto-mini-chart"></canvas>
+					<div class="amount-stepper">
+						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', -5)">-5</button>
+						<input id="${amountId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${amountId}', this.value)">
+						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', 5)">+5</button>
+					</div>
+					<div class="btn-row">
+						<button class="btn" onclick="window._tradeAsset('crypto','buy','${a.id}')" ${isTradeLocked ? 'title="Auto will stop on buy."' : ""}>Buy</button>
+						<button class="btn danger" onclick="window._tradeAsset('crypto','sell','${a.id}')">Sell</button>
+					</div>
+				</div>`;
+			}).join("")}
+			</div>
+			`;
+			list.forEach(a => {
+				const sparkId = `crypto-spark-${a.id}`;
+				drawChart(document.getElementById(sparkId), a.history || [], "#ff66cc", null, null, null, true);
+			});
+			}
+
+			function renderOptionsChain(options, isTradeLocked = false) {
+			const el = document.getElementById("options-market-list");
+			if (!el) return;
+			const list = options || [];
+			if (!list.length) {
+			el.innerHTML = `<div style="color:#444;font-size:0.8em;">No options available.</div>`;
+			return;
+			}
+      const grouped = {};
+      list.forEach(opt => {
+        const key = `${opt.underlyingId}-${opt.strike}`;
+        if (!grouped[key]) grouped[key] = { strike: opt.strike, put: null, call: null };
+        if (opt.optionType === "put") grouped[key].put = opt;
+        if (opt.optionType === "call") grouped[key].call = opt;
+      });
+      const rows = Object.values(grouped).sort((a, b) => a.strike - b.strike);
+
+      const sideCell = (opt) => {
+        if (!opt) {
+          return `
+            <div class="options-side">
+              <span class="options-side-muted">—</span>
+              <span class="options-side-muted">—</span>
+              <span class="options-side-muted">—</span>
+              <span class="options-side-muted">—</span>
+              <span class="options-side-muted">—</span>
+              <span></span>
+              <span></span>
+            </div>`;
+        }
+        const qtyKey = "contracts";
+        const amountId = `options-amount-${opt.id}`;
+        const sparkId = `options-spark-${opt.id}`;
+        const qty = Math.max(1, tradeQtyByInputId[amountId] || 1);
+        const name = opt.name.replace("SPY ", "");
+        const selectedClass = opt.id === selectedOptionId ? " selected" : "";
+        return `
+          <div class="options-side${selectedClass}" data-option-id="${opt.id}">
+            <span class="white options-side-name">${name}</span>
+            <span class="options-side-price">$${opt.price.toFixed(2)}</span>
+            <span class="options-side-held">${opt[qtyKey]} held</span>
+            <canvas id="${sparkId}" class="row-spark options-side-chart"></canvas>
+            <div class="amount-stepper options-side-qty">
+              <button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', -5)">-5</button>
+              <input id="${amountId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${amountId}', this.value)">
+              <button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', 5)">+5</button>
+            </div>
+            <div class="options-side-actions">
+              <button class="btn" onclick="window._tradeAsset('options','buy','${opt.id}')" ${isTradeLocked ? 'title="Auto will stop on buy."' : ""}>Buy</button>
+              <button class="btn danger" onclick="window._tradeAsset('options','sell','${opt.id}')">Sell</button>
+            </div>
+          </div>`;
+      };
+
+      if (!selectedOptionId && list.length) selectedOptionId = list[0].id;
+
+			el.innerHTML = `
+      <div class="options-chain-wrap">
+        <div class="options-chain-header">
+          <span style="text-align:center;">Put</span>
+          <span class="options-strike">Strike</span>
+          <span style="text-align:center;">Call</span>
+        </div>
+        ${rows.map(r => `
+          <div class="options-chain-row">
+            ${sideCell(r.put)}
+            <span class="options-strike">${r.strike}</span>
+            ${sideCell(r.call)}
+          </div>
+        `).join("")}
+      </div>`;
+
+      const trimmedSparkHistory = (history, canvas) => {
+        const series = history || [];
+        const width = canvas?.clientWidth || 120;
+        const maxPoints = Math.max(12, Math.min(48, Math.floor(width * 0.6)));
+        return series.length > maxPoints ? series.slice(-maxPoints) : series;
+      };
+
+      list.forEach(opt => {
+        const sparkId = `options-spark-${opt.id}`;
+        const sparkCanvas = document.getElementById(sparkId);
+        drawChart(sparkCanvas, trimmedSparkHistory(opt.history, sparkCanvas), "#ffaa33", null, null, null, true);
+      });
+
+      const selectOptionById = id => {
+        selectedOptionId = id;
+        render(state);
+      };
+      list.forEach(opt => {
+        const input = document.getElementById(`options-amount-${opt.id}`);
+        if (input) {
+          input.addEventListener("focus", () => selectOptionById(opt.id));
+          input.addEventListener("click", () => selectOptionById(opt.id));
+        }
+        const spark = document.getElementById(`options-spark-${opt.id}`);
+        if (spark) spark.addEventListener("click", () => selectOptionById(opt.id));
+      });
+      el.querySelectorAll(".options-side[data-option-id]").forEach(side => {
+        side.addEventListener("click", () => {
+          const optionId = side.getAttribute("data-option-id");
+          if (optionId) selectOptionById(optionId);
+        });
+      });
+			}
+
+      function renderOptionsTicket(s) {
+        const el = document.getElementById("options-ticket");
+        if (!el) return;
+        const options = s.options || [];
+        if (!options.length) {
+          el.innerHTML = `<div style="color:#444;font-size:0.8em;">No options available.</div>`;
+          return;
+        }
+        const selected = options.find(o => o.id === selectedOptionId) || options[0];
+        selectedOptionId = selected.id;
+        const qtyInputId = `options-amount-${selected.id}`;
+        const qty = Math.max(1, tradeQtyByInputId[qtyInputId] || 1);
+        const underlying = (s.indexFunds || []).find(f => f.id === selected.underlyingId);
+        const breakEven = selected.optionType === "call"
+          ? selected.strike + selected.price
+          : Math.max(0, selected.strike - selected.price);
+        const estCost = qty * selected.price;
+        const held = selected.contracts || 0;
+        const avgCost = held > 0 ? (selected.costBasis || 0) / held : 0;
+        const unrealized = (held * selected.price) - (selected.costBasis || 0);
+        const plClass = unrealized >= 0 ? "pos" : "neg";
+
+        el.innerHTML = `
+          <div class="options-ticket-grid">
+            <div class="options-ticket-item"><span class="k">Contract</span><span class="v emph">${selected.name} (${selected.optionType.toUpperCase()})</span></div>
+            <div class="options-ticket-item"><span class="k">Underlying</span><span class="v">${underlying?.name || selected.underlyingId} @ $${(underlying?.price || 0).toFixed(2)}</span></div>
+            <div class="options-ticket-item"><span class="k">Strike</span><span class="v">$${selected.strike}</span></div>
+            <div class="options-ticket-item"><span class="k">Premium</span><span class="v">$${selected.price.toFixed(2)} / contract</span></div>
+            <div class="options-ticket-item"><span class="k">Break-even</span><span class="v">$${breakEven.toFixed(2)}</span></div>
+            <div class="options-ticket-item"><span class="k">Order Estimate</span><span class="v">${qty} × $${selected.price.toFixed(2)} = ${fmt(estCost)}</span></div>
+            <div class="options-ticket-item"><span class="k">Held</span><span class="v">${held} contracts</span></div>
+            <div class="options-ticket-item"><span class="k">Avg Cost</span><span class="v">${held > 0 ? `$${avgCost.toFixed(2)}` : "—"}</span></div>
+            <div class="options-ticket-item"><span class="k">Unrealized P/L</span><span class="v ${plClass}">${held > 0 ? fmtSigned(unrealized) : "—"}</span></div>
+          </div>
+        `;
+      }
+
+      function renderOptionsPositions(s) {
+        const el = document.getElementById("options-holdings-list");
+        if (!el) return;
+        const holdings = (s.options || []).filter(o => (o.contracts || 0) > 0);
+        if (!holdings.length) {
+          el.innerHTML = `<div style="color:#444;font-size:0.8em;">No options holdings.</div>`;
+          return;
+        }
+        el.innerHTML = `
+          <div class="options-pos-header">
+            <span>Contract</span><span>Type</span><span>Strike</span><span>Held</span><span>Price</span><span>P/L</span><span></span>
+          </div>
+          ${holdings.map(o => {
+            const pl = (o.contracts * o.price) - (o.costBasis || 0);
+            const plClass = pl >= 0 ? "pos" : "neg";
+            return `
+              <div class="options-pos-row">
+                <span class="white">${o.name}</span>
+                <span>${o.optionType.toUpperCase()}</span>
+                <span>$${o.strike}</span>
+                <span>${o.contracts}</span>
+                <span>$${o.price.toFixed(2)}</span>
+                <span class="${plClass}">${fmtSigned(pl)}</span>
+                <button class="btn danger" style="padding:3px 8px;font-size:0.75em;" onclick="window._tradeAsset('options','sell','${o.id}')">Sell 1</button>
+              </div>
+            `;
+          }).join("")}
+        `;
+      }
+
 			// Expose sell handler to DOM (bonds page uses onclick)
 			window._sellBond = (id) => {
 			state = sellBondEarly(state, id);
 			render(state);
+			};
+      window._buyCorporateBond = (offerId) => {
+        state = buyCorporateBond(state, offerId);
+        render(state);
+      };
+
+			window._tradeAsset = (prefix, mode, id) => {
+			const amountId = `${prefix}-amount-${id}`;
+			const qtyEl = document.getElementById(amountId);
+			const qty = Math.max(1, parseInt(qtyEl?.value) || 1);
+      tradeQtyByInputId[amountId] = qty;
+      if (prefix === "options") selectedOptionId = id;
+			if (prefix === "if") {
+				state = mode === "buy" ? buyIndexFund(state, id, qty) : sellIndexFund(state, id, qty);
+			} else if (prefix === "crypto") {
+				state = mode === "buy" ? buyCrypto(state, id, qty) : sellCrypto(state, id, qty);
+			} else if (prefix === "stock") {
+				state = mode === "buy" ? buyStock(state, id, qty) : sellStock(state, id, qty);
+			} else if (prefix === "options") {
+				state = mode === "buy" ? buyOption(state, id, qty) : sellOption(state, id, qty);
+			}
+			render(state);
+			};
+
+			window._setAmount = (id, rawValue) => {
+			const qty = Math.max(1, parseInt(rawValue) || 1);
+      tradeQtyByInputId[id] = qty;
+			};
+
+			window._bumpAmount = (id, delta) => {
+			const el = document.getElementById(id);
+			if (!el) return;
+			const current = parseInt(el.value) || 1;
+      const next = Math.max(1, current + delta);
+			el.value = next;
+      tradeQtyByInputId[id] = next;
 			};
 
 			function dailyXLabels(history, currentDay) {
@@ -766,67 +1840,64 @@
 			}
 
 			function renderGraphs(s) {
-			const monthly = s.indexFund.monthlyHistory || [];
-			const dxLabels = dailyXLabels(s.indexFund.history, s.day);
-			const mxLabels = monthlyXLabels(monthly, s.day);
-
+			const indexHistory = averageHistory(s.indexFunds, "history");
+			const monthly = averageHistory(s.indexFunds, "monthlyHistory");
+			const useMonthly = indexChartMode === "monthly";
+			const series = useMonthly ? monthly : indexHistory;
+			const xLabels = useMonthly ? monthlyXLabels(monthly, s.day) : dailyXLabels(indexHistory, s.day);
 			drawChart(
-			document.getElementById("price-graph"), s.indexFund.history, "#00ff88",
-			document.getElementById("if-daily-yaxis"), document.getElementById("if-daily-xaxis"), dxLabels
+			document.getElementById("price-graph"), series, "#00ff88",
+			document.getElementById("if-yaxis"), document.getElementById("if-xaxis"), xLabels
 			);
-			drawChart(
-			document.getElementById("price-graph-monthly"), monthly, "#00ff88",
-			document.getElementById("if-monthly-yaxis"), document.getElementById("if-monthly-xaxis"), mxLabels
-			);
-			drawChart(document.getElementById("crypto-graph"),   s.crypto.history,    "#ff66cc", null, null, null);
 			drawChart(document.getElementById("networth-graph"), s.netWorthHistory,   "#ffcc00", null, null, null);
 			drawYieldCurve(s);
 			}
 
-			const getQty = id => parseInt(document.getElementById(id).value) || 1;
-
-			function startAuto() {
-			if (autoplayInterval) clearInterval(autoplayInterval);
-			const ms = Math.max(16, parseInt(document.getElementById("auto-interval").value) || 200);
-			document.getElementById("autoplay-btn").textContent = "⏸ Stop (Work)";
-			autoplayInterval = setInterval(() => {
-			state = work(state, params);
+			function advanceDays(count) {
+			const steps = Math.max(1, parseInt(count) || 1);
+			for (let i = 0; i < steps; i++) {
+				const prevDay = state.day;
+				state = nextDay(state, params);
+				if (state.day === prevDay) break;
+			}
 			render(state);
-			if (state.day >= state.maxDays) stopAuto();
-			}, ms);
 			}
 
-			function stopAuto() {
-			clearInterval(autoplayInterval);
-			autoplayInterval = null;
-			document.getElementById("autoplay-btn").textContent = "▶ Auto (Work)";
-			}
-
-			document.getElementById("day-btn").onclick         = () => { state = work(state, params); render(state); };
-			document.getElementById("buy-btn").onclick         = () => { state = buy(state, getQty("if-amount"));                   render(state); };
-			document.getElementById("sell-btn").onclick        = () => { state = sell(state, getQty("if-amount"));                  render(state); };
+			document.getElementById("day-btn").onclick         = () => { state = nextDay(state, params); render(state); };
+			document.getElementById("week-btn").onclick        = () => { advanceDays(7); };
+			document.getElementById("advance-btn").onclick     = () => {
+				const days = parseInt(document.getElementById("advance-days").value) || 1;
+				advanceDays(days);
+			};
 			document.getElementById("buy-bonds-btn").onclick   = () => {
 			const face = parseFloat(document.getElementById("bond-face-value").value) || 1000;
 			const term = parseInt(document.getElementById("bond-term").value) || 5;
 			state = buyBond(state, face, term);
 			render(state);
 			};
-			document.getElementById("buy-crypto-btn").onclick  = () => { state = buyCrypto(state, getQty("crypto-amount"));         render(state); };
-			document.getElementById("sell-crypto-btn").onclick = () => { state = sellCrypto(state, getQty("crypto-amount"));        render(state); };
-			document.getElementById("autoplay-btn").onclick    = () => { autoplayInterval ? stopAuto() : startAuto(); };
+			document.getElementById("if-chart-daily-btn").onclick = () => {
+				indexChartMode = "daily";
+				document.getElementById("if-chart-daily-btn").classList.add("active");
+				document.getElementById("if-chart-monthly-btn").classList.remove("active");
+				renderGraphs(state);
+			};
+			document.getElementById("if-chart-monthly-btn").onclick = () => {
+				indexChartMode = "monthly";
+				document.getElementById("if-chart-monthly-btn").classList.add("active");
+				document.getElementById("if-chart-daily-btn").classList.remove("active");
+				renderGraphs(state);
+			};
 
 			// Bond preview updates live
 			document.getElementById("bond-term").addEventListener("change", () => updateBondPreview(state));
 			document.getElementById("bond-face-value").addEventListener("input", () => updateBondPreview(state));
 			document.getElementById("reset-btn").onclick       = () => {
-			stopAuto();
 			state = { ...newState(params), log: [{ msg: "New run started.", type: "info", day: 1 }] };
 			document.getElementById("log").innerHTML = "";
 			renderedLogCount = 0;
 			render(state);
 			};
 			document.getElementById("dbg-apply-btn").onclick   = () => {
-			stopAuto();
 			params = readParams();
 			state = { ...newState(params), log: [{ msg: `New run started with custom params.`, type: "info", day: 1 }] };
 			document.getElementById("log").innerHTML = "";
@@ -835,6 +1906,7 @@
 			};
 
 			state = { ...state, log: [{ msg: "New run started.", type: "info", day: 1 }] };
+			startTicker();
 			render(state);
 		</script>
 	</body>
