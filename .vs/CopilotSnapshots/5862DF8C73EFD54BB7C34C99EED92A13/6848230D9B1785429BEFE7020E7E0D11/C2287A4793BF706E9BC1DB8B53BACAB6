@@ -1,0 +1,135 @@
+﻿// ============================================================
+// GAME LOGIC — no DOM, no rendering, pure state + functions
+// ============================================================
+
+export function newState() {
+  return {
+    year: 1,
+    maxYears: 30,
+    cash: 10_000,
+    income: 5_000,
+    indexFund: { shares: 0, price: 100.0, history: [100.0] },
+    bonds: { units: 0, price: 100.0, coupon: 0.03, history: [100.0] },
+    crypto: { coins: 0, price: 50.0, history: [50.0] },
+    // track net worth over time for graphing
+    netWorthHistory: [10_000],
+    log: [],
+  };
+}
+
+export function portfolioValue(state) {
+  const indexValue = state.indexFund.shares * state.indexFund.price;
+  const bondsValue = (state.bonds?.units || 0) * (state.bonds?.price || 0);
+  const cryptoValue = (state.crypto?.coins || 0) * (state.crypto?.price || 0);
+  return indexValue + bondsValue + cryptoValue;
+}
+
+export function netWorth(state) {
+  return state.cash + portfolioValue(state);
+}
+
+export function buy(state, qty) {
+  const cost = qty * state.indexFund.price;
+  if (cost > state.cash) {
+    return { ...state, log: [...state.log, { msg: `Need $${fmt(cost)} — only have $${fmt(state.cash)}.`, type: "bad" }] };
+  }
+  const newCash = state.cash - cost;
+  const newShares = state.indexFund.shares + qty;
+  const nextState = {
+    ...state,
+    cash: newCash,
+    indexFund: { ...state.indexFund, shares: newShares },
+    log: [...state.log, { msg: `Bought ${qty} share(s) @ $${state.indexFund.price.toFixed(2)}.`, type: "good" }],
+  };
+  return { ...nextState, netWorthHistory: [...(state.netWorthHistory || []), Math.round(netWorth(nextState))] };
+}
+
+export function sell(state, qty) {
+  if (qty > state.indexFund.shares) {
+    return { ...state, log: [...state.log, { msg: `Only have ${state.indexFund.shares} shares.`, type: "bad" }] };
+  }
+  const proceeds = qty * state.indexFund.price;
+  const newCash = state.cash + proceeds;
+  const newShares = state.indexFund.shares - qty;
+  const nextState = {
+    ...state,
+    cash: newCash,
+    indexFund: { ...state.indexFund, shares: newShares },
+    log: [...state.log, { msg: `Sold ${qty} share(s) @ $${state.indexFund.price.toFixed(2)}.`, type: "info" }],
+  };
+  return { ...nextState, netWorthHistory: [...(state.netWorthHistory || []), Math.round(netWorth(nextState))] };
+}
+
+export function buyBonds(state, qty) {
+  const cost = qty * state.bonds.price;
+  if (cost > state.cash) {
+    return { ...state, log: [...state.log, { msg: `Need $${fmt(cost)} — only have $${fmt(state.cash)}.`, type: "bad" }] };
+  }
+  const nextState = { ...state, cash: state.cash - cost, bonds: { ...state.bonds, units: state.bonds.units + qty }, log: [...state.log, { msg: `Bought ${qty} bond unit(s) @ $${state.bonds.price.toFixed(2)}.`, type: "good" }] };
+  return { ...nextState, netWorthHistory: [...(state.netWorthHistory || []), Math.round(netWorth(nextState))] };
+}
+
+export function sellBonds(state, qty) {
+  if (qty > state.bonds.units) return { ...state, log: [...state.log, { msg: `Only have ${state.bonds.units} bond unit(s).`, type: "bad" }] };
+  const proceeds = qty * state.bonds.price;
+  const nextState = { ...state, cash: state.cash + proceeds, bonds: { ...state.bonds, units: state.bonds.units - qty }, log: [...state.log, { msg: `Sold ${qty} bond unit(s) @ $${state.bonds.price.toFixed(2)}.`, type: "info" }] };
+  return { ...nextState, netWorthHistory: [...(state.netWorthHistory || []), Math.round(netWorth(nextState))] };
+}
+
+export function buyCrypto(state, qty) {
+  const cost = qty * state.crypto.price;
+  if (cost > state.cash) {
+    return { ...state, log: [...state.log, { msg: `Need $${fmt(cost)} — only have $${fmt(state.cash)}.`, type: "bad" }] };
+  }
+  const nextState = { ...state, cash: state.cash - cost, crypto: { ...state.crypto, coins: state.crypto.coins + qty }, log: [...state.log, { msg: `Bought ${qty} coin(s) @ $${state.crypto.price.toFixed(2)}.`, type: "good" }] };
+  return { ...nextState, netWorthHistory: [...(state.netWorthHistory || []), Math.round(netWorth(nextState))] };
+}
+
+export function sellCrypto(state, qty) {
+  if (qty > state.crypto.coins) return { ...state, log: [...state.log, { msg: `Only have ${state.crypto.coins} coin(s).`, type: "bad" }] };
+  const proceeds = qty * state.crypto.price;
+  const nextState = { ...state, cash: state.cash + proceeds, crypto: { ...state.crypto, coins: state.crypto.coins - qty }, log: [...state.log, { msg: `Sold ${qty} coin(s) @ $${state.crypto.price.toFixed(2)}.`, type: "info" }] };
+  return { ...nextState, netWorthHistory: [...(state.netWorthHistory || []), Math.round(netWorth(nextState))] };
+}
+
+export function nextYear(state) {
+  if (state.year >= state.maxYears) return state;
+
+  let newLog = [...state.log];
+  let cash = state.cash + state.income;
+  newLog.push({ msg: `Income: +$${fmt(state.income)}.`, type: "" });
+
+  // Price simulation
+  const shock = (Math.random() - 0.44) * 0.24;
+  const oldPrice = state.indexFund.price;
+  const newPrice = Math.max(1, oldPrice * (1 + shock));
+  const pct = (shock * 100).toFixed(1);
+  if (shock > 0.1)       newLog.push({ msg: `Index Fund up ${pct}% — good year.`, type: "good" });
+  else if (shock < -0.1) newLog.push({ msg: `Index Fund down ${Math.abs(pct)}% — rough year.`, type: "bad" });
+
+  // Life event
+  if (Math.random() < 0.15) {
+    const hit = Math.round(800 + Math.random() * 2500);
+    cash = Math.max(0, cash - hit);
+    newLog.push({ msg: `⚡ Unexpected expense: $${fmt(hit)}.`, type: "event" });
+  }
+
+  const newYear = state.year + 1;
+  if (newYear > state.maxYears) {
+    newLog.push({ msg: `── RUN OVER ── Net worth: $${fmt(cash + state.indexFund.shares * newPrice)}`, type: "event" });
+  }
+
+  return {
+    ...state,
+    year: newYear,
+    cash,
+    indexFund: { ...state.indexFund, price: newPrice, history: [...state.indexFund.history, newPrice] },
+    // append net worth after price/income/events
+    netWorthHistory: [...(state.netWorthHistory || []), Math.round(cash + state.indexFund.shares * newPrice)],
+    log: newLog,
+  };
+}
+
+function fmt(n) {
+  return Math.round(n).toLocaleString();
+}

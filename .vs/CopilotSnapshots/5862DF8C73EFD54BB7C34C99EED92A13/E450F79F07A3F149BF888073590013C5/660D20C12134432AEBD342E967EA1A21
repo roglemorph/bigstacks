@@ -1,0 +1,236 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Investment Roguelike</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: monospace; background: #0f0f0f; color: #e0e0e0; padding: 20px; max-width: 700px; }
+  h1 { color: #00ff88; font-size: 1.1em; margin-bottom: 4px; }
+  .subtitle { color: #555; font-size: 0.8em; margin-bottom: 16px; }
+
+  .hud { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat-box { background: #1a1a1a; border: 1px solid #333; padding: 10px 14px; border-radius: 4px; min-width: 110px; }
+  .stat-label { font-size: 0.68em; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .stat-value { font-size: 1.2em; color: #00ff88; margin-top: 2px; }
+  .stat-value.yellow { color: #ffcc00; }
+
+  .section { background: #1a1a1a; border: 1px solid #333; border-radius: 4px; padding: 14px; margin-bottom: 14px; }
+  .section-title { font-size: 0.7em; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+  .investment-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; flex-wrap: wrap; gap: 8px; }
+  .investment-row:last-child { border-bottom: none; }
+  .inv-name { font-size: 0.9em; color: #ccc; min-width: 120px; }
+  .inv-price { font-size: 0.82em; color: #888; min-width: 90px; }
+  .inv-holding { font-size: 0.82em; color: #aaa; min-width: 80px; }
+  .inv-change { font-size: 0.78em; min-width: 65px; }
+  .pos { color: #00ff88; } .neg { color: #ff4444; }
+
+  .btn { background: #1f1f1f; border: 1px solid #444; color: #ccc; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-family: monospace; font-size: 0.82em; }
+  .btn:hover { border-color: #00ff88; color: #00ff88; }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn.primary { border-color: #00ff88; color: #00ff88; }
+  .btn.danger { border-color: #ff4444; color: #ff4444; }
+  .btn-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  .log { background: #0d0d0d; border: 1px solid #222; border-radius: 4px; padding: 10px; height: 120px; overflow-y: auto; font-size: 0.76em; line-height: 1.7; }
+  .log-entry { color: #666; }
+  .log-entry.good { color: #00cc66; }
+  .log-entry.bad { color: #ff6666; }
+  .log-entry.event { color: #ffcc00; }
+  .log-entry.info { color: #66aaff; }
+
+  .amount-input { background: #111; border: 1px solid #444; color: #e0e0e0; padding: 5px 8px; border-radius: 3px; font-family: monospace; font-size: 0.82em; width: 80px; }
+  .year-bar { height: 3px; background: #222; border-radius: 2px; margin-bottom: 18px; }
+  .year-fill { height: 100%; background: #00ff88; border-radius: 2px; transition: width 0.3s; }
+  .graphs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .graph-box { background: #1a1a1a; border: 1px solid #333; border-radius: 4px; padding: 10px; }
+  .graph-title { font-size: 0.7em; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  canvas.spark { width: 100%; height: 80px; display: block; background: linear-gradient(180deg,#0b0b0b,#0f0f0f); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>INVESTMENT ROGUELIKE</h1>
+<div class="subtitle">Year <span id="year-display">1</span> of 30</div>
+<div class="year-bar"><div class="year-fill" id="year-fill" style="width:3%"></div></div>
+
+<div class="hud">
+  <div class="stat-box"><div class="stat-label">Cash</div><div class="stat-value" id="cash-display"></div></div>
+  <div class="stat-box"><div class="stat-label">Portfolio</div><div class="stat-value yellow" id="portfolio-display"></div></div>
+  <div class="stat-box"><div class="stat-label">Net Worth</div><div class="stat-value" id="networth-display"></div></div>
+  <div class="stat-box"><div class="stat-label">Income / yr</div><div class="stat-value" id="income-display"></div></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Investments</div>
+  <div class="investment-row">
+    <div class="inv-name">📊 Index Fund</div>
+    <div class="inv-price">$<span id="if-price"></span>/share</div>
+    <div class="inv-holding">Shares: <span id="if-shares"></span></div>
+    <div class="inv-change" id="if-change">—</div>
+    <div class="btn-row">
+      <input type="number" class="amount-input" id="if-amount" value="1" min="1">
+      <button class="btn" id="buy-btn">Buy</button>
+      <button class="btn danger" id="sell-btn">Sell</button>
+    </div>
+  </div>
+
+  <div class="investment-row">
+    <div class="inv-name">💵 Bonds</div>
+    <div class="inv-price">$<span id="bonds-price"></span>/unit</div>
+    <div class="inv-holding">Units: <span id="bonds-units"></span></div>
+    <div class="inv-change" id="bonds-change">—</div>
+    <div class="btn-row">
+      <input type="number" class="amount-input" id="bonds-amount" value="1" min="1">
+      <button class="btn" id="buy-bonds-btn">Buy</button>
+      <button class="btn danger" id="sell-bonds-btn">Sell</button>
+    </div>
+  </div>
+
+  <div class="investment-row">
+    <div class="inv-name">🪙 Crypto</div>
+    <div class="inv-price">$<span id="crypto-price"></span>/coin</div>
+    <div class="inv-holding">Coins: <span id="crypto-coins"></span></div>
+    <div class="inv-change" id="crypto-change">—</div>
+    <div class="btn-row">
+      <input type="number" class="amount-input" id="crypto-amount" value="1" min="1">
+      <button class="btn" id="buy-crypto-btn">Buy</button>
+      <button class="btn danger" id="sell-crypto-btn">Sell</button>
+    </div>
+  </div>
+
+<div class="section">
+  <div class="section-title">Graphs</div>
+  <div class="graphs">
+    <div class="graph-box">
+      <div class="graph-title">Index Fund Price</div>
+      <canvas id="price-graph" class="spark"></canvas>
+    </div>
+    <div class="graph-box">
+      <div class="graph-title">Net Worth</div>
+      <canvas id="networth-graph" class="spark"></canvas>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="section">
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn primary" id="next-btn">⏩ Next Year</button>
+    <button class="btn" id="reset-btn">↺ New Run</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Log</div>
+  <div class="log" id="log"></div>
+</div>
+
+<script type="module">
+  import { newState, buy, sell, nextYear, portfolioValue, netWorth, buyBonds, sellBonds, buyCrypto, sellCrypto } from "./game.js";
+
+  const fmt = n => "$" + Math.round(n).toLocaleString();
+
+  // Initialize after DOM is ready to avoid null element lookups
+  function init() {
+    let state = newState();
+
+    function render(s) {
+    const h = s.indexFund.history;
+    document.getElementById("cash-display").textContent      = fmt(s.cash);
+    document.getElementById("portfolio-display").textContent = fmt(portfolioValue(s));
+    document.getElementById("networth-display").textContent  = fmt(netWorth(s));
+    document.getElementById("income-display").textContent    = fmt(s.income);
+    document.getElementById("year-display").textContent      = s.year;
+    document.getElementById("year-fill").style.width         = (s.year / s.maxYears * 100) + "%";
+    document.getElementById("if-price").textContent          = s.indexFund.price.toFixed(2);
+    document.getElementById("if-shares").textContent         = s.indexFund.shares;
+    document.getElementById("bonds-price").textContent       = s.bonds.price.toFixed(2);
+    document.getElementById("bonds-units").textContent       = s.bonds.units;
+    document.getElementById("crypto-price").textContent      = s.crypto.price.toFixed(2);
+    document.getElementById("crypto-coins").textContent      = s.crypto.coins;
+    document.getElementById("next-btn").disabled             = s.year > s.maxYears;
+
+    if (h.length >= 2) {
+      const pct = ((h[h.length-1] - h[h.length-2]) / h[h.length-2] * 100).toFixed(1);
+      const el = document.getElementById("if-change");
+      el.textContent = (pct >= 0 ? "▲" : "▼") + Math.abs(pct) + "%";
+      el.className = "inv-change " + (pct >= 0 ? "pos" : "neg");
+    }
+
+    // Append only new log entries
+    const logEl = document.getElementById("log");
+    const existing = logEl.children.length;
+    s.log.slice(existing).forEach(({ msg, type }) => {
+      const div = document.createElement("div");
+      div.className = "log-entry " + type;
+      div.textContent = `[Yr ${s.year - (s.log.length - s.log.indexOf(s.log.find(e => e.msg === msg)))}] ${msg}`;
+      logEl.appendChild(div);
+    });
+    logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function getQty() { return parseInt(document.getElementById("if-amount").value) || 1; }
+    function getQtyFor(id) { return parseInt(document.getElementById(id).value) || 1; }
+
+    // Attach event handlers (DOMContentLoaded ensures elements exist)
+    document.getElementById("buy-btn").onclick   = () => { state = buy(state, getQty());      render(state); };
+    document.getElementById("sell-btn").onclick  = () => { state = sell(state, getQty());     render(state); };
+    document.getElementById("buy-bonds-btn").onclick  = () => { state = buyBonds(state, getQtyFor('bonds-amount')); render(state); };
+    document.getElementById("sell-bonds-btn").onclick = () => { state = sellBonds(state, getQtyFor('bonds-amount')); render(state); };
+    document.getElementById("buy-crypto-btn").onclick  = () => { state = buyCrypto(state, getQtyFor('crypto-amount')); render(state); };
+    document.getElementById("sell-crypto-btn").onclick = () => { state = sellCrypto(state, getQtyFor('crypto-amount')); render(state); };
+    document.getElementById("next-btn").onclick  = () => { state = nextYear(state);           render(state); };
+    document.getElementById("reset-btn").onclick = () => {
+      state = newState();
+      state = { ...state, log: [{ msg: "New run started.", type: "info" }] };
+      document.getElementById("log").innerHTML = "";
+      render(state);
+    };
+
+    state = { ...state, log: [{ msg: "New run started.", type: "info" }] };
+    render(state);
+  }
+
+  window.addEventListener('DOMContentLoaded', init);
+
+  // --- simple sparkline drawing helpers ---
+  function drawSpark(canvas, data, color) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+    if (!data || data.length === 0) return;
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = (i / (data.length - 1 || 1)) * w;
+      const y = h - ((v - min) / range) * h;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  function renderGraphs(s) {
+    const priceCanvas = document.getElementById('price-graph');
+    const netCanvas = document.getElementById('networth-graph');
+    drawSpark(priceCanvas, s.indexFund.history, '#00ff88');
+    drawSpark(netCanvas, s.netWorthHistory || [], '#ffcc00');
+  }
+
+  // hook into render to update graphs
+  const origRender = render;
+  render = (s) => { origRender(s); renderGraphs(s); };
+</script>
+</body>
+</html>
