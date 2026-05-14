@@ -1,0 +1,29 @@
+				<div class="page-title">Options</div>
+				<div class="section options-market-page">
+					<div class="options-subsection">
+						<div class="options-subsection-title">Holdings</div>
+						<div id="options-holdings-list">
+							<div style="color:#444;font-size:0.8em;">No options holdings.</div>
+						</div>
+					</div>
+					<div class="options-subsection">
+						<div class="options-subsection-title">Underlying</div>
+						<div id="options-underlying-list"></div>
+					</div>
+					<div class="options-subsection">
+						<div class="options-subsection-title">Order ticket</div>
+						<div id="options-ticket" class="options-ticket-panel" style="color:#444;font-size:0.8em;">Select an option contract.</div>
+					</div>
+					<div class="options-subsection">
+
+						<div class="options-subsection-title">Options chain</div>
+						<div id="options-dte-toggle" class="options-dte-toggle" role="group" aria-label="Listed contract tenor (days to expiry)">
+							<span class="options-dte-label">Tenor</span>
+							<button type="button" class="btn options-dte-btn" data-option-dte="7" onclick="window._setOptionMarketDte(7)">7 DTE</button>
+							<button type="button" class="btn options-dte-btn" data-option-dte="30" onclick="window._setOptionMarketDte(30)">30 DTE</button>
+							<button type="button" class="btn options-dte-btn" data-option-dte="90" onclick="window._setOptionMarketDte(90)">90 DTE</button>
+							<span class="options-dte-hint" title="Listed premiums and strikes update to match the selected tenor right away.">Live repricing</span>
+						</div>
+						<div id="options-market-list"></div>
+					</div>
+				</div>

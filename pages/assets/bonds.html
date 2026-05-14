@@ -1,0 +1,48 @@
+				<div class="page-title">Bonds</div>
+
+				<div class="section">
+					<div class="section-title">Yield Curve</div>
+					<p style="font-size:0.72em; color:#555; margin:-6px 0 10px 0;">Shifts daily (mean-reverting); new bonds price off the current curve.</p>
+					<canvas id="bonds-yield-curve" style="width:100%;height:120px;display:block;background:#111;border-radius:3px;"></canvas>
+					<div class="yield-labels" id="yield-labels"></div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">Purchase U.S. Treasury Bond</div>
+					<div class="bond-buy-row">
+						<div class="bond-field">
+							<div class="stat-label">Face Value ($)</div>
+							<input type="number" class="amount-input" id="bond-face-value" value="1000" min="100" step="100" style="width:100px;">
+						</div>
+						<div class="bond-field">
+							<div class="stat-label">Term (years)</div>
+							<select class="amount-input" id="bond-term" style="width:80px;">
+								<option value="1">1 yr</option>
+								<option value="2">2 yr</option>
+								<option value="5" selected="">5 yr</option>
+								<option value="10">10 yr</option>
+								<option value="30">30 yr</option>
+							</select>
+						</div>
+						<div class="bond-field">
+							<div class="stat-label">Yield</div>
+							<div class="stat-value pos" id="bond-preview-yield">—</div>
+						</div>
+						<div class="bond-field">
+							<div class="stat-label">Annual Income</div>
+							<div class="stat-value white" id="bond-preview-income">—</div>
+						</div>
+						<button class="btn btn-trade-buy" id="buy-bonds-btn" style="align-self:flex-end;">Buy Bond</button>
+					</div>
+				</div>
+				<div class="section">
+					<div class="section-title">Corporate Bond Listings</div>
+					<div id="corp-bond-market-list"></div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">Holdings</div>
+					<div id="bond-holdings-list">
+						<div style="color:#444;font-size:0.8em;">No bonds held.</div>
+					</div>
+				</div>

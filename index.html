@@ -25,32 +25,32 @@
 				border-right: 1px solid #2a2a2a;
 				display: flex;
 				flex-direction: column;
-				padding: 24px 18px;
-				gap: 20px;
+				padding: 14px 14px 16px;
+				gap: 11px;
 				overflow-y: auto;
 				}
 
-				#sidebar h1 { color: #00ff88; font-size: 0.95em; line-height: 1.4; }
+				#sidebar h1 { color: #00ff88; font-size: 0.88em; line-height: 1.25; }
 
-				.side-stat { display: flex; flex-direction: column; gap: 3px; }
-				.side-label { font-size: 0.78em; color: #555; text-transform: uppercase; letter-spacing: 1px; }
-				.side-value { font-size: 1.15em; color: #00ff88; }
+				.side-stat { display: flex; flex-direction: column; gap: 2px; }
+				.side-label { font-size: 0.74em; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+				.side-value { font-size: 1.05em; color: #00ff88; }
 				.side-value.yellow { color: #ffcc00; }
 				.side-value.white  { color: #e0e0e0; }
 				.side-value-line {
 					display: flex;
 					flex-wrap: wrap;
 					align-items: baseline;
-					gap: 10px;
-					font-size: 1.15em;
+					gap: 8px;
+					font-size: 1.05em;
 				}
 				.side-value-line .side-val-main { color: #e0e0e0; }
 				.side-value-line .side-pl { font-size: 0.95em; }
 
-				.year-bar { height: 3px; background: #222; border-radius: 2px; margin-top: 4px; }
+				.year-bar { height: 2px; background: #222; border-radius: 2px; margin-top: 2px; }
 				.year-fill { height: 100%; background: #00ff88; border-radius: 2px; transition: width 0.1s; }
 				.side-divider { border: none; border-top: 1px solid #1e1e1e; }
-				.side-actions { display: flex; flex-direction: column; gap: 6px; }
+				.side-actions { display: flex; flex-direction: column; gap: 5px; }
 				.side-action-row { display: flex; gap: 6px; align-items: center; }
 				.side-action-row .btn { flex: 1; }
 				.side-action-row .amount-input { width: 64px; }
@@ -144,6 +144,64 @@
 				}
 				.overview-holdings-row:last-child { border-bottom: none; }
 
+				/* Overview: 3×2 summary grid, bottom-right cell intentionally empty */
+				.overview-summary-grid {
+					display: grid;
+					grid-template-columns: repeat(3, 1fr);
+					grid-template-rows: repeat(2, auto);
+					gap: 14px;
+					margin-bottom: 14px;
+					align-items: stretch;
+				}
+				.overview-summary-grid > .section { margin-bottom: 0; min-width: 0; }
+				.overview-summary-grid > .section .stat-row { margin-bottom: 0; }
+				.overview-card-breakdown {
+					margin-top: 10px;
+					padding-top: 10px;
+					border-top: 1px solid #1e1e1e;
+					font-size: 0.74em;
+					line-height: 1.35;
+				}
+				.overview-card-breakdown-line {
+					display: flex;
+					justify-content: space-between;
+					align-items: baseline;
+					gap: 10px;
+					padding: 4px 0;
+					border-bottom: 1px solid #161616;
+				}
+				.overview-card-breakdown-line:last-child { border-bottom: none; padding-bottom: 0; }
+				.overview-card-breakdown-name {
+					color: #aaa;
+					min-width: 0;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+				}
+				.overview-card-breakdown-qty {
+					color: #00ff88;
+					flex-shrink: 0;
+					font-variant-numeric: tabular-nums;
+				}
+				.overview-card-breakdown-empty {
+					color: #444;
+					font-size: 0.95em;
+					padding: 2px 0;
+				}
+				.overview-summary-grid-empty {
+					border-radius: 4px;
+					border: 1px dashed #2a2a2a;
+					background: #141414;
+					min-height: 80px;
+				}
+				@media (max-width: 1200px) {
+					.overview-summary-grid {
+						grid-template-columns: 1fr;
+						grid-template-rows: auto;
+					}
+					.overview-summary-grid-empty { display: none; }
+				}
+
 				.inv-change { font-size: 0.82em; }
 				.pos { color: #00ff88; } .neg { color: #ff4444; }
 
@@ -168,6 +226,70 @@
 				.job-apply-btns .btn:disabled { opacity: 0.45; cursor: not-allowed; border-color: #333; color: #555; }
 				.job-apply-btns .btn:disabled:hover { background: transparent; color: #555; border-color: #333; }
 				.btn-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+				.side-action-row.auto-advance-row {
+					display: flex;
+					flex-wrap: wrap;
+					align-items: center;
+					gap: 8px 10px;
+				}
+				.side-action-row.auto-advance-row label {
+					display: flex;
+					align-items: center;
+					gap: 8px;
+					cursor: pointer;
+					font-size: 0.82em;
+					color: #888;
+					user-select: none;
+				}
+				.side-action-row.auto-advance-row input[type="checkbox"] { accent-color: #00ff88; }
+				.side-action-row.auto-advance-row .auto-advance-every,
+				.side-action-row.auto-advance-row .auto-advance-unit {
+					font-size: 0.82em;
+					color: #666;
+				}
+
+				/* Prominent Buy / Sell across markets */
+				.btn.btn-trade-buy {
+					border: 2px solid #00aa55;
+					color: #00ff88;
+					background: linear-gradient(180deg, rgba(0, 255, 136, 0.16) 0%, rgba(0, 255, 136, 0.05) 100%);
+					font-weight: 700;
+					padding: 10px 20px;
+					font-size: 0.95em;
+					text-transform: uppercase;
+					letter-spacing: 0.06em;
+					box-shadow: 0 0 16px rgba(0, 255, 136, 0.18);
+				}
+				.btn.btn-trade-buy:hover {
+					border-color: #00ff88;
+					color: #fff;
+					background: rgba(0, 255, 136, 0.26);
+					box-shadow: 0 0 22px rgba(0, 255, 136, 0.35);
+				}
+				.btn.btn-trade-sell {
+					border: 2px solid #992222 !important;
+					color: #ff8888 !important;
+					background: linear-gradient(180deg, rgba(255, 68, 68, 0.14) 0%, rgba(255, 68, 68, 0.05) 100%) !important;
+					font-weight: 700;
+					padding: 10px 20px;
+					font-size: 0.95em;
+					text-transform: uppercase;
+					letter-spacing: 0.06em;
+					box-shadow: 0 0 16px rgba(255, 68, 68, 0.14);
+				}
+				.btn.btn-trade-sell:hover {
+					border-color: #ff5555 !important;
+					color: #fff !important;
+					background: rgba(255, 68, 68, 0.28) !important;
+					box-shadow: 0 0 22px rgba(255, 68, 68, 0.3);
+				}
+				.btn.btn-trade-compact {
+					padding: 7px 14px;
+					font-size: 0.82em;
+					text-transform: none;
+					letter-spacing: 0;
+					box-shadow: 0 0 10px rgba(0, 0, 0, 0.35);
+				}
 
 				.amount-input {
 				background: #111; border: 1px solid #333; color: #e0e0e0;
@@ -217,6 +339,7 @@
 					.section-row { flex-direction: column; }
 				}
 				canvas.spark { width: 100%; height: 110px; display: block; background: #111; border-radius: 3px; }
+				#networth-graph.spark { height: 280px; }
 
 				.debug-grid {
 				display: grid;
@@ -279,7 +402,7 @@
 				.asset-holdings-header {
 				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
 				display: grid;
-				grid-template-columns: 1.7fr 0.7fr 0.8fr 0.8fr;
+				grid-template-columns: 1.55fr 0.65fr 0.72fr 0.72fr 0.78fr;
 				gap: 0 12px;
 				padding-bottom: 6px;
 				border-bottom: 1px solid #1e1e1e;
@@ -287,7 +410,7 @@
 				}
 				.asset-holdings-row {
 				display: grid;
-				grid-template-columns: 1.7fr 0.7fr 0.8fr 0.8fr;
+				grid-template-columns: 1.55fr 0.65fr 0.72fr 0.72fr 0.78fr;
 				gap: 0 12px;
 				align-items: center;
 				padding: 7px 0;
@@ -296,28 +419,91 @@
 				color: #888;
 				}
 				.asset-holdings-row:last-child { border-bottom: none; }
-				.asset-market-header {
-				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
+
+				/* Shared index / stock / crypto market cards (crypto layout is the baseline) */
+				.market-grid {
 				display: grid;
-				grid-template-columns: 1.35fr 0.65fr 0.55fr 0.8fr 0.8fr 0.8fr 0.7fr auto auto;
-				gap: 0 10px;
-				padding-bottom: 6px;
-				border-bottom: 1px solid #1e1e1e;
-				margin-bottom: 2px;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 12px;
 				}
-				.asset-market-row {
-				display: grid;
-				grid-template-columns: 1.35fr 0.65fr 0.55fr 0.8fr 0.8fr 0.8fr 0.7fr auto auto;
-				gap: 0 10px;
+				.market-card {
+				background: #151515;
+				border: 1px solid #2a2a2a;
+				border-radius: 4px;
+				padding: 10px;
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				}
+				.market-card__title {
+				font-size: 0.75em;
+				color: #ddd;
+				font-weight: bold;
+				}
+				.market-card__trade-row {
+				display: flex;
+				flex-wrap: wrap;
 				align-items: center;
-				padding: 7px 0;
-				border-bottom: 1px solid #1e1e1e;
-				font-size: 0.78em;
-				color: #888;
+				gap: 10px 14px;
 				}
-				.asset-market-row:last-child { border-bottom: none; }
-				.asset-market-row .amount-input { width: 58px; }
-				.asset-market-row .market-pl { font-weight: bold; }
+				.market-card__trade-row .btn-row {
+				justify-content: flex-start;
+				margin: 0;
+				}
+				.market-card__price {
+				font-size: 1.05em;
+				font-weight: bold;
+				color: #00ff88;
+				white-space: nowrap;
+				}
+				.market-card .amount-stepper { margin-top: 0; }
+				.market-card .amount-input {
+				width: 88px;
+				padding: 10px 12px;
+				font-size: 1.05em;
+				font-weight: 700;
+				text-align: center;
+				}
+				.market-card .btn.btn-trade-buy,
+				.market-card .btn.btn-trade-sell {
+				font-size: 0.84em;
+				padding: 8px 14px;
+				}
+				.market-card canvas.spark.market-card__chart {
+				width: 100%;
+				height: 144px !important;
+				display: block;
+				background: #101010;
+				border-radius: 3px;
+				}
+				@media (max-width: 900px) {
+					.market-grid { grid-template-columns: 1fr; }
+				}
+
+				/* Index fund: full-width trade + single price chart panel */
+				#page-index-fund .if-trade-section {
+					margin-left: -30px;
+					margin-right: -30px;
+					padding-left: 30px;
+					padding-right: 30px;
+					border-radius: 0;
+					border-left: none;
+					border-right: none;
+				}
+				#page-index-fund #if-market-list .market-grid {
+					grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+				}
+				#page-index-fund .if-price-chart-wrap {
+					margin-top: 16px;
+				}
+				#page-index-fund canvas.if-index-price-chart {
+					height: 240px !important;
+				}
+				#page-index-fund .if-trade-section .chart-toggle-row {
+					margin-top: 12px;
+					margin-bottom: 0;
+				}
+
 				canvas.row-spark {
 				width: 100%;
 				height: 28px;
@@ -325,23 +511,84 @@
 				background: #101010;
 				border-radius: 2px;
 				}
-				.options-chain-wrap { overflow-x: auto; }
+				.options-chain-wrap {
+					overflow-x: visible;
+					width: 100%;
+					max-width: 100%;
+				}
+				#page-options #options-underlying-list {
+					margin-bottom: 10px;
+				}
+				.options-market-page .options-subsection {
+					margin-bottom: 22px;
+				}
+				.options-market-page .options-subsection:last-child {
+					margin-bottom: 0;
+				}
+				.options-subsection-title {
+					font-size: 0.72em;
+					color: #666;
+					text-transform: uppercase;
+					letter-spacing: 1px;
+					margin-bottom: 10px;
+					padding-bottom: 4px;
+					border-bottom: 1px solid #1e1e1e;
+				}
+				#page-options #options-underlying-list .market-grid {
+					grid-template-columns: minmax(0, 1fr);
+				}
+				#page-options .options-ticket-panel {
+					margin: 0;
+					padding: 10px 12px;
+					background: #141414;
+					border: 1px solid #252525;
+					border-radius: 8px;
+				}
+				.options-dte-toggle {
+					display: flex;
+					flex-wrap: wrap;
+					align-items: center;
+					gap: 8px 10px;
+					margin-bottom: 12px;
+					padding: 8px 12px;
+					background: #141414;
+					border: 1px solid #252525;
+					border-radius: 6px;
+					font-size: 0.78em;
+				}
+				.options-dte-label { color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.72em; }
+				.options-dte-hint { color: #444; font-size: 0.85em; margin-left: auto; }
+				.options-dte-btn { padding: 5px 10px; font-size: 0.85em; min-width: 0; }
+				.options-dte-btn.active {
+					border-color: #00ff88;
+					color: #00ff88;
+					background: #00ff8814;
+				}
 				.options-chain-header,
 				.options-chain-row {
 				display: grid;
-				grid-template-columns: minmax(420px, 1fr) 76px minmax(420px, 1fr);
-				gap: 0 8px;
+				grid-template-columns: minmax(0, 1fr) minmax(44px, 52px) minmax(0, 1fr);
+				gap: 0 4px;
 				align-items: stretch;
-				min-width: 980px;
+				min-width: 0;
+				width: 100%;
+				box-sizing: border-box;
+				}
+				.options-chain-row-atm {
+					background: linear-gradient(90deg, #00ff8808 0%, transparent 35%, transparent 65%, #00ff8808 100%);
+					border-radius: 4px;
+					margin: 0 -2px;
+					padding-left: 2px;
+					padding-right: 2px;
 				}
 				.options-chain-header {
-				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
+				font-size: 0.82em; color: #888; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;
 				padding-bottom: 6px; border-bottom: 1px solid #1e1e1e; margin-bottom: 6px;
 				}
 				.options-chain-row {
-				padding: 6px 0;
+				padding: 2px 0;
 				border-bottom: 1px solid #1e1e1e;
-				font-size: 0.78em;
+				font-size: 0.72em;
 				color: #888;
 				}
 				.options-chain-row:last-child { border-bottom: none; }
@@ -355,25 +602,27 @@
 				background: #111;
 				border: 1px solid #2a2a2a;
 				border-radius: 999px;
-				padding: 0 8px;
+				padding: 0 6px;
+				font-size: 0.92em;
 				}
 				.options-side {
 				display: grid;
 				grid-template-columns: 1fr 1fr;
 				grid-template-areas:
-					"name name"
-					"price held"
-					"chart chart"
-					"qty qty"
-					"actions actions";
-				gap: 6px 8px;
+					"leghead leghead"
+					"pricerow pricerow";
+				gap: 3px 6px;
 				align-items: start;
 				background: #141414;
 				border: 1px solid #2a2a2a;
-				border-radius: 10px;
-				padding: 10px;
-				min-height: 170px;
+				border-radius: 8px;
+				padding: 6px 8px;
+				min-height: 0;
+				min-width: 0;
+				overflow: hidden;
+				box-sizing: border-box;
 				}
+				.options-side-empty { min-height: 72px; display: flex; align-items: center; justify-content: center; }
 				.options-side.selected {
 				border-color: #00ff88;
 				background: #00ff8812;
@@ -382,110 +631,139 @@
 				color: #333;
 				text-align: center;
 				}
-				.options-side-name { grid-area: name; font-size: 0.82em; }
-				.options-side-price { grid-area: price; }
-				.options-side-held { grid-area: held; text-align: right; }
-				canvas.options-side-chart { grid-area: chart; height: 168px; }
-				.options-side-qty { grid-area: qty; }
-				.options-side-actions {
-				grid-area: actions;
-				display: flex;
-				justify-content: flex-end;
-				gap: 6px;
-				margin-top: auto;
+				.options-side-name { grid-area: leghead; font-size: 0.82em; display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+				.options-leg-title-row { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+				.options-leg-title-row > .white {
+					min-width: 0;
+					font-size: 1.12em;
+					font-weight: 700;
+					line-height: 1.2;
+					color: #eee;
 				}
-				.options-side .amount-input { width: 44px; }
-				.options-side .btn { padding: 5px 8px; font-size: 0.8em; }
+				.options-side-dte { color: #6699bb; font-size: 0.88em; flex-shrink: 0; font-weight: 600; }
+				.options-side-premium {
+					grid-area: pricerow;
+					display: flex;
+					justify-content: center;
+					align-items: baseline;
+					flex-wrap: wrap;
+					gap: 4px 6px;
+					font-size: 0.78em;
+					color: #888;
+				}
+				.options-side-premium .prem-val {
+					font-size: 1.18em;
+					font-weight: 700;
+					color: #ffcc00;
+				}
+				.options-ticket-panel .options-ticket-trade {
+					margin-top: 14px;
+					padding-top: 12px;
+					border-top: 1px solid #2a2a2a;
+					display: flex;
+					flex-wrap: wrap;
+					align-items: center;
+					gap: 12px 16px;
+				}
+				.options-ticket-panel .options-ticket-trade .k {
+					display: block;
+					width: 100%;
+					color: #555;
+					text-transform: uppercase;
+					letter-spacing: 1px;
+					font-size: 0.72em;
+					margin-bottom: -4px;
+				}
+				.options-ticket-panel .options-ticket-stepper {
+					display: inline-flex;
+					flex-wrap: wrap;
+					align-items: center;
+					gap: 6px;
+				}
+				.options-ticket-panel .options-ticket-stepper .amount-input {
+					width: 72px;
+					padding: 6px 8px;
+					font-size: 0.9em;
+					font-weight: 700;
+					text-align: center;
+				}
+				.options-ticket-panel .options-ticket-stepper .btn.amount-step-btn {
+					padding: 6px 8px;
+					font-size: 0.78em;
+					min-width: 30px;
+				}
+				.options-ticket-actions {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 8px;
+					align-items: center;
+					margin-left: auto;
+				}
+				.options-ticket-actions .btn.btn-trade-buy,
+				.options-ticket-actions .btn.btn-trade-sell {
+					padding: 9px 18px;
+					font-size: 0.85em;
+				}
+				#page-options #options-market-list {
+					min-width: 0;
+					max-width: 100%;
+				}
 				.options-ticket-grid {
 				display: grid;
 				grid-template-columns: repeat(3, minmax(0, 1fr));
 				gap: 10px 14px;
 				font-size: 0.76em;
+				min-width: 0;
 				}
 				.options-ticket-item { display: flex; flex-direction: column; gap: 2px; }
 				.options-ticket-item .k { color: #555; text-transform: uppercase; letter-spacing: 1px; font-size: 0.72em; }
 				.options-ticket-item .v { color: #ddd; }
 				.options-ticket-item .v.emph { color: #ffcc00; font-weight: bold; }
+				.options-last-realized {
+					margin-top: 10px;
+					padding-top: 10px;
+					border-top: 1px solid #2a2a2a;
+					font-size: 0.76em;
+					display: flex;
+					flex-direction: column;
+					gap: 4px;
+				}
+				.options-last-realized .k { color: #555; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.72em; }
 				.options-pos-header,
 				.options-pos-row {
 				display: grid;
-				grid-template-columns: 1.4fr 0.7fr 0.7fr 0.8fr 0.8fr 0.8fr auto;
-				gap: 0 10px;
+				grid-template-columns: 1.05fr 0.48fr 0.55fr 0.48fr 0.36fr 0.52fr 0.42fr 0.52fr 0.48fr 0.48fr minmax(132px, auto);
+				gap: 0 8px;
 				align-items: center;
 				}
+				.options-pos-pl-hint { display: block; font-size: 0.85em; color: #555; font-weight: normal; text-transform: none; letter-spacing: 0; margin-top: 2px; }
+				.options-pos-actions {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 6px;
+					justify-content: flex-end;
+				}
+				.options-pos-actions .btn-trade-compact { padding: 5px 8px; font-size: 0.72em; }
 				.options-pos-header {
-				font-size: 0.65em; color: #444; text-transform: uppercase; letter-spacing: 1px;
+				font-size: 0.58em; color: #444; text-transform: uppercase; letter-spacing: 0.5px;
 				padding-bottom: 6px; border-bottom: 1px solid #1e1e1e; margin-bottom: 2px;
 				}
 				.options-pos-row {
 				padding: 7px 0;
 				border-bottom: 1px solid #1e1e1e;
-				font-size: 0.78em;
+				font-size: 0.72em;
 				color: #888;
 				}
 				.options-pos-row:last-child { border-bottom: none; }
 				.amount-stepper {
 				display: inline-flex;
-				gap: 4px;
+				gap: 6px;
 				align-items: center;
 				}
 				.amount-step-btn {
-				min-width: 24px;
-				padding: 3px 5px;
-				font-size: 0.75em;
-				}
-				.stocks-grid {
-				display: grid;
-				grid-template-columns: repeat(2, minmax(0, 1fr));
-				gap: 12px;
-				}
-				.crypto-grid {
-				display: grid;
-				grid-template-columns: repeat(2, minmax(0, 1fr));
-				gap: 12px;
-				}
-				.stock-card {
-				background: #151515;
-				border: 1px solid #2a2a2a;
-				border-radius: 4px;
-				padding: 10px;
-				display: flex;
-				flex-direction: column;
-				gap: 8px;
-				}
-				.stock-card-title {
-				font-size: 0.75em;
-				color: #ddd;
-				font-weight: bold;
-				}
-				.stock-card-stats {
-				display: grid;
-				grid-template-columns: 1fr 1fr;
-				gap: 6px 10px;
-				font-size: 0.7em;
-				color: #666;
-				}
-				.stock-card-stats .val {
-				color: #ddd;
-				font-size: 0.95em;
-				}
-				.stock-card-stats .val.pl { font-weight: bold; }
-				.stock-card .amount-stepper { margin-top: 2px; }
-				.stock-card .amount-input { width: 54px; }
-				.stock-card .btn-row { justify-content: flex-end; }
-				.stock-card .stock-mini-chart {
-				height: 72px;
-				background: #101010;
-				border-radius: 3px;
-				}
-				.crypto-card .crypto-mini-chart {
-				height: 72px;
-				background: #101010;
-				border-radius: 3px;
-				}
-				@media (max-width: 900px) {
-					.stocks-grid { grid-template-columns: 1fr; }
-					.crypto-grid { grid-template-columns: 1fr; }
+				min-width: 34px;
+				padding: 7px 10px;
+				font-size: 0.84em;
 				}
 
 			</style>
@@ -521,7 +799,7 @@
 				<div class="side-stat">
 					<div class="side-label">Portfolio</div>
 					<div class="side-value yellow" id="s-portfolio"></div>
-					<div class="side-label" style="margin-top:6px;">Index Funds</div>
+					<div class="side-label" style="margin-top:3px;">Index Funds</div>
 					<div class="side-value-line">
 						<span class="side-val-main" id="s-portfolio-index"></span>
 						<span class="side-pl" id="s-pl-index"></span>
@@ -552,7 +830,7 @@
 					<div class="side-label">Net Worth</div>
 					<div class="side-value" id="s-networth"></div>
 				</div>
-				<div class="side-stat">
+				<div class="side-stat" title="Vs starting net worth; 30-day income is treated as added starting capital (not counted as return).">
 					<div class="side-label">Total Return</div>
 					<div class="side-value white" id="s-return"></div>
 				</div>
@@ -563,6 +841,15 @@
 						<div class="side-action-row">
 							<button class="btn primary work" id="day-btn">⏭ Next day</button>
 							<button class="btn" id="week-btn">+1 Week</button>
+						</div>
+						<div class="side-action-row auto-advance-row">
+							<label for="auto-advance-toggle">
+								<input type="checkbox" id="auto-advance-toggle">
+								<span>Auto-advance</span>
+							</label>
+							<span class="auto-advance-every">every</span>
+							<input type="number" id="auto-advance-interval-sec" class="amount-input" value="60" min="1" max="3600" step="1" style="width:56px" title="Real-time seconds between each in-game day">
+							<span class="auto-advance-unit">sec</span>
 						</div>
 						<div class="side-action-row">
 							<label>Days</label>
@@ -590,26 +877,10 @@
 				<!-- OVERVIEW -->
 				<div class="page active" id="page-overview">
 					<div class="page-title">Overview</div>
-					<div class="section">
-						<div class="section-title">Net Worth History</div>
-						<canvas id="networth-graph" class="spark"></canvas>
-					</div>
-					<div class="section">
-						<div class="section-title">All Holdings</div>
-						<div id="overview-holdings-list">
-							<div style="color:#444;font-size:0.8em;">No holdings yet.</div>
-						</div>
-					</div>
-					<div class="section">
-						<div class="section-title">Log</div>
-						<div class="log" id="log"></div>
-					</div>
-				</div>
 
-				<!-- INDEX FUND -->
-				<div class="page" id="page-index-fund">
-					<div class="page-title">Index Fund</div>
+					<div class="overview-summary-grid">
 					<div class="section">
+						<div class="section-title">Index fund</div>
 						<div class="stat-row">
 							<div class="stat-box">
 								<div class="stat-label">Avg price / share</div>
@@ -626,105 +897,30 @@
 								<div id="if-change" class="inv-change">—</div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-label">Total value · cum. P/L</div>
 								<div class="stat-value-line">
 									<span class="stat-value yellow" id="if-value"></span>
 									<span class="stat-pl" id="if-pl"></span>
 								</div>
 							</div>
 						</div>
+						<div class="overview-card-breakdown" id="overview-card-if-breakdown"></div>
 					</div>
 					<div class="section">
-						<div class="section-title">Funds Market</div>
-						<div id="if-market-list"></div>
-					</div>
-					<div class="section">
-						<div class="section-title">Price History</div>
-						<div class="chart-toggle-row">
-							<button class="btn active" id="if-chart-daily-btn">Daily</button>
-							<button class="btn" id="if-chart-monthly-btn">Monthly</button>
-						</div>
-						<div class="chart-wrap">
-							<div class="y-axis" id="if-yaxis"></div>
-							<div class="chart-area">
-								<canvas id="price-graph" class="spark"></canvas>
-								<div class="x-axis" id="if-xaxis"></div>
-							</div>
-						</div>
-					</div>
-					<div class="section">
-						<div class="section-title">Holdings</div>
-						<div id="if-holdings-list">
-							<div style="color:#444;font-size:0.8em;">No index fund shares held.</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- BONDS -->
-				<div class="page" id="page-bonds">
-					<div class="page-title">Bonds</div>
-
-					<div class="section">
+						<div class="section-title">Bonds</div>
 						<div class="stat-row">
 							<div class="stat-box">
-								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-label">Total value · cum. P/L</div>
 								<div class="stat-value-line">
 									<span class="stat-value yellow" id="bonds-value"></span>
 									<span class="stat-pl" id="bonds-pl"></span>
 								</div>
 							</div>
 						</div>
-						<div class="section-title">Yield Curve</div>
-						<p style="font-size:0.72em; color:#555; margin:-6px 0 10px 0;">Shifts daily (mean-reverting); new bonds price off the current curve.</p>
-						<canvas id="bonds-yield-curve" style="width:100%;height:120px;display:block;background:#111;border-radius:3px;"></canvas>
-						<div class="yield-labels" id="yield-labels"></div>
-					</div>
-
-					<div class="section">
-						<div class="section-title">Purchase U.S. Treasury Bond</div>
-						<div class="bond-buy-row">
-							<div class="bond-field">
-								<div class="stat-label">Face Value ($)</div>
-								<input type="number" class="amount-input" id="bond-face-value" value="1000" min="100" step="100" style="width:100px;">
-          </div>
-							<div class="bond-field">
-								<div class="stat-label">Term (years)</div>
-								<select class="amount-input" id="bond-term" style="width:80px;">
-									<option value="1">1 yr</option>
-									<option value="2">2 yr</option>
-									<option value="5" selected="">5 yr</option>
-									<option value="10">10 yr</option>
-									<option value="30">30 yr</option>
-								</select>
-							</div>
-							<div class="bond-field">
-								<div class="stat-label">Yield</div>
-								<div class="stat-value pos" id="bond-preview-yield">—</div>
-							</div>
-							<div class="bond-field">
-								<div class="stat-label">Annual Income</div>
-								<div class="stat-value white" id="bond-preview-income">—</div>
-							</div>
-							<button class="btn primary" id="buy-bonds-btn" style="align-self:flex-end;">Buy Bond</button>
-						</div>
+						<div class="overview-card-breakdown" id="overview-card-bonds-breakdown"></div>
 					</div>
 					<div class="section">
-						<div class="section-title">Corporate Bond Listings</div>
-						<div id="corp-bond-market-list"></div>
-					</div>
-
-					<div class="section">
-						<div class="section-title">Holdings</div>
-						<div id="bond-holdings-list">
-							<div style="color:#444;font-size:0.8em;">No bonds held.</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- CRYPTO -->
-				<div class="page" id="page-crypto">
-					<div class="page-title">Crypto</div>
-					<div class="section">
+						<div class="section-title">Crypto</div>
 						<div class="stat-row">
 							<div class="stat-box">
 								<div class="stat-label">Avg price / coin</div>
@@ -741,30 +937,17 @@
 								<div id="crypto-change" class="inv-change">—</div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-label">Total value · cum. P/L</div>
 								<div class="stat-value-line">
 									<span class="stat-value yellow" id="crypto-value"></span>
 									<span class="stat-pl" id="crypto-pl"></span>
 								</div>
 							</div>
 						</div>
+						<div class="overview-card-breakdown" id="overview-card-crypto-breakdown"></div>
 					</div>
 					<div class="section">
-						<div class="section-title">Crypto Market</div>
-						<div id="crypto-market-list"></div>
-					</div>
-					<div class="section">
-						<div class="section-title">Holdings</div>
-						<div id="crypto-holdings-list">
-							<div style="color:#444;font-size:0.8em;">No crypto holdings.</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- STOCKS -->
-				<div class="page" id="page-stocks">
-					<div class="page-title">Stocks</div>
-					<div class="section">
+						<div class="section-title">Stocks</div>
 						<div class="stat-row">
 							<div class="stat-box">
 								<div class="stat-label">Avg price / share</div>
@@ -781,30 +964,17 @@
 								<div id="stock-change" class="inv-change">—</div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-label">Total value · cum. P/L</div>
 								<div class="stat-value-line">
 									<span class="stat-value yellow" id="stock-value"></span>
 									<span class="stat-pl" id="stock-pl"></span>
 								</div>
 							</div>
 						</div>
+						<div class="overview-card-breakdown" id="overview-card-stocks-breakdown"></div>
 					</div>
 					<div class="section">
-						<div class="section-title">Stock Market</div>
-						<div id="stock-market-list"></div>
-					</div>
-					<div class="section">
-						<div class="section-title">Holdings</div>
-						<div id="stock-holdings-list">
-							<div style="color:#444;font-size:0.8em;">No stock holdings.</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- OPTIONS -->
-				<div class="page" id="page-options">
-					<div class="page-title">Options</div>
-					<div class="section">
+						<div class="section-title">Options</div>
 						<div class="stat-row">
 							<div class="stat-box">
 								<div class="stat-label">Avg price / contract</div>
@@ -827,28 +997,57 @@
 								<div id="options-change" class="inv-change">—</div>
 							</div>
 							<div class="stat-box">
-								<div class="stat-label">Total value · P/L</div>
+								<div class="stat-label">Total value · cum. P/L</div>
 								<div class="stat-value-line">
 									<span class="stat-value yellow" id="options-value"></span>
 									<span class="stat-pl" id="options-pl"></span>
 								</div>
 							</div>
 						</div>
+						<div class="overview-card-breakdown" id="overview-card-options-breakdown"></div>
+					</div>
+					<div class="overview-summary-grid-empty" aria-hidden="true"></div>
+					</div>
+
+					<div class="section">
+						<div class="section-title">Net Worth History</div>
+						<div class="chart-toggle-row">
+							<button class="btn active" id="nw-chart-daily-btn">Daily (1 yr)</button>
+							<button class="btn" id="nw-chart-monthly-btn">Monthly (all)</button>
+						</div>
+						<canvas id="networth-graph" class="spark"></canvas>
 					</div>
 					<div class="section">
-						<div class="section-title">Options Market</div>
-						<div id="options-market-list"></div>
-					</div>
-					<div class="section">
-						<div class="section-title">Trade Ticket</div>
-						<div id="options-ticket" style="color:#444;font-size:0.8em;">Select an option contract.</div>
-					</div>
-					<div class="section">
-						<div class="section-title">Holdings</div>
-						<div id="options-holdings-list">
-							<div style="color:#444;font-size:0.8em;">No options holdings.</div>
+						<div class="section-title">All Holdings</div>
+						<div id="overview-holdings-list">
+							<div style="color:#444;font-size:0.8em;">No holdings yet.</div>
 						</div>
 					</div>
+					<div class="section">
+						<div class="section-title">Log</div>
+						<div class="log" id="log"></div>
+					</div>
+				</div>
+
+				<!-- Asset tab bodies live in pages/assets/*.html (loaded at startup; same layout as before). -->
+				<div class="page" id="page-index-fund">
+					<div data-asset-partial="pages/assets/index-fund.html"></div>
+				</div>
+
+				<div class="page" id="page-bonds">
+					<div data-asset-partial="pages/assets/bonds.html"></div>
+				</div>
+
+				<div class="page" id="page-crypto">
+					<div data-asset-partial="pages/assets/crypto.html"></div>
+				</div>
+
+				<div class="page" id="page-stocks">
+					<div data-asset-partial="pages/assets/stocks.html"></div>
+				</div>
+
+				<div class="page" id="page-options">
+					<div data-asset-partial="pages/assets/options.html"></div>
 				</div>
 
 				<!-- DEBUG -->
@@ -910,14 +1109,47 @@
 		</div>
 
 		<script type="module">
-			import { newState, nextDay, buyIndexFund, sellIndexFund, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, portfolioValue, netWorth, YIELD_CURVE, yieldForTerm } from "./game.js?v=jobs";
+			import { newState, nextDay, buyIndexFund, sellIndexFund, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, sellOptionLot, exerciseOptionLot, portfolioValue, netWorth, totalReturn, YIELD_CURVE, yieldForTerm, setOptionMarketDte, normalizeOptionMarketDte, openOptionHoldings, markOptionHolding, optionLotUnrealizedPLAtMark, optionLotUnrealizedPLIfExercised, optionsHoldingsUnrealizedPL } from "./game.js?v=jobs";
+
+			async function loadAssetPartials() {
+				const mounts = document.querySelectorAll("[data-asset-partial]");
+				await Promise.all(
+					Array.from(mounts).map(async (mount) => {
+						const url = mount.getAttribute("data-asset-partial");
+						const res = await fetch(url);
+						if (!res.ok) throw new Error(`Failed to load ${url}: ${res.status}`);
+						mount.innerHTML = await res.text();
+					})
+				);
+			}
+
+			await loadAssetPartials();
 
 			const fmt = n => "$" + Math.round(n).toLocaleString();
 			const fmtSigned = n => `${n >= 0 ? "+" : "-"}${fmt(Math.abs(n))}`;
+			/** In-game days shown on daily charts (365-day year, same as bond day-count in game.js). */
+			const DAILY_CHART_TRIM_DAYS = 365;
+			function trimDailyChart(history) {
+				const arr = history || [];
+				return arr.length > DAILY_CHART_TRIM_DAYS ? arr.slice(-DAILY_CHART_TRIM_DAYS) : arr;
+			}
 			function setPlDisplay(el, pl, baseClass) {
 				if (!el) return;
 				el.textContent = fmtSigned(pl);
 				el.className = baseClass + " " + (pl >= 0 ? "pos" : "neg");
+			}
+
+			function cumRealized(s, bucket) {
+				const v = s.cumulativeRealizedPL && s.cumulativeRealizedPL[bucket];
+				return Number.isFinite(v) ? v : 0;
+			}
+
+			function unrealizedTrackedPL(s, listKey, qtyKey) {
+				return (s[listKey] || []).reduce((sum, a) => {
+					const qty = a[qtyKey] || 0;
+					if (qty <= 0) return sum;
+					return sum + (qty * (a.price || 0) - (a.costBasis || 0));
+				}, 0);
 			}
 
 			function readParams() {
@@ -942,9 +1174,25 @@
 			let renderedLogCount = 0;
       const tradeQtyByInputId = {};
       let indexChartMode = "daily";
+      let netWorthChartMode = "daily";
       let selectedOptionId = null;
       let tickerItems = [];
       let tickerIndex = 0;
+			let autoAdvanceTimerId = null;
+			const AUTO_ADVANCE_SEC_MIN = 1;
+			const AUTO_ADVANCE_SEC_MAX = 3600;
+
+			function clampAutoAdvanceSeconds(raw) {
+				if (!Number.isFinite(raw)) return 60;
+				return Math.max(AUTO_ADVANCE_SEC_MIN, Math.min(AUTO_ADVANCE_SEC_MAX, Math.floor(raw)));
+			}
+
+			function getAutoAdvanceIntervalMs() {
+				const el = document.getElementById("auto-advance-interval-sec");
+				const raw = parseInt(el?.value, 10);
+				const sec = clampAutoAdvanceSeconds(raw);
+				return sec * 1000;
+			}
 
 			// Tab switching
 			document.querySelectorAll(".nav-tab").forEach(tab => {
@@ -969,13 +1217,20 @@
   function averageHistory(assets, historyKey = "history") {
     const list = assets || [];
     if (!list.length) return [];
-    const lengths = list.map(a => (a[historyKey] || []).length).filter(Boolean);
-    if (!lengths.length) return [];
-    const len = Math.min(...lengths);
+    const lengths = list.map(a => (a[historyKey] || []).length);
+    if (!lengths.some(n => n > 0)) return [];
+    const len = Math.max(...lengths);
     const out = [];
     for (let i = 0; i < len; i++) {
-      const sum = list.reduce((acc, a) => acc + (a[historyKey][i] || 0), 0);
-      out.push(sum / list.length);
+      let sum = 0;
+      let count = 0;
+      for (const a of list) {
+        const arr = a[historyKey] || [];
+        if (!arr.length) continue;
+        sum += arr[Math.min(i, arr.length - 1)];
+        count++;
+      }
+      if (count) out.push(sum / count);
     }
     return out;
   }
@@ -985,7 +1240,7 @@
     const stockLead = (s.stocks || [])[0];
     const cryptoLead = (s.cryptos || [])[0];
     const bondPillar = (s.yieldCurve || YIELD_CURVE)[2];
-    const optionsHeld = (s.options || []).reduce((sum, o) => sum + (o.contracts || 0), 0);
+    const optionsHeld = openOptionHoldings(s).reduce((sum, h) => sum + h.contracts, 0);
     const indexPct = (index && index.history?.length > 1)
       ? ((index.price - index.history[index.history.length - 2]) / index.history[index.history.length - 2] * 100)
       : 0;
@@ -1035,12 +1290,12 @@
     const sidebarBondsValue = (s.bondHoldings || []).reduce((sum, b) => sum + (b.faceValue || 0), 0);
     const sidebarCryptoValue = (s.cryptos || []).reduce((sum, a) => sum + ((a.coins || 0) * (a.price || 0)), 0);
     const sidebarStockValue = (s.stocks || []).reduce((sum, a) => sum + ((a.shares || 0) * (a.price || 0)), 0);
-    const sidebarOptionsValue = (s.options || []).reduce((sum, a) => sum + ((a.contracts || 0) * (a.price || 0)), 0);
-    const sidebarIndexPL = (s.indexFunds || []).reduce((sum, a) => sum + ((a.shares || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
-    const sidebarBondsPL = (s.bondHoldings || []).reduce((sum, b) => sum + (b.couponAccrued || 0), 0);
-    const sidebarCryptoPL = (s.cryptos || []).reduce((sum, a) => sum + ((a.coins || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
-    const sidebarStockPL = (s.stocks || []).reduce((sum, a) => sum + ((a.shares || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
-    const sidebarOptionsPL = (s.options || []).reduce((sum, a) => sum + ((a.contracts || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const sidebarOptionsValue = openOptionHoldings(s).reduce((sum, lot) => sum + lot.contracts * markOptionHolding(s, lot), 0);
+    const sidebarIndexPL = cumRealized(s, "indexFunds") + unrealizedTrackedPL(s, "indexFunds", "shares");
+    const sidebarBondsPL = cumRealized(s, "bonds") + (s.bondHoldings || []).reduce((sum, b) => sum + (b.couponAccrued || 0), 0);
+    const sidebarCryptoPL = cumRealized(s, "cryptos") + unrealizedTrackedPL(s, "cryptos", "coins");
+    const sidebarStockPL = cumRealized(s, "stocks") + unrealizedTrackedPL(s, "stocks", "shares");
+    const sidebarOptionsPL = cumRealized(s, "options") + optionsHoldingsUnrealizedPL(s);
     document.getElementById("s-portfolio-index").textContent = fmt(sidebarIndexValue);
     document.getElementById("s-portfolio-bonds").textContent = fmt(sidebarBondsValue);
     document.getElementById("s-portfolio-crypto").textContent = fmt(sidebarCryptoValue);
@@ -1052,9 +1307,8 @@
     setPlDisplay(document.getElementById("s-pl-stocks"), sidebarStockPL, "side-pl");
     setPlDisplay(document.getElementById("s-pl-options"), sidebarOptionsPL, "side-pl");
     const nw = netWorth(s);
-    const totalReturn = nw - (s.startCash || 0);
     document.getElementById("s-networth").textContent  = fmt(nw);
-    document.getElementById("s-return").textContent    = fmt(totalReturn);
+    document.getElementById("s-return").textContent    = fmt(totalReturn(s));
     const dayBtn = document.getElementById("day-btn");
     dayBtn.disabled = s.day >= s.maxDays;
     dayBtn.textContent = `⏭ Next day`;
@@ -1063,7 +1317,7 @@
     const indexAvgHistory = averageHistory(s.indexFunds, "history");
     const indexShares = (s.indexFunds || []).reduce((sum, a) => sum + (a.shares || 0), 0);
     const indexValue = (s.indexFunds || []).reduce((sum, a) => sum + ((a.shares || 0) * (a.price || 0)), 0);
-    const indexPL = (s.indexFunds || []).reduce((sum, a) => sum + ((a.shares || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const indexPL = cumRealized(s, "indexFunds") + unrealizedTrackedPL(s, "indexFunds", "shares");
     const indexAvgPrice = (s.indexFunds || []).length ? (s.indexFunds.reduce((sum, a) => sum + a.price, 0) / s.indexFunds.length) : 0;
     document.getElementById("if-price").textContent  = indexAvgPrice.toFixed(2);
     document.getElementById("if-shares").textContent = indexShares;
@@ -1072,10 +1326,11 @@
     setChange("if-change", indexAvgHistory);
     renderAssetMarket("if-market-list", s.indexFunds, "shares", "if", "share", tradingLocked);
     renderOverviewHoldings(s);
+    renderOverviewCardBreakdowns(s);
 
     // Bonds — yield curve preview (uses live curve from state)
     const bondsValue = (s.bondHoldings || []).reduce((sum, b) => sum + (b.faceValue || 0), 0);
-    const bondsPL = (s.bondHoldings || []).reduce((sum, b) => sum + (b.couponAccrued || 0), 0);
+    const bondsPL = cumRealized(s, "bonds") + (s.bondHoldings || []).reduce((sum, b) => sum + (b.couponAccrued || 0), 0);
     document.getElementById("bonds-value").textContent = fmt(bondsValue);
     setPlDisplay(document.getElementById("bonds-pl"), bondsPL, "stat-pl");
     updateBondPreview(s);
@@ -1087,7 +1342,7 @@
     const cryptoAvgHistory = averageHistory(s.cryptos, "history");
     const cryptoCoins = (s.cryptos || []).reduce((sum, a) => sum + (a.coins || 0), 0);
     const cryptoValue = (s.cryptos || []).reduce((sum, a) => sum + ((a.coins || 0) * (a.price || 0)), 0);
-    const cryptoPL = (s.cryptos || []).reduce((sum, a) => sum + ((a.coins || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const cryptoPL = cumRealized(s, "cryptos") + unrealizedTrackedPL(s, "cryptos", "coins");
     const cryptoAvgPrice = (s.cryptos || []).length ? (s.cryptos.reduce((sum, a) => sum + a.price, 0) / s.cryptos.length) : 0;
     document.getElementById("crypto-price").textContent = cryptoAvgPrice.toFixed(2);
     document.getElementById("crypto-coins").textContent  = cryptoCoins;
@@ -1101,7 +1356,7 @@
     const stockAvgHistory = averageHistory(s.stocks, "history");
     const stockShares = (s.stocks || []).reduce((sum, a) => sum + (a.shares || 0), 0);
     const stockValue = (s.stocks || []).reduce((sum, a) => sum + ((a.shares || 0) * (a.price || 0)), 0);
-    const stockPL = (s.stocks || []).reduce((sum, a) => sum + ((a.shares || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const stockPL = cumRealized(s, "stocks") + unrealizedTrackedPL(s, "stocks", "shares");
     const stockAvgPrice = (s.stocks || []).length ? (s.stocks.reduce((sum, a) => sum + a.price, 0) / s.stocks.length) : 0;
     document.getElementById("stock-price").textContent = stockAvgPrice.toFixed(2);
     document.getElementById("stock-shares").textContent = stockShares;
@@ -1113,9 +1368,9 @@
 
     // Options
     const optionsAvgHistory = averageHistory(s.options, "history");
-    const optionsContracts = (s.options || []).reduce((sum, a) => sum + (a.contracts || 0), 0);
-    const optionsValue = (s.options || []).reduce((sum, a) => sum + ((a.contracts || 0) * (a.price || 0)), 0);
-    const optionsPL = (s.options || []).reduce((sum, a) => sum + ((a.contracts || 0) * ((a.price || 0) - (a.startPrice || a.price || 0))), 0);
+    const optionsContracts = openOptionHoldings(s).reduce((sum, h) => sum + h.contracts, 0);
+    const optionsValue = openOptionHoldings(s).reduce((sum, lot) => sum + lot.contracts * markOptionHolding(s, lot), 0);
+    const optionsPL = cumRealized(s, "options") + optionsHoldingsUnrealizedPL(s);
     const optionsAvgPrice = (s.options || []).length ? (s.options.reduce((sum, a) => sum + a.price, 0) / s.options.length) : 0;
     const underlyingIndexA = (s.indexFunds || []).find(a => a.id === "spy");
     document.getElementById("options-price").textContent = optionsAvgPrice.toFixed(2);
@@ -1124,9 +1379,13 @@
     document.getElementById("options-value").textContent = fmt(optionsValue);
     setPlDisplay(document.getElementById("options-pl"), optionsPL, "stat-pl");
     setChange("options-change", optionsAvgHistory);
-    renderOptionsChain(s.options, tradingLocked);
-    renderOptionsTicket(s);
+    const spyOnly = (s.indexFunds || []).filter(f => f.id === "spy");
+    const optionStrikeLevels = [...new Set((s.options || []).map(o => o.strike).filter(v => Number.isFinite(v)))].sort((a, b) => a - b);
     renderOptionsPositions(s);
+    renderMarketCards("options-underlying-list", spyOnly, "ifu", "#00ff88", tradingLocked, true, optionStrikeLevels);
+    renderOptionsChain(s, tradingLocked);
+    renderOptionsTicket(s, tradingLocked);
+    syncOptionDteButtons(s);
 
     // Log — only append new entries
     const logEl = document.getElementById("log");
@@ -1140,6 +1399,70 @@
     logEl.scrollTop = logEl.scrollHeight;
 
     renderGraphs(s);
+  }
+
+  function renderOverviewCardBreakdowns(s) {
+    function fill(elId, lines) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      if (!lines.length) {
+        el.innerHTML = `<div class="overview-card-breakdown-empty">No positions.</div>`;
+        return;
+      }
+      el.innerHTML = lines
+        .map(
+          ({ label, qty }) =>
+            `<div class="overview-card-breakdown-line"><span class="overview-card-breakdown-name">${label}</span><span class="overview-card-breakdown-qty">${qty}</span></div>`
+        )
+        .join("");
+    }
+
+    fill(
+      "overview-card-if-breakdown",
+      (s.indexFunds || [])
+        .filter(a => (a.shares || 0) > 0)
+        .map(a => ({ label: a.name, qty: `${a.shares} shares` }))
+    );
+
+    const bondBuckets = new Map();
+    for (const b of s.bondHoldings || []) {
+      const issuer = (b.type || "treasury") === "corporate" ? (b.issuer || "Corporate") : "U.S. Treasury";
+      const key = JSON.stringify([issuer, b.term || 0, b.type || "treasury"]);
+      const prev = bondBuckets.get(key) || { n: 0, face: 0 };
+      prev.n += 1;
+      prev.face += b.faceValue || 0;
+      bondBuckets.set(key, prev);
+    }
+    const bondLines = [...bondBuckets.entries()].map(([key, v]) => {
+      const [issuer, term] = JSON.parse(key);
+      const label = `${issuer} · ${term}yr`;
+      const qty = v.n === 1 ? `${fmt(v.face)} face` : `${v.n} bonds · ${fmt(v.face)} face`;
+      return { label, qty };
+    });
+    bondLines.sort((a, b) => a.label.localeCompare(b.label));
+    fill("overview-card-bonds-breakdown", bondLines);
+
+    fill(
+      "overview-card-crypto-breakdown",
+      (s.cryptos || [])
+        .filter(a => (a.coins || 0) > 0)
+        .map(a => ({ label: a.name, qty: `${a.coins} coins` }))
+    );
+
+    fill(
+      "overview-card-stocks-breakdown",
+      (s.stocks || [])
+        .filter(a => (a.shares || 0) > 0)
+        .map(a => ({ label: a.name, qty: `${a.shares} shares` }))
+    );
+
+    fill(
+      "overview-card-options-breakdown",
+      openOptionHoldings(s).map(lot => ({
+        label: `${lot.name} · K$${lot.strike}`,
+        qty: `${lot.contracts} · exp day ${lot.expiryDay}`,
+      }))
+    );
   }
 
   function renderOverviewHoldings(s) {
@@ -1189,18 +1512,19 @@
         pl,
       });
     });
-    (s.options || []).forEach(a => {
-      const qty = a.contracts || 0;
-      if (qty <= 0) return;
-      const value = qty * (a.price || 0);
-      const pl = value - (a.costBasis || 0);
+    openOptionHoldings(s).forEach(lot => {
+      const mark = markOptionHolding(s, lot);
+      const value = lot.contracts * mark;
+      const plMark = optionLotUnrealizedPLAtMark(s, lot);
+      const plEx = optionLotUnrealizedPLIfExercised(s, lot);
       rows.push({
         type: "Option",
-        name: a.name,
-        qty: `${qty} ctr`,
-        metric: `$${(a.price || 0).toFixed(2)}`,
+        name: lot.name,
+        qty: `${lot.contracts} ctr`,
+        metric: `K $${lot.strike} · ${Math.max(0, lot.expiryDay - s.day)} DTE · exp day ${lot.expiryDay} · paid $${lot.premiumAtPurchase.toFixed(2)}`,
         value,
-        pl,
+        pl: plMark,
+        plExercise: plEx,
       });
     });
     (s.bondHoldings || []).forEach(b => {
@@ -1223,20 +1547,27 @@
       <div class="overview-holdings-header">
         <span>Type</span><span>Asset</span><span>Qty / Term</span><span>Price / Yield</span><span>Value</span><span>P/L</span>
       </div>
-      ${rows.map(r => `
+      ${rows.map(r => {
+        const plSell = r.pl;
+        const plEx = r.plExercise;
+        const plCell = r.type === "Option" && typeof plEx === "number"
+          ? `<span class="overview-opt-pl"><span class="${plSell >= 0 ? "pos" : "neg"}">Sell ${fmtSigned(plSell)}</span><span class="options-pos-pl-hint"><span class="${plEx >= 0 ? "pos" : "neg"}">Exercise ${fmtSigned(plEx)}</span></span></span>`
+          : `<span class="${plSell >= 0 ? "pos" : "neg"}">${fmtSigned(plSell)}</span>`;
+        return `
         <div class="overview-holdings-row">
           <span>${r.type}</span>
           <span class="white">${r.name}</span>
           <span>${r.qty}</span>
           <span>${r.metric}</span>
           <span class="yellow">${fmt(r.value)}</span>
-          <span class="${r.pl >= 0 ? "pos" : "neg"}">${fmtSigned(r.pl)}</span>
+          ${plCell}
         </div>
-      `).join("")}
+      `;
+      }).join("")}
     `;
   }
 
-  function drawChart(canvas, data, color, yAxisEl, xAxisEl, xLabels, showInlineYLabels = false) {
+  function drawChart(canvas, data, color, yAxisEl, xAxisEl, xLabels, showInlineYLabels = false, fixedYMin = null, fixedYMax = null, horizontalLevels = null) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
@@ -1249,9 +1580,16 @@
     ctx.clearRect(0, 0, w, h);
     if (!data || data.length < 2) return;
 
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1;
+    const useFixedY = Number.isFinite(fixedYMin) && Number.isFinite(fixedYMax);
+    let min = useFixedY ? fixedYMin : Math.min(...data);
+    let max = useFixedY ? fixedYMax : Math.max(...data);
+    const levelArr = Array.isArray(horizontalLevels) ? horizontalLevels.filter(v => Number.isFinite(v)) : [];
+    if (!useFixedY && levelArr.length) {
+      min = Math.min(min, ...levelArr);
+      max = Math.max(max, ...levelArr);
+    }
+    if (max - min < 1e-9) max = min + 1e-6;
+    const range = max - min;
     const pad = { t: 4, b: 4 };
 
     // Gridlines (3)
@@ -1262,6 +1600,23 @@
       const y = h - pad.b - level * (h - pad.t - pad.b);
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     });
+
+    // Optional horizontal reference levels (e.g. option strikes on underlying chart)
+    if (!useFixedY && levelArr.length) {
+      const uniq = [...new Set(levelArr)].sort((a, b) => a - b);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      uniq.forEach(strike => {
+        const y = h - pad.b - ((strike - min) / range) * (h - pad.t - pad.b);
+        if (y < pad.t - 1 || y > h - pad.b + 1) return;
+        ctx.strokeStyle = "rgba(255, 170, 51, 0.55)";
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
 
     // Line
     ctx.beginPath();
@@ -1277,21 +1632,25 @@
     // Inline y labels for sparkline-like charts
     if (showInlineYLabels || !yAxisEl) {
       const fmtCompact = v => v >= 1000 ? (v / 1000).toFixed(1) + "k" : v.toFixed(0);
+      const labelMax = max;
+      const labelMin = min;
       ctx.fillStyle = "#666";
       ctx.font = "9px monospace";
       ctx.textAlign = "right";
-      ctx.fillText(fmtCompact(max), Math.max(16, w - 2), 10);
-      ctx.fillText(fmtCompact(min), Math.max(16, w - 2), h - 3);
+      ctx.fillText(fmtCompact(labelMax), Math.max(16, w - 2), 10);
+      ctx.fillText(fmtCompact(labelMin), Math.max(16, w - 2), h - 3);
       ctx.textAlign = "left";
     }
 
     // Y axis labels
     if (yAxisEl) {
       const fmtPrice = v => v >= 1000 ? "$" + (v/1000).toFixed(1) + "k" : "$" + v.toFixed(0);
+      const labelMax = max;
+      const labelMin = min;
       yAxisEl.innerHTML = `
-        <span>${fmtPrice(max)}</span>
-			<span>${fmtPrice((min + max) / 2)}</span>
-			<span>${fmtPrice(min)}</span>`;
+        <span>${fmtPrice(labelMax)}</span>
+			<span>${fmtPrice((labelMin + labelMax) / 2)}</span>
+			<span>${fmtPrice(labelMin)}</span>`;
 			}
 
 			// X axis labels
@@ -1389,7 +1748,7 @@
 				<span>Term</span>
 				<span>Yield</span>
 				<span>Matures</span>
-				<span>Accrued</span>
+				<span>P/L</span>
 				<span></span>
 				<span></span>
 			</div>
@@ -1397,15 +1756,17 @@
 			const daysLeft = b.maturityDay - s.day;
 			const yearsLeft = (daysLeft / 365).toFixed(1);
 			const maturesYr = Math.ceil(b.maturityDay / 365);
+			const bondPl = b.couponAccrued || 0;
+			const bondPlClass = bondPl > 0 ? "pos" : bondPl < 0 ? "neg" : "";
 			return `
 			<div class="bond-holdings-row">
 				<span class="pos">${fmt(b.faceValue)}</span>
 				<span>${b.term}yr</span>
 				<span>${(b.yield * 100).toFixed(2)}%</span>
 				<span>Yr ${maturesYr}</span>
-				<span style="color:#66aaff">${fmt(b.couponAccrued)}</span>
+				<span class="${bondPlClass}">${fmtSigned(bondPl)}</span>
 				<span style="color:#444">${yearsLeft}yr left · ${(b.type || "treasury") === "corporate" ? (b.issuer || "Corporate") : "U.S. Treasury"}</span>
-				<button class="btn danger" style="padding:3px 8px;font-size:0.75em;"
+				<button class="btn btn-trade-sell btn-trade-compact"
 				  onclick="window._sellBond('${b.id}')">Sell</button>
 			</div>`;
 			}).join("")}
@@ -1431,7 +1792,7 @@
               <span>${o.term}yr</span>
               <span class="pos">${(o.yield * 100).toFixed(2)}%</span>
               <span>${fmt(o.faceValue)}</span>
-              <button class="btn" onclick="window._buyCorporateBond('${o.id}')">Buy</button>
+              <button class="btn btn-trade-buy btn-trade-compact" onclick="window._buyCorporateBond('${o.id}')">Buy</button>
             </div>
           `).join("")}
         `;
@@ -1451,18 +1812,27 @@
 				<span>Qty</span>
 				<span>Price</span>
 				<span>Value</span>
+				<span>P/L</span>
 			</div>
-			${holdings.map(a => `
+			${holdings.map(a => {
+			const qty = a[qtyKey] || 0;
+			const mkt = qty * (a.price || 0);
+			const basis = a.costBasis || 0;
+			const pl = basis > 0 ? mkt - basis : qty * ((a.price || 0) - (a.startPrice ?? a.price ?? 0));
+			const plClass = pl > 0 ? "pos" : pl < 0 ? "neg" : "";
+			return `
 			<div class="asset-holdings-row">
 				<span class="white">${a.name}</span>
-				<span>${a[qtyKey]}</span>
+				<span>${qty}</span>
 				<span>$${a.price.toFixed(2)}</span>
-				<span class="yellow">${fmt(a[qtyKey] * a.price)}</span>
-			</div>`).join("")}
+				<span class="yellow">${fmt(mkt)}</span>
+				<span class="${plClass}">${fmtSigned(pl)}</span>
+			</div>`;
+			}).join("")}
 			`;
 			}
 
-			function renderAssetMarket(listElId, assets, qtyKey, prefix, unitLabel, isTradeLocked = false) {
+			function renderMarketCards(listElId, assets, prefix, chartColor, isTradeLocked = false, embedCardChart = true, chartHorizontalLevels = null) {
 			const el = document.getElementById(listElId);
 			if (!el) return;
 			const list = assets || [];
@@ -1471,255 +1841,179 @@
 			return;
 			}
 			el.innerHTML = `
-			<div class="asset-market-header">
-				<span>Asset</span>
-				<span>Price</span>
-				<span>Held</span>
-				<span>Value</span>
-				<span>Avg Cost</span>
-				<span>P/L</span>
-				<span>Qty</span>
-				<span></span>
-				<span></span>
-			</div>
+			<div class="market-grid">
 			${list.map(a => {
 				const amountId = `${prefix}-amount-${a.id}`;
-        const qty = Math.max(1, tradeQtyByInputId[amountId] || 1);
-        const held = a[qtyKey] || 0;
-        const value = held * a.price;
-        const avgCost = held > 0 ? (a.costBasis || 0) / held : 0;
-        const pl = value - (a.costBasis || 0);
-        const plClass = pl >= 0 ? "pos" : "neg";
+				const qty = Math.max(1, tradeQtyByInputId[amountId] || 1);
+				const sparkId = `${prefix}-spark-${a.id}`;
+				const chartEl = embedCardChart
+					? `<canvas id="${sparkId}" class="spark market-card__chart"></canvas>`
+					: "";
 				return `
-				<div class="asset-market-row">
-					<span class="white">${a.name}</span>
-					<span>$${a.price.toFixed(2)}</span>
-					<span>${held}</span>
-					<span class="yellow">${fmt(value)}</span>
-					<span>${held > 0 ? `$${avgCost.toFixed(2)}` : "—"}</span>
-					<span class="market-pl ${plClass}">${held > 0 ? fmtSigned(pl) : "—"}</span>
-					<div class="amount-stepper">
+				<div class="market-card">
+					<div class="market-card__title">${a.name}</div>
+					<div class="market-card__trade-row">
+						<div class="btn-row">
+						<button class="btn btn-trade-buy" onclick="window._tradeAsset('${prefix}','buy','${a.id}')" ${isTradeLocked ? 'title="Auto will stop on buy."' : ""}>Buy</button>
+						<button class="btn btn-trade-sell" onclick="window._tradeAsset('${prefix}','sell','${a.id}')">Sell</button>
+						</div>
+						<div class="amount-stepper">
 						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', -5)">-5</button>
+						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', -1)">-1</button>
 						<input id="${amountId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${amountId}', this.value)">
+						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', 1)">+1</button>
 						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', 5)">+5</button>
+						</div>
+						<span class="market-card__price">$${a.price.toFixed(2)}</span>
 					</div>
-					<button class="btn" onclick="window._tradeAsset('${prefix}','buy','${a.id}')" ${isTradeLocked ? 'title="Auto will stop on buy."' : ""}>Buy</button>
-					<button class="btn danger" onclick="window._tradeAsset('${prefix}','sell','${a.id}')">Sell</button>
+					${chartEl}
 				</div>`;
 			}).join("")}
+			</div>
 			`;
+			if (embedCardChart) {
+			const strikeLevels = prefix === "ifu" && Array.isArray(chartHorizontalLevels) ? chartHorizontalLevels : null;
+			list.forEach(a => {
+				const sparkId = `${prefix}-spark-${a.id}`;
+				drawChart(
+					document.getElementById(sparkId),
+					trimDailyChart(a.history),
+					chartColor,
+					null,
+					null,
+					null,
+					true,
+					null,
+					null,
+					strikeLevels
+				);
+			});
+			}
+			}
+
+			function renderAssetMarket(listElId, assets, qtyKey, prefix, unitLabel, isTradeLocked = false) {
+			renderMarketCards(listElId, assets, prefix, "#00ff88", isTradeLocked, false);
 			}
 
 			function renderStockCards(stocks, isTradeLocked = false) {
-			const el = document.getElementById("stock-market-list");
-			if (!el) return;
-			const list = stocks || [];
-			if (!list.length) {
-			el.innerHTML = `<div style="color:#444;font-size:0.8em;">No assets available.</div>`;
-			return;
-			}
-			el.innerHTML = `
-			<div class="stocks-grid">
-			${list.map(a => {
-				const amountId = `stock-amount-${a.id}`;
-				const qty = Math.max(1, tradeQtyByInputId[amountId] || 1);
-				const held = a.shares || 0;
-				const value = held * a.price;
-				const avgCost = held > 0 ? (a.costBasis || 0) / held : 0;
-				const pl = value - (a.costBasis || 0);
-				const plClass = pl >= 0 ? "pos" : "neg";
-				const sparkId = `stock-spark-${a.id}`;
-				return `
-				<div class="stock-card">
-					<div class="stock-card-title">${a.name}</div>
-					<div class="stock-card-stats">
-						<div>Price</div><div class="val">$${a.price.toFixed(2)}</div>
-						<div>Held</div><div class="val">${held}</div>
-						<div>Value</div><div class="val yellow">${fmt(value)}</div>
-						<div>Avg Cost</div><div class="val">${held > 0 ? `$${avgCost.toFixed(2)}` : "—"}</div>
-						<div>P/L</div><div class="val pl ${plClass}">${held > 0 ? fmtSigned(pl) : "—"}</div>
-					</div>
-					<canvas id="${sparkId}" class="spark stock-mini-chart"></canvas>
-					<div class="amount-stepper">
-						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', -5)">-5</button>
-						<input id="${amountId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${amountId}', this.value)">
-						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', 5)">+5</button>
-					</div>
-					<div class="btn-row">
-						<button class="btn" onclick="window._tradeAsset('stock','buy','${a.id}')" ${isTradeLocked ? 'title="Auto will stop on buy."' : ""}>Buy</button>
-						<button class="btn danger" onclick="window._tradeAsset('stock','sell','${a.id}')">Sell</button>
-					</div>
-				</div>`;
-			}).join("")}
-			</div>
-			`;
-			list.forEach(a => {
-				const sparkId = `stock-spark-${a.id}`;
-				drawChart(document.getElementById(sparkId), a.history || [], "#66aaff", null, null, null, true);
-			});
+			renderMarketCards("stock-market-list", stocks, "stock", "#66aaff", isTradeLocked);
 			}
 
 			function renderCryptoCards(cryptos, isTradeLocked = false) {
-			const el = document.getElementById("crypto-market-list");
-			if (!el) return;
-			const list = cryptos || [];
-			if (!list.length) {
-			el.innerHTML = `<div style="color:#444;font-size:0.8em;">No assets available.</div>`;
-			return;
-			}
-			el.innerHTML = `
-			<div class="crypto-grid">
-			${list.map(a => {
-				const amountId = `crypto-amount-${a.id}`;
-				const qty = Math.max(1, tradeQtyByInputId[amountId] || 1);
-				const held = a.coins || 0;
-				const value = held * a.price;
-				const avgCost = held > 0 ? (a.costBasis || 0) / held : 0;
-				const pl = value - (a.costBasis || 0);
-				const plClass = pl >= 0 ? "pos" : "neg";
-				const sparkId = `crypto-spark-${a.id}`;
-				return `
-				<div class="stock-card crypto-card">
-					<div class="stock-card-title">${a.name}</div>
-					<div class="stock-card-stats">
-						<div>Price</div><div class="val">$${a.price.toFixed(2)}</div>
-						<div>Held</div><div class="val">${held}</div>
-						<div>Value</div><div class="val yellow">${fmt(value)}</div>
-						<div>Avg Cost</div><div class="val">${held > 0 ? `$${avgCost.toFixed(2)}` : "—"}</div>
-						<div>P/L</div><div class="val pl ${plClass}">${held > 0 ? fmtSigned(pl) : "—"}</div>
-					</div>
-					<canvas id="${sparkId}" class="spark crypto-mini-chart"></canvas>
-					<div class="amount-stepper">
-						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', -5)">-5</button>
-						<input id="${amountId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${amountId}', this.value)">
-						<button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', 5)">+5</button>
-					</div>
-					<div class="btn-row">
-						<button class="btn" onclick="window._tradeAsset('crypto','buy','${a.id}')" ${isTradeLocked ? 'title="Auto will stop on buy."' : ""}>Buy</button>
-						<button class="btn danger" onclick="window._tradeAsset('crypto','sell','${a.id}')">Sell</button>
-					</div>
-				</div>`;
-			}).join("")}
-			</div>
-			`;
-			list.forEach(a => {
-				const sparkId = `crypto-spark-${a.id}`;
-				drawChart(document.getElementById(sparkId), a.history || [], "#ff66cc", null, null, null, true);
-			});
+			renderMarketCards("crypto-market-list", cryptos, "crypto", "#ff66cc", isTradeLocked);
 			}
 
-			function renderOptionsChain(options, isTradeLocked = false) {
-			const el = document.getElementById("options-market-list");
-			if (!el) return;
-			const list = options || [];
-			if (!list.length) {
-			el.innerHTML = `<div style="color:#444;font-size:0.8em;">No options available.</div>`;
-			return;
-			}
-      const grouped = {};
-      list.forEach(opt => {
-        const key = `${opt.underlyingId}-${opt.strike}`;
-        if (!grouped[key]) grouped[key] = { strike: opt.strike, put: null, call: null };
-        if (opt.optionType === "put") grouped[key].put = opt;
-        if (opt.optionType === "call") grouped[key].call = opt;
-      });
-      const rows = Object.values(grouped).sort((a, b) => a.strike - b.strike);
+      function syncOptionDteButtons(s) {
+        const wrap = document.getElementById("options-dte-toggle");
+        if (!wrap) return;
+        const cur = normalizeOptionMarketDte(s.optionMarketDte);
+        wrap.querySelectorAll(".options-dte-btn").forEach(btn => {
+          const d = parseInt(btn.getAttribute("data-option-dte"), 10);
+          btn.classList.toggle("active", d === cur);
+        });
+      }
 
-      const sideCell = (opt) => {
-        if (!opt) {
-          return `
-            <div class="options-side">
-              <span class="options-side-muted">—</span>
-              <span class="options-side-muted">—</span>
-              <span class="options-side-muted">—</span>
-              <span class="options-side-muted">—</span>
-              <span class="options-side-muted">—</span>
-              <span></span>
-              <span></span>
-            </div>`;
-        }
-        const qtyKey = "contracts";
-        const amountId = `options-amount-${opt.id}`;
-        const sparkId = `options-spark-${opt.id}`;
-        const qty = Math.max(1, tradeQtyByInputId[amountId] || 1);
-        const name = opt.name.replace("SPY ", "");
-        const selectedClass = opt.id === selectedOptionId ? " selected" : "";
-        return `
+			function renderOptionsChain(s, isTradeLocked = false) {
+				const el = document.getElementById("options-market-list");
+				if (!el) return;
+				const list = s.options || [];
+				const underlying = (s.indexFunds || []).find(f => f.id === "spy");
+				const uPx = underlying?.price ?? 0;
+				if (!list.length) {
+					el.innerHTML = `<div style="color:#444;font-size:0.8em;">No options available.</div>`;
+					return;
+				}
+				if (selectedOptionId && !list.some(o => o.id === selectedOptionId)) selectedOptionId = null;
+				if (!selectedOptionId && list.length) selectedOptionId = list[0].id;
+
+				const grouped = {};
+				list.forEach(opt => {
+					const key = `${opt.underlyingId}-${opt.strike}`;
+					if (!grouped[key]) grouped[key] = { strike: opt.strike, put: null, call: null };
+					if (opt.optionType === "put") grouped[key].put = opt;
+					if (opt.optionType === "call") grouped[key].call = opt;
+				});
+				const rows = Object.values(grouped).sort((a, b) => a.strike - b.strike);
+				let nearestStrike = rows[0]?.strike ?? 0;
+				let bestD = Infinity;
+				for (const r of rows) {
+					const d = Math.abs(r.strike - uPx);
+					if (d < bestD) {
+						bestD = d;
+						nearestStrike = r.strike;
+					}
+				}
+
+				const sideCell = opt => {
+					if (!opt) {
+						return `<div class="options-side options-side-empty" aria-hidden="true"><span class="options-side-muted">—</span></div>`;
+					}
+					const name = opt.name;
+					const selectedClass = opt.id === selectedOptionId ? " selected" : "";
+					const dte = normalizeOptionMarketDte(s.optionMarketDte);
+					return `
           <div class="options-side${selectedClass}" data-option-id="${opt.id}">
-            <span class="white options-side-name">${name}</span>
-            <span class="options-side-price">$${opt.price.toFixed(2)}</span>
-            <span class="options-side-held">${opt[qtyKey]} held</span>
-            <canvas id="${sparkId}" class="row-spark options-side-chart"></canvas>
-            <div class="amount-stepper options-side-qty">
-              <button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', -5)">-5</button>
-              <input id="${amountId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${amountId}', this.value)">
-              <button class="btn amount-step-btn" onclick="window._bumpAmount('${amountId}', 5)">+5</button>
+            <div class="options-side-name">
+              <div class="options-leg-title-row">
+                <span class="white">${name}</span>
+                <span class="options-side-dte">DTE ${dte}</span>
+              </div>
             </div>
-            <div class="options-side-actions">
-              <button class="btn" onclick="window._tradeAsset('options','buy','${opt.id}')" ${isTradeLocked ? 'title="Auto will stop on buy."' : ""}>Buy</button>
-              <button class="btn danger" onclick="window._tradeAsset('options','sell','${opt.id}')">Sell</button>
+            <div class="options-side-premium">
+              <span class="prem-val">$${opt.price.toFixed(2)}</span>
             </div>
           </div>`;
-      };
+				};
 
-      if (!selectedOptionId && list.length) selectedOptionId = list[0].id;
-
-			el.innerHTML = `
+				el.innerHTML = `
       <div class="options-chain-wrap">
         <div class="options-chain-header">
-          <span style="text-align:center;">Put</span>
+          <span style="text-align:center;">Puts</span>
           <span class="options-strike">Strike</span>
-          <span style="text-align:center;">Call</span>
+          <span style="text-align:center;">Calls</span>
         </div>
-        ${rows.map(r => `
-          <div class="options-chain-row">
+        ${rows
+					.map(r => {
+						const rowAtm = r.strike === nearestStrike ? " options-chain-row-atm" : "";
+						return `
+          <div class="options-chain-row${rowAtm}">
             ${sideCell(r.put)}
             <span class="options-strike">${r.strike}</span>
             ${sideCell(r.call)}
-          </div>
-        `).join("")}
+          </div>`;
+					})
+					.join("")}
       </div>`;
 
-      const trimmedSparkHistory = (history, canvas) => {
-        const series = history || [];
-        const width = canvas?.clientWidth || 120;
-        const maxPoints = Math.max(12, Math.min(48, Math.floor(width * 0.6)));
-        return series.length > maxPoints ? series.slice(-maxPoints) : series;
-      };
-
-      list.forEach(opt => {
-        const sparkId = `options-spark-${opt.id}`;
-        const sparkCanvas = document.getElementById(sparkId);
-        drawChart(sparkCanvas, trimmedSparkHistory(opt.history, sparkCanvas), "#ffaa33", null, null, null, true);
-      });
-
-      const selectOptionById = id => {
-        selectedOptionId = id;
-        render(state);
-      };
-      list.forEach(opt => {
-        const input = document.getElementById(`options-amount-${opt.id}`);
-        if (input) {
-          input.addEventListener("focus", () => selectOptionById(opt.id));
-          input.addEventListener("click", () => selectOptionById(opt.id));
-        }
-        const spark = document.getElementById(`options-spark-${opt.id}`);
-        if (spark) spark.addEventListener("click", () => selectOptionById(opt.id));
-      });
-      el.querySelectorAll(".options-side[data-option-id]").forEach(side => {
-        side.addEventListener("click", () => {
-          const optionId = side.getAttribute("data-option-id");
-          if (optionId) selectOptionById(optionId);
-        });
-      });
+				const selectOptionById = id => {
+					selectedOptionId = id;
+					render(state);
+				};
+				el.querySelectorAll(".options-side[data-option-id]").forEach(side => {
+					side.addEventListener("click", () => {
+						const optionId = side.getAttribute("data-option-id");
+						if (optionId) selectOptionById(optionId);
+					});
+				});
 			}
 
-      function renderOptionsTicket(s) {
+      function formatLastOptionRealizedHtml(s) {
+        const lr = s.lastOptionRealized;
+        if (!lr || typeof lr.pl !== "number") return "";
+        const verb = lr.kind === "exercise" ? "Exercise (intrinsic)" : "Sell (mark)";
+        const cls = lr.pl >= 0 ? "pos" : "neg";
+        const plStr = (lr.pl >= 0 ? "+" : "−") + "$" + Math.abs(lr.pl).toFixed(2);
+        const lab = String(lr.label || "").replace(/</g, "");
+        return `<div class="options-last-realized"><span class="k">Last realized</span><span class="v ${cls}">${verb} · ${lr.contracts} ctr · ${lab} — P/L ${plStr}</span></div>`;
+      }
+
+      function renderOptionsTicket(s, isTradeLocked = false) {
         const el = document.getElementById("options-ticket");
         if (!el) return;
+        const lrHtml = formatLastOptionRealizedHtml(s);
         const options = s.options || [];
         if (!options.length) {
-          el.innerHTML = `<div style="color:#444;font-size:0.8em;">No options available.</div>`;
+          el.innerHTML = lrHtml + `<div style="color:#444;font-size:0.8em;">No options available.</div>`;
           return;
         }
         const selected = options.find(o => o.id === selectedOptionId) || options[0];
@@ -1727,14 +2021,10 @@
         const qtyInputId = `options-amount-${selected.id}`;
         const qty = Math.max(1, tradeQtyByInputId[qtyInputId] || 1);
         const underlying = (s.indexFunds || []).find(f => f.id === selected.underlyingId);
-        const breakEven = selected.optionType === "call"
-          ? selected.strike + selected.price
-          : Math.max(0, selected.strike - selected.price);
+        const openLots = openOptionHoldings(s).filter(h => h.optionId === selected.id);
+        const held = openLots.reduce((sum, h) => sum + h.contracts, 0);
         const estCost = qty * selected.price;
-        const held = selected.contracts || 0;
-        const avgCost = held > 0 ? (selected.costBasis || 0) / held : 0;
-        const unrealized = (held * selected.price) - (selected.costBasis || 0);
-        const plClass = unrealized >= 0 ? "pos" : "neg";
+        const buyTitle = isTradeLocked ? ' title="Auto will stop on buy."' : "";
 
         el.innerHTML = `
           <div class="options-ticket-grid">
@@ -1742,39 +2032,74 @@
             <div class="options-ticket-item"><span class="k">Underlying</span><span class="v">${underlying?.name || selected.underlyingId} @ $${(underlying?.price || 0).toFixed(2)}</span></div>
             <div class="options-ticket-item"><span class="k">Strike</span><span class="v">$${selected.strike}</span></div>
             <div class="options-ticket-item"><span class="k">Premium</span><span class="v">$${selected.price.toFixed(2)} / contract</span></div>
-            <div class="options-ticket-item"><span class="k">Break-even</span><span class="v">$${breakEven.toFixed(2)}</span></div>
-            <div class="options-ticket-item"><span class="k">Order Estimate</span><span class="v">${qty} × $${selected.price.toFixed(2)} = ${fmt(estCost)}</span></div>
+            <div class="options-ticket-item"><span class="k">Listed tenor</span><span class="v">${normalizeOptionMarketDte(s.optionMarketDte)} days (new buys)</span></div>
+            <div class="options-ticket-item"><span class="k">Order estimate</span><span class="v">${qty} × $${selected.price.toFixed(2)} = ${fmt(estCost)}</span></div>
             <div class="options-ticket-item"><span class="k">Held</span><span class="v">${held} contracts</span></div>
-            <div class="options-ticket-item"><span class="k">Avg Cost</span><span class="v">${held > 0 ? `$${avgCost.toFixed(2)}` : "—"}</span></div>
-            <div class="options-ticket-item"><span class="k">Unrealized P/L</span><span class="v ${plClass}">${held > 0 ? fmtSigned(unrealized) : "—"}</span></div>
           </div>
+          <div class="options-ticket-trade">
+            <span class="k">Quantity</span>
+            <div class="amount-stepper options-ticket-stepper">
+              <button type="button" class="btn amount-step-btn" onclick="window._bumpAmount('${qtyInputId}', -5)">-5</button>
+              <button type="button" class="btn amount-step-btn" onclick="window._bumpAmount('${qtyInputId}', -1)">-1</button>
+              <input id="${qtyInputId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${qtyInputId}', this.value)">
+              <button type="button" class="btn amount-step-btn" onclick="window._bumpAmount('${qtyInputId}', 1)">+1</button>
+              <button type="button" class="btn amount-step-btn" onclick="window._bumpAmount('${qtyInputId}', 5)">+5</button>
+            </div>
+            <div class="options-ticket-actions">
+              <button type="button" class="btn btn-trade-buy" onclick="window._tradeAsset('options','buy','${selected.id}')"${buyTitle}>Buy</button>
+              <button type="button" class="btn btn-trade-sell" onclick="window._tradeAsset('options','sell','${selected.id}')">Sell</button>
+            </div>
+          </div>
+          ${lrHtml}
         `;
+
+        const selectOptionById = id => {
+          selectedOptionId = id;
+          render(state);
+        };
+        const selectedId = selected.id;
+        const qtyInput = document.getElementById(qtyInputId);
+        if (qtyInput) {
+          qtyInput.addEventListener("focus", () => selectOptionById(selectedId));
+          qtyInput.addEventListener("click", () => selectOptionById(selectedId));
+        }
       }
 
       function renderOptionsPositions(s) {
         const el = document.getElementById("options-holdings-list");
         if (!el) return;
-        const holdings = (s.options || []).filter(o => (o.contracts || 0) > 0);
+        const holdings = openOptionHoldings(s);
         if (!holdings.length) {
           el.innerHTML = `<div style="color:#444;font-size:0.8em;">No options holdings.</div>`;
           return;
         }
         el.innerHTML = `
           <div class="options-pos-header">
-            <span>Contract</span><span>Type</span><span>Strike</span><span>Held</span><span>Price</span><span>P/L</span><span></span>
+            <span>Contract</span><span>Type</span><span>Strike</span><span>Exp</span><span>DTE</span><span>Paid</span><span>Qty</span><span>Mark</span><span>P/L @ mark</span><span>P/L exercise</span><span>Actions</span>
           </div>
-          ${holdings.map(o => {
-            const pl = (o.contracts * o.price) - (o.costBasis || 0);
-            const plClass = pl >= 0 ? "pos" : "neg";
+          ${holdings.map(h => {
+            const mark = markOptionHolding(s, h);
+            const plSell = optionLotUnrealizedPLAtMark(s, h);
+            const plEx = optionLotUnrealizedPLIfExercised(s, h);
+            const sellClass = plSell >= 0 ? "pos" : "neg";
+            const exClass = plEx >= 0 ? "pos" : "neg";
+            const dte = Math.max(0, h.expiryDay - s.day);
             return `
               <div class="options-pos-row">
-                <span class="white">${o.name}</span>
-                <span>${o.optionType.toUpperCase()}</span>
-                <span>$${o.strike}</span>
-                <span>${o.contracts}</span>
-                <span>$${o.price.toFixed(2)}</span>
-                <span class="${plClass}">${fmtSigned(pl)}</span>
-                <button class="btn danger" style="padding:3px 8px;font-size:0.75em;" onclick="window._tradeAsset('options','sell','${o.id}')">Sell 1</button>
+                <span class="white">${h.name}</span>
+                <span>${h.optionType.toUpperCase()}</span>
+                <span>$${h.strike}</span>
+                <span>${h.expiryDay}</span>
+                <span>${dte}</span>
+                <span>$${h.premiumAtPurchase.toFixed(2)}</span>
+                <span>${h.contracts}</span>
+                <span>$${mark.toFixed(2)}</span>
+                <span class="${sellClass}" title="If you sell the full lot at the mark">${fmtSigned(plSell)}</span>
+                <span class="${exClass}" title="If you exercised the full lot at intrinsic (cash settle)">${fmtSigned(plEx)}</span>
+                <div class="options-pos-actions">
+                  <button type="button" class="btn btn-trade-buy btn-trade-compact" title="Settle 1 contract at intrinsic (cash)" onclick="window._exerciseOptionLot('${h.id}')">Exercise</button>
+                  <button type="button" class="btn btn-trade-sell btn-trade-compact" title="Sell 1 contract at mark" onclick="window._sellOptionLot('${h.id}')">Sell</button>
+                </div>
               </div>
             `;
           }).join("")}
@@ -1791,13 +2116,28 @@
         render(state);
       };
 
+			window._sellOptionLot = (holdingId) => {
+				state = sellOptionLot(state, holdingId, 1);
+				render(state);
+			};
+
+			window._setOptionMarketDte = (dte) => {
+				state = setOptionMarketDte(state, params, dte);
+				render(state);
+			};
+
+			window._exerciseOptionLot = (holdingId) => {
+				state = exerciseOptionLot(state, holdingId, 1);
+				render(state);
+			};
+
 			window._tradeAsset = (prefix, mode, id) => {
 			const amountId = `${prefix}-amount-${id}`;
 			const qtyEl = document.getElementById(amountId);
 			const qty = Math.max(1, parseInt(qtyEl?.value) || 1);
       tradeQtyByInputId[amountId] = qty;
       if (prefix === "options") selectedOptionId = id;
-			if (prefix === "if") {
+			if (prefix === "if" || prefix === "ifu") {
 				state = mode === "buy" ? buyIndexFund(state, id, qty) : sellIndexFund(state, id, qty);
 			} else if (prefix === "crypto") {
 				state = mode === "buy" ? buyCrypto(state, id, qty) : sellCrypto(state, id, qty);
@@ -1840,16 +2180,22 @@
 			}
 
 			function renderGraphs(s) {
-			const indexHistory = averageHistory(s.indexFunds, "history");
+			const indexHistoryFull = averageHistory(s.indexFunds, "history");
 			const monthly = averageHistory(s.indexFunds, "monthlyHistory");
 			const useMonthly = indexChartMode === "monthly";
-			const series = useMonthly ? monthly : indexHistory;
-			const xLabels = useMonthly ? monthlyXLabels(monthly, s.day) : dailyXLabels(indexHistory, s.day);
+			const indexHistoryDaily = trimDailyChart(indexHistoryFull);
+			const series = useMonthly ? monthly : indexHistoryDaily;
+			const xLabels = useMonthly ? monthlyXLabels(monthly, s.day) : dailyXLabels(indexHistoryDaily, s.day);
 			drawChart(
 			document.getElementById("price-graph"), series, "#00ff88",
 			document.getElementById("if-yaxis"), document.getElementById("if-xaxis"), xLabels
 			);
-			drawChart(document.getElementById("networth-graph"), s.netWorthHistory,   "#ffcc00", null, null, null);
+			const nwHistory = s.netWorthHistory || [];
+			// Daily: last 365 in-game days. Monthly: full history (compressed along the x-axis).
+			const nwSeries = netWorthChartMode === "monthly" ? nwHistory : trimDailyChart(nwHistory);
+			const nw = netWorth(s);
+			const nwYMax = Math.max(50000, nw + 0.1 * nw);
+			drawChart(document.getElementById("networth-graph"), nwSeries, "#ffcc00", null, null, null, false, 0, nwYMax);
 			drawYieldCurve(s);
 			}
 
@@ -1861,6 +2207,33 @@
 				if (state.day === prevDay) break;
 			}
 			render(state);
+			}
+
+			function setAutoAdvance(on) {
+				const cb = document.getElementById("auto-advance-toggle");
+				if (autoAdvanceTimerId !== null) {
+					clearInterval(autoAdvanceTimerId);
+					autoAdvanceTimerId = null;
+				}
+				if (cb) cb.checked = !!on;
+				if (!on) return;
+				if (state.day >= state.maxDays) {
+					if (cb) cb.checked = false;
+					return;
+				}
+				const ms = getAutoAdvanceIntervalMs();
+				autoAdvanceTimerId = setInterval(() => {
+					if (state.day >= state.maxDays) {
+						setAutoAdvance(false);
+						return;
+					}
+					const prevDay = state.day;
+					state = nextDay(state, params);
+					render(state);
+					if (state.day === prevDay || state.day >= state.maxDays) {
+						setAutoAdvance(false);
+					}
+				}, ms);
 			}
 
 			document.getElementById("day-btn").onclick         = () => { state = nextDay(state, params); render(state); };
@@ -1887,17 +2260,41 @@
 				document.getElementById("if-chart-daily-btn").classList.remove("active");
 				renderGraphs(state);
 			};
+			document.getElementById("nw-chart-daily-btn").onclick = () => {
+				netWorthChartMode = "daily";
+				document.getElementById("nw-chart-daily-btn").classList.add("active");
+				document.getElementById("nw-chart-monthly-btn").classList.remove("active");
+				renderGraphs(state);
+			};
+			document.getElementById("nw-chart-monthly-btn").onclick = () => {
+				netWorthChartMode = "monthly";
+				document.getElementById("nw-chart-monthly-btn").classList.add("active");
+				document.getElementById("nw-chart-daily-btn").classList.remove("active");
+				renderGraphs(state);
+			};
 
 			// Bond preview updates live
 			document.getElementById("bond-term").addEventListener("change", () => updateBondPreview(state));
 			document.getElementById("bond-face-value").addEventListener("input", () => updateBondPreview(state));
+			document.getElementById("auto-advance-toggle").addEventListener("change", (e) => {
+				setAutoAdvance(e.target.checked);
+			});
+			document.getElementById("auto-advance-interval-sec").addEventListener("change", () => {
+				const el = document.getElementById("auto-advance-interval-sec");
+				if (!el) return;
+				el.value = String(clampAutoAdvanceSeconds(parseInt(el.value, 10)));
+				const cb = document.getElementById("auto-advance-toggle");
+				if (cb?.checked) setAutoAdvance(true);
+			});
 			document.getElementById("reset-btn").onclick       = () => {
+			setAutoAdvance(false);
 			state = { ...newState(params), log: [{ msg: "New run started.", type: "info", day: 1 }] };
 			document.getElementById("log").innerHTML = "";
 			renderedLogCount = 0;
 			render(state);
 			};
 			document.getElementById("dbg-apply-btn").onclick   = () => {
+			setAutoAdvance(false);
 			params = readParams();
 			state = { ...newState(params), log: [{ msg: `New run started with custom params.`, type: "info", day: 1 }] };
 			document.getElementById("log").innerHTML = "";
