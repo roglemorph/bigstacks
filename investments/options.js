@@ -1,11 +1,12 @@
 import { appendLog, fmt, fmtSignedMoney2, randn, addCumulativeRealizedPL } from "./shared.js";
+import { UNLOCK_COST_OPTIONS } from "./marketUnlock.js";
 
 /** Default / legacy listed-tenor when `optionMarketDte` is missing (older saves). */
 export const MARKET_OPTION_DTE = 30;
 /** Allowed tenors for new trades and listed chain (toggle in UI). */
-export const OPTION_MARKET_DTE_CHOICES = [7, 30, 90];
-/** Longest tenor — used to scale time value in listed-option repricing across 7/30/90. */
-export const OPTION_REFERENCE_DTE = 90;
+export const OPTION_MARKET_DTE_CHOICES = [7, 30, 90, 300];
+/** Longest tenor — used to scale time value in listed-option repricing across listed DTE choices. */
+export const OPTION_REFERENCE_DTE = 300;
 /** Each option contract controls this many underlying index "shares" for premium and settlement. */
 export const OPTION_SHARES_PER_CONTRACT = 100;
 
@@ -50,6 +51,7 @@ export function buildInitialListedOptions(strikes, baseUnderlying, marketDte = M
     strike: strikes[opt.strikeRef] ?? baseUnderlying,
     price: opt.startPrice,
     history: [opt.startPrice],
+    monthlyHistory: [opt.startPrice],
     daysToExpiry: dte,
   }));
 }
@@ -126,6 +128,9 @@ export function optionsHoldingsUnrealizedPL(state) {
 }
 
 export function buyOption(state, assetId, qty) {
+  if (!state.unlockedOptions) {
+    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+  }
   const list = state.options || [];
   const asset = list.find(a => a.id === assetId);
   if (!asset) return appendLog(state, "Option not found.", "bad");
@@ -159,22 +164,31 @@ export function buyOption(state, assetId, qty) {
   );
 }
 
-/** Sell contracts FIFO across open lots for this listed option id. */
+/** Sell contracts HIFO across open lots for this listed option id. */
 export function sellOption(state, assetId, qty) {
-  const sellCount = Math.max(1, parseInt(qty, 10) || 1);
-  let remaining = sellCount;
+  if (!state.unlockedOptions) {
+    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+  }
+  const requested = Math.max(1, parseInt(qty, 10) || 1);
+  let remaining = requested;
   const day = state.day;
   let cash = state.cash;
   const holdings = [...(state.optionHoldings || [])];
   const openIdx = holdings
     .map((h, i) => ({ h, i }))
     .filter(({ h }) => h.optionId === assetId && day < h.expiryDay)
-    .sort((a, b) => a.h.purchaseDay - b.h.purchaseDay || a.i - b.i);
+    .sort((a, b) => {
+      const costDiff = (b.h.premiumAtPurchase ?? 0) - (a.h.premiumAtPurchase ?? 0);
+      if (costDiff !== 0) return costDiff;
+      return (b.h.purchaseDay ?? 0) - (a.h.purchaseDay ?? 0) || b.i - a.i;
+    });
 
   const totalContracts = openIdx.reduce((s, { h }) => s + h.contracts, 0);
-  if (totalContracts < remaining) {
-    return appendLog(state, `Only have ${totalContracts} open contract(s) for that series.`, "bad");
+  if (totalContracts <= 0) {
+    return appendLog(state, "No open contracts to sell for that series.", "bad");
   }
+  if (remaining > totalContracts) remaining = totalContracts;
+  const sellCount = remaining;
 
   const list = state.options || [];
   const quote = list.find(a => a.id === assetId);
@@ -197,9 +211,10 @@ export function sellOption(state, assetId, qty) {
   cash += proceeds;
   const next = addCumulativeRealizedPL({ ...state, cash, optionHoldings: nextHoldings }, "options", totalPl);
   const avgMark = sellCount > 0 ? proceeds / sellCount : 0;
+  const partialNote = sellCount < requested ? ` (capped at ${sellCount} held)` : "";
   const logged = appendLog(
     next,
-    `Sold ${sellCount} ${quote?.name || assetId} contract(s) at mark (avg $${avgMark.toFixed(2)} / contract), P/L ${fmtSignedMoney2(totalPl)}.`,
+    `Sold ${sellCount} ${quote?.name || assetId} contract(s) at mark (avg $${avgMark.toFixed(2)} / contract), P/L ${fmtSignedMoney2(totalPl)}.${partialNote}`,
     "info"
   );
   return {
@@ -215,20 +230,22 @@ export function sellOption(state, assetId, qty) {
 
 /** Sell from a specific lot by holding id (partial or full). */
 export function sellOptionLot(state, holdingId, qty) {
-  const remaining = Math.max(1, parseInt(qty, 10) || 1);
+  if (!state.unlockedOptions) {
+    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+  }
+  const requested = Math.max(1, parseInt(qty, 10) || 1);
   const day = state.day;
   const idx = (state.optionHoldings || []).findIndex(h => h.id === holdingId);
   if (idx < 0) return appendLog(state, "Option holding not found.", "bad");
   const lot = state.optionHoldings[idx];
   if (day >= lot.expiryDay) return appendLog(state, "That contract has expired.", "bad");
-  if (remaining > lot.contracts) {
-    return appendLog(state, `Only have ${lot.contracts} contract(s) in that lot.`, "bad");
-  }
+  if (lot.contracts <= 0) return appendLog(state, "No contracts left in that lot.", "bad");
+  const sellCount = Math.min(requested, lot.contracts);
   const sellPrice = markOptionHolding(state, lot);
-  const proceeds = remaining * sellPrice;
-  const cost = remaining * lot.premiumAtPurchase;
+  const proceeds = sellCount * sellPrice;
+  const cost = sellCount * lot.premiumAtPurchase;
   const pl = proceeds - cost;
-  const nextC = lot.contracts - remaining;
+  const nextC = lot.contracts - sellCount;
   const nextHoldings = [...(state.optionHoldings || [])];
   if (nextC <= 0) nextHoldings.splice(idx, 1);
   else nextHoldings[idx] = { ...lot, contracts: nextC };
@@ -237,19 +254,23 @@ export function sellOptionLot(state, holdingId, qty) {
     "options",
     pl
   );
+  const partialNote = sellCount < requested ? ` (capped at ${sellCount} held)` : "";
   const logged = appendLog(
     next,
-    `Sold ${remaining} ${lot.name} @ $${sellPrice.toFixed(2)} (P/L ${fmtSignedMoney2(pl)}).`,
+    `Sold ${sellCount} ${lot.name} @ $${sellPrice.toFixed(2)} (P/L ${fmtSignedMoney2(pl)}).${partialNote}`,
     "info"
   );
   return {
     ...logged,
-    lastOptionRealized: { kind: "sell", pl, contracts: remaining, label: lot.name },
+    lastOptionRealized: { kind: "sell", pl, contracts: sellCount, label: lot.name },
   };
 }
 
 /** Exercise 1+ contracts: cash settle intrinsic (per share × multiplier), remove from holdings. */
 export function exerciseOptionLot(state, holdingId, qty) {
+  if (!state.unlockedOptions) {
+    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+  }
   const remaining = Math.max(1, parseInt(qty, 10) || 1);
   const day = state.day;
   const idx = (state.optionHoldings || []).findIndex(h => h.id === holdingId);
@@ -348,7 +369,7 @@ export function snapRepriceListedOptionsForTenor(s, params = {}) {
     const prevState = existingOptionsById[template.id];
     const merged = prevState
       ? { ...template, ...prevState }
-      : { ...template, price: template.startPrice, history: [template.startPrice] };
+      : { ...template, price: template.startPrice, history: [template.startPrice], monthlyHistory: [template.startPrice] };
     const { contracts, costBasis, ...optionBase } = merged;
     const u = ((s.indexFunds || []).find(f => f.id === optionBase.underlyingId)?.price) ?? 100;
     const { strike, target, dte } = listedOptionFairValue(optionBase, u, s.optionMarketDte, params, false);
@@ -356,18 +377,24 @@ export function snapRepriceListedOptionsForTenor(s, params = {}) {
     const hist = [...(optionBase.history || [])];
     if (hist.length) hist[hist.length - 1] = price;
     else hist.push(price);
+    let monthlyHistory = [...(optionBase.monthlyHistory || [])];
+    if (!monthlyHistory.length) monthlyHistory = [price];
     return {
       ...optionBase,
       strike,
       price,
       daysToExpiry: dte,
       history: hist.slice(-500),
+      monthlyHistory,
     };
   });
 }
 
-/** Switch listed tenor (7 / 30 / 90) and refresh listed MTO immediately. */
+/** Switch listed tenor and refresh listed MTO immediately. */
 export function setOptionMarketDte(state, params, dte) {
+  if (!state.unlockedOptions) {
+    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+  }
   const optionMarketDte = normalizeOptionMarketDte(dte);
   const prev = normalizeOptionMarketDte(state.optionMarketDte);
   if (optionMarketDte === prev) return state;
@@ -375,14 +402,20 @@ export function setOptionMarketDte(state, params, dte) {
   return { ...withTenor, options: snapRepriceListedOptionsForTenor(withTenor, params || {}) };
 }
 
-export function repriceListedOptionsForDay(s, updatedIndexFunds, params) {
+export function repriceListedOptionsForDay(s, updatedIndexFunds, params, meta = {}) {
+  const isMonthEnd = meta.isMonthEnd === true;
   const optionsVol = params.volOptions ?? 0.075;
   const existingOptionsById = Object.fromEntries((s.options || []).map(o => [o.id, o]));
   return OPTIONS.map(template => {
     const prevState = existingOptionsById[template.id];
     const merged = prevState
       ? { ...template, ...prevState }
-      : { ...template, price: template.startPrice, history: [template.startPrice] };
+      : {
+          ...template,
+          price: template.startPrice,
+          history: [template.startPrice],
+          monthlyHistory: [template.startPrice],
+        };
     const { contracts, costBasis, ...optionBase } = merged;
     const underlyingPrev = ((s.indexFunds || []).find(f => f.id === optionBase.underlyingId)?.price) ?? 100;
     const underlyingNext = ((updatedIndexFunds || []).find(f => f.id === optionBase.underlyingId)?.price) ?? underlyingPrev;
@@ -404,12 +437,16 @@ export function repriceListedOptionsForDay(s, updatedIndexFunds, params) {
       (optionBase.theta || 0.003) * 0.32 * thetaScale;
     const momentumPrice = optionBase.price * (1 + drift);
     const price = Math.max(OPTION_SHARES_PER_CONTRACT * 0.05, (momentumPrice * 0.52) + (target * 0.48));
+    let monthlyHistory = [...(optionBase.monthlyHistory || [])];
+    if (!monthlyHistory.length) monthlyHistory = [price];
+    if (isMonthEnd) monthlyHistory = [...monthlyHistory, price];
     return {
       ...optionBase,
       strike,
       price,
       daysToExpiry: dte,
       history: [...(optionBase.history || []), price].slice(-500),
+      monthlyHistory,
     };
   });
 }

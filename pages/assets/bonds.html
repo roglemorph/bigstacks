@@ -1,8 +1,9 @@
 				<div class="page-title">Bonds</div>
-
+				<div id="bond-unlock-banner"></div>
+				<div id="bond-trading-body">
 				<div class="section">
 					<div class="section-title">Yield Curve</div>
-					<p style="font-size:0.72em; color:#555; margin:-6px 0 10px 0;">Shifts daily (mean-reverting); new bonds price off the current curve.</p>
+					<p style="font-size:0.72em; color:#555; margin:-6px 0 10px 0;">The yield curve and corporate listing yields update every 90 days (mean-reverting). New treasuries price off the current curve; held treasuries and held corporates keep their purchase coupon.</p>
 					<canvas id="bonds-yield-curve" style="width:100%;height:120px;display:block;background:#111;border-radius:3px;"></canvas>
 					<div class="yield-labels" id="yield-labels"></div>
 				</div>
@@ -32,11 +33,27 @@
 							<div class="stat-label">Annual Income</div>
 							<div class="stat-value white" id="bond-preview-income">—</div>
 						</div>
-						<button class="btn btn-trade-buy" id="buy-bonds-btn" style="align-self:flex-end;">Buy Bond</button>
+						<button type="button" class="btn btn-trade-buy" id="buy-bonds-btn" style="align-self:flex-end;">Buy Bond</button>
+					</div>
+				</div>
+				<div class="section if-autobuy-section">
+					<div class="section-title">Treasury Autobuy</div>
+					<p style="font-size:0.72em; color:#555; margin:-6px 0 10px 0;">Buys one treasury bond per run at the face value and term below (independent of the manual purchase row). Runs after each day advance when the interval has elapsed.</p>
+					<div class="if-autobuy-panel">
+						<div class="if-autobuy-header-row">
+							<label class="if-autobuy-toggle">
+								<input type="checkbox" id="bond-autobuy-enabled" class="if-autobuy-checkbox-input">
+								<span class="if-autobuy-checkbox" aria-hidden="true"></span>
+								<span class="if-autobuy-toggle-label">Enable autobuy</span>
+							</label>
+							<span class="if-autobuy-status" id="bond-autobuy-status"></span>
+						</div>
+						<div id="bond-autobuy-steppers" class="if-autobuy-steppers"></div>
 					</div>
 				</div>
 				<div class="section">
 					<div class="section-title">Corporate Bond Listings</div>
+					<p style="font-size:0.72em; color:#555; margin:-6px 0 10px 0;">Five issuers trade at once. Each $1,000 bill issue lists ~10,000 bills and stays open until sold out (or the issuer defaults); then a new issue replaces it. Listed yields refresh each quarter; your held coupon stays fixed at purchase. Issuer bankruptcy wipes unsold bills and resolves your holdings at a recovery rate by rating.</p>
 					<div id="corp-bond-market-list"></div>
 				</div>
 
@@ -45,4 +62,5 @@
 					<div id="bond-holdings-list">
 						<div style="color:#444;font-size:0.8em;">No bonds held.</div>
 					</div>
+				</div>
 				</div>

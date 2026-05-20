@@ -1,6 +1,20 @@
 				<div class="page-title">Crypto</div>
 				<div class="section">
 					<div class="section-title">Crypto Market</div>
+					<div class="market-main-chart-panel" id="crypto-market-chart-panel">
+						<div class="market-main-chart-head">Price chart — <span class="market-main-chart-title" id="crypto-market-chart-title"></span></div>
+						<div class="chart-toggle-row">
+							<button type="button" class="btn active" id="crypto-chart-daily-btn">Daily (1 yr)</button>
+							<button type="button" class="btn" id="crypto-chart-monthly-btn">Monthly (all)</button>
+						</div>
+						<div class="chart-wrap crypto-main-chart-wrap">
+							<div class="y-axis" id="crypto-main-yaxis"></div>
+							<div class="chart-area">
+								<canvas id="crypto-market-main-chart" class="spark market-main-chart"></canvas>
+								<div class="x-axis" id="crypto-main-xaxis"></div>
+							</div>
+						</div>
+					</div>
 					<div id="crypto-market-list"></div>
 				</div>
 				<div class="section">

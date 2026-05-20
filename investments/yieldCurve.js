@@ -31,7 +31,20 @@ export function cloneYieldCurve(curve) {
   return curve.map(p => ({ term: p.term, yield: p.yield }));
 }
 
-/** One-day random walk + mean reversion toward YIELD_CURVE pillars. */
+/**
+ * Quarterly yield refresh: random shock within [yMin, yMax], or uniform draw if no prior yield.
+ * Shared by treasury and corporate bond repricing.
+ */
+export function rollYieldInBand(yMin, yMax, prevYield = null) {
+  const ySpan = Math.max(0, yMax - yMin);
+  if (prevYield != null && Number.isFinite(prevYield)) {
+    const shock = (Math.random() - 0.5) * ySpan * 0.4;
+    return Math.max(0.001, Math.min(yMax, Math.max(yMin, prevYield + shock)));
+  }
+  return Math.max(0.001, yMin + Math.random() * ySpan);
+}
+
+/** Random walk + mean reversion toward YIELD_CURVE pillars (called on quarter-end only). */
 export function evolveYieldCurve(state, params = {}) {
   const vol = params.yieldCurveVol ?? 0.0007;
   const kappa = params.yieldCurveKappa ?? 0.018;
