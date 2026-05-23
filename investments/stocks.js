@@ -1,4 +1,5 @@
-import { tradeAsset, evolveTrackedAssets, randn, appendLog, fmt, fmtSignedMoney2, DEFAULT_MARKET_DRIFT, costBasisForHifoSale } from "./shared.js";
+import { tradeAsset, evolveTrackedAssets, appendLog, fmt, fmtSignedMoney2, DEFAULT_MARKET_DRIFT, costBasisForHifoSale } from "./shared.js";
+import { resolveRng } from "./rng.js";
 import { UNLOCK_COST_STOCKS } from "./marketUnlock.js";
 
 /** Number of listings at a new run (market may shrink as names delist; nothing refills). */
@@ -36,9 +37,10 @@ const NAME_SUFFIXES = [
   "Partners", "Industries", "Therapeutics", "Energy", "Networks", "Retail",
 ];
 
-export function randomStockName() {
-  const a = NAME_PREFIXES[Math.floor(Math.random() * NAME_PREFIXES.length)];
-  const b = NAME_SUFFIXES[Math.floor(Math.random() * NAME_SUFFIXES.length)];
+export function randomStockName(params = {}) {
+  const rng = resolveRng(params);
+  const a = NAME_PREFIXES[rng.int(0, NAME_PREFIXES.length - 1)];
+  const b = NAME_SUFFIXES[rng.int(0, NAME_SUFFIXES.length - 1)];
   return `${a} ${b}`;
 }
 
@@ -52,16 +54,18 @@ export function randomStockStartPrice(params = {}) {
   let hi = Number.isFinite(params.stockStartPriceMax) ? params.stockStartPriceMax : STOCK_START_PRICE_MAX;
   if (lo > hi) [lo, hi] = [hi, lo];
   const span = hi - lo;
-  return Math.round((lo + Math.random() * span) * 100) / 100;
+  const rng = resolveRng(params);
+  return Math.round((lo + rng.random() * span) * 100) / 100;
 }
 
 export function mintRandomStockListing(params, seq) {
-  const sector = STOCK_SECTORS[Math.floor(Math.random() * STOCK_SECTORS.length)];
-  const name = randomStockName();
+  const rng = resolveRng(params);
+  const sector = STOCK_SECTORS[rng.int(0, STOCK_SECTORS.length - 1)];
+  const name = randomStockName(params);
   const price = randomStockStartPrice(params);
   const volSpan = STOCK_DAILY_VOL_MAX - STOCK_DAILY_VOL_MIN;
-  const dailyVol = Math.round((STOCK_DAILY_VOL_MIN + Math.random() * volSpan) * 10000) / 10000;
-  const id = `stk-${seq}-${Math.random().toString(36).slice(2, 10)}`;
+  const dailyVol = Math.round((STOCK_DAILY_VOL_MIN + rng.random() * volSpan) * 10000) / 10000;
+  const id = `stk-${seq}-${rng.id()}`;
   return {
     id,
     name,
@@ -113,6 +117,7 @@ export function stocksPortfolioValue(state) {
 }
 
 export function evolveStocksForDay(s, params, isMonthEnd) {
+  const rng = resolveRng(params);
   const refVol = 0.02;
   const volMultiplier = (params.volStock ?? refVol) / refVol;
   const drift = params.driftIndex ?? DEFAULT_MARKET_DRIFT;
@@ -121,7 +126,7 @@ export function evolveStocksForDay(s, params, isMonthEnd) {
     includeMonthlyHistory: true,
     drift,
     isMonthEnd,
-    randn,
+    randn: () => rng.randn(),
   });
 }
 

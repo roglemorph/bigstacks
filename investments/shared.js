@@ -1,9 +1,9 @@
-// Box-Muller normal distribution
-export function randn() {
-  let u = 0, v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+import { resolveRng } from "./rng.js";
+
+/** Box-Muller normal draw using params.rng when present. */
+export function randn(paramsOrRng = {}) {
+  const rng = paramsOrRng?.randn ? paramsOrRng : resolveRng(paramsOrRng);
+  return rng.randn();
 }
 
 export function fmt(n) {

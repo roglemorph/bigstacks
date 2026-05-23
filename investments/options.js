@@ -1,4 +1,5 @@
 import { appendLog, fmt, fmtSignedMoney2, randn, addCumulativeRealizedPL } from "./shared.js";
+import { resolveRng } from "./rng.js";
 import { UNLOCK_COST_OPTIONS } from "./marketUnlock.js";
 
 /** Default / legacy listed-tenor when `optionMarketDte` is missing (older saves). */
@@ -63,7 +64,7 @@ export function openOptionHoldings(state) {
 }
 
 /** Shared intrinsic + time-value mark (same basis as listed chain fair value). */
-function optionContractFairValue(optionType, strike, underlyingPrice, dte, withTimeNoise = false) {
+function optionContractFairValue(optionType, strike, underlyingPrice, dte, withTimeNoise = false, params = {}) {
   const remainingDte = Math.max(1, dte);
   const dteNorm = Math.min(1, remainingDte / OPTION_REFERENCE_DTE);
   const intrinsicPerShare =
@@ -75,7 +76,7 @@ function optionContractFairValue(optionType, strike, underlyingPrice, dte, withT
   const baseTimeValuePerShare = Math.max(0.12, underlyingPrice * 0.014 * dteNorm * (1 - Math.min(moneyness, 1)));
   const timeValuePerShare = Math.max(
     0,
-    baseTimeValuePerShare * (withTimeNoise ? (1 + randn() * 0.18) : 1)
+    baseTimeValuePerShare * (withTimeNoise ? (1 + randn(params) * 0.18) : 1)
   );
   const timeTotal = timeValuePerShare * OPTION_SHARES_PER_CONTRACT;
   return Math.max(OPTION_SHARES_PER_CONTRACT * 0.05, intrinsicTotal + timeTotal);
@@ -149,8 +150,9 @@ export function buyOption(state, assetId, qty) {
   if (cost > state.cash) return appendLog(state, `Need ${fmt(cost)} — only have ${fmt(state.cash)}.`, "bad");
   const dte = normalizeOptionMarketDte(state.optionMarketDte);
   const expiryDay = state.day + dte;
+  const rng = resolveRng({});
   const holding = {
-    id: `${state.day}_${Math.random().toString(36).slice(2, 9)}`,
+    id: `${state.day}_${rng.id()}`,
     optionId: asset.id,
     name: asset.name,
     optionType: asset.optionType,
@@ -356,7 +358,7 @@ export function listedOptionFairValue(optionBase, underlyingPrice, marketDte, pa
   const strikes = optionStrikesForUnderlying(underlyingPrice, params?.optionStrikeOffsetPct ?? 0.08);
   const strike = strikes[optionBase.strikeRef] ?? optionBase.strike ?? underlyingPrice;
   const dte = normalizeOptionMarketDte(marketDte);
-  const target = optionContractFairValue(optionBase.optionType, strike, underlyingPrice, dte, withTimeNoise);
+  const target = optionContractFairValue(optionBase.optionType, strike, underlyingPrice, dte, withTimeNoise, params);
   return { strike, target, dte };
 }
 
@@ -425,7 +427,7 @@ export function repriceListedOptionsForDay(s, updatedIndexFunds, params, meta = 
       true
     );
     const underlyingRet = underlyingPrev > 0 ? ((underlyingNext - underlyingPrev) / underlyingPrev) : 0;
-    const shock = randn() * (optionsVol ?? optionBase.dailyVol);
+    const shock = randn(params) * (optionsVol ?? optionBase.dailyVol);
     const direction = optionBase.direction ?? (optionBase.optionType === "put" ? -1 : 1);
 
     const thetaScale = Math.min(2.2, 42 / Math.max(dte, 4));

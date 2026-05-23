@@ -1,0 +1,9 @@
+{
+  "name": "bigstacks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "server": "node server/index.js",
+    "test:mp": "node scripts/test-multiplayer.mjs"
+  }
+}

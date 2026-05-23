@@ -1,19 +1,21 @@
 import { appendLog, fmt, addCumulativeRealizedPL } from "./shared.js";
+import { resolveRng } from "./rng.js";
 
-function roll1to100() {
-  return 1 + Math.floor(Math.random() * 100);
+function roll1to100(params = {}) {
+  const rng = resolveRng(params);
+  return 1 + rng.int(0, 99);
 }
 
 /** Initial hi-lo anchor shown on the Casino tab. */
-export function initialCasinoState() {
-  return { hiLoAnchor: roll1to100() };
+export function initialCasinoState(params = {}) {
+  return { hiLoAnchor: roll1to100(params) };
 }
 
 /**
  * Even-money hi-lo vs a stored anchor (1–100). Next roll replaces the anchor.
  * @param {boolean} guessHi true = bet the next roll is strictly greater than the anchor
  */
-export function playCasinoHiLo(state, bet, guessHi) {
+export function playCasinoHiLo(state, bet, guessHi, params = {}) {
   const stake = Math.floor(Number(bet));
   if (!Number.isFinite(stake) || stake <= 0) {
     return appendLog(state, "Enter a whole-dollar bet greater than zero.", "bad");
@@ -22,8 +24,8 @@ export function playCasinoHiLo(state, bet, guessHi) {
     return appendLog(state, `Need ${fmt(stake)} — only have ${fmt(state.cash)}.`, "bad");
   }
 
-  const anchor = state.casino?.hiLoAnchor ?? roll1to100();
-  const roll = roll1to100();
+  const anchor = state.casino?.hiLoAnchor ?? roll1to100(params);
+  const roll = roll1to100(params);
   let delta = 0;
   let type = "info";
   let msg = "";

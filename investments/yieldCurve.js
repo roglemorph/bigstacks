@@ -1,4 +1,5 @@
 import { randn } from "./shared.js";
+import { resolveRng } from "./rng.js";
 
 // Yield curve baseline: term (years) → annual yield (curve in state mean-reverts here over time)
 export const YIELD_CURVE = [
@@ -35,13 +36,14 @@ export function cloneYieldCurve(curve) {
  * Quarterly yield refresh: random shock within [yMin, yMax], or uniform draw if no prior yield.
  * Shared by treasury and corporate bond repricing.
  */
-export function rollYieldInBand(yMin, yMax, prevYield = null) {
+export function rollYieldInBand(yMin, yMax, prevYield = null, params = {}) {
+  const rng = resolveRng(params);
   const ySpan = Math.max(0, yMax - yMin);
   if (prevYield != null && Number.isFinite(prevYield)) {
-    const shock = (Math.random() - 0.5) * ySpan * 0.4;
+    const shock = (rng.random() - 0.5) * ySpan * 0.4;
     return Math.max(0.001, Math.min(yMax, Math.max(yMin, prevYield + shock)));
   }
-  return Math.max(0.001, yMin + Math.random() * ySpan);
+  return Math.max(0.001, yMin + rng.random() * ySpan);
 }
 
 /** Random walk + mean reversion toward YIELD_CURVE pillars (called on quarter-end only). */
@@ -53,7 +55,7 @@ export function evolveYieldCurve(state, params = {}) {
   const curve = state.yieldCurve && state.yieldCurve.length ? state.yieldCurve : YIELD_CURVE;
   return YIELD_CURVE.map((base, i) => {
     const current = curve[i]?.yield ?? base.yield;
-    const shock = randn() * vol;
+    const shock = randn(params) * vol;
     let y = current + shock + kappa * (base.yield - current);
     y = Math.max(yMin, Math.min(yMax, y));
     return { term: base.term, yield: y };

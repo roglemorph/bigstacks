@@ -1,4 +1,5 @@
-import { tradeAsset, evolveTrackedAssets, randn, appendLog, fmt, DEFAULT_MARKET_DRIFT } from "./shared.js";
+import { tradeAsset, evolveTrackedAssets, appendLog, fmt, DEFAULT_MARKET_DRIFT } from "./shared.js";
+import { resolveRng } from "./rng.js";
 
 export const INDEX_FUNDS = [
   { id: "spy",  name: "Index Fund A (Broad Market)", startPrice: 100.0, dailyVol: 0.0126 },
@@ -49,6 +50,7 @@ export function indexFundsPortfolioValue(state) {
 }
 
 export function evolveIndexFundsForDay(s, params, isMonthEnd) {
+  const rng = resolveRng(params);
   const dailyVol = params.volIndex ?? 0.0126;
   const drift = params.driftIndex ?? DEFAULT_MARKET_DRIFT;
   return evolveTrackedAssets(s.indexFunds, {
@@ -56,7 +58,7 @@ export function evolveIndexFundsForDay(s, params, isMonthEnd) {
     includeMonthlyHistory: true,
     drift,
     isMonthEnd,
-    randn,
+    randn: () => rng.randn(),
   });
 }
 

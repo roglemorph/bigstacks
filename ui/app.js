@@ -12,6 +12,8 @@ import {
 } from "./storage.js";
 import { loadAssetPartials } from "./partials.js";
 import { enhanceQuantityInputs } from "./numberSpinners.js";
+import { MultiplayerClient } from "./multiplayer.js";
+import { mergeForRender } from "../multiplayer/state.js";
 import {
 	DAILY_CHART_TRIM_DAYS,
 	CHART_TRAILING_BLANK_SLOTS,
@@ -26,6 +28,187 @@ import {
 
 await loadAssetPartials();
 enhanceQuantityInputs();
+
+let gameMode = "solo";
+let mpClient = null;
+let mpRoomState = null;
+
+function isMultiplayer() {
+	return gameMode === "multiplayer" && mpClient;
+}
+
+function isMpHost() {
+	return isMultiplayer() && mpClient.isHost();
+}
+
+function syncStateFromMultiplayer() {
+	if (!mpClient?.sharedMarket || !mpClient?.playerState) return;
+	state = mergeForRender(mpClient.sharedMarket, mpClient.playerState);
+}
+
+function commitState(next) {
+	state = next;
+	render(state);
+}
+
+function dispatchGameAction(actionType, args, localApply) {
+	if (!isMultiplayer()) {
+		commitState(localApply(state));
+		return;
+	}
+	try {
+		mpClient.action(actionType, args);
+	} catch (err) {
+		alert(err.message || "Multiplayer action failed");
+	}
+}
+
+function renderMultiplayerPanel() {
+	const panel = document.getElementById("mp-panel");
+	if (!panel) return;
+	if (!isMultiplayer()) {
+		panel.hidden = true;
+		return;
+	}
+	panel.hidden = false;
+	document.getElementById("mp-room-code").textContent = mpClient.session.roomCode || "—";
+	document.getElementById("mp-connection").textContent = mpClient.status === "connected" ? "Connected" : "Disconnected";
+	const hostNote = document.getElementById("mp-host-note");
+	if (hostNote) {
+		hostNote.textContent = isMpHost() ? "You are the host (advance days)" : "Host advances days for everyone";
+	}
+	const dayBtn = document.getElementById("day-btn");
+	if (dayBtn && isMultiplayer()) {
+		dayBtn.disabled = dayBtn.disabled || !isMpHost();
+	}
+	const list = document.getElementById("mp-leaderboard");
+	if (list) {
+		const board = mpClient.leaderboard?.length
+			? mpClient.leaderboard
+			: [{ rank: 1, displayName: mpClient.playerState?.displayName || "You", netWorth: netWorth(state) }];
+		list.innerHTML = board.map(row => `
+			<div class="mp-leaderboard-row${row.playerId === mpClient.session.playerId ? " mp-leaderboard-row--self" : ""}">
+				<span>#${row.rank}</span>
+				<span>${row.displayName}</span>
+				<span>$${Math.round(row.netWorth).toLocaleString()}</span>
+			</div>
+		`).join("");
+	}
+}
+
+function setupMultiplayerUi() {
+	const mpClientInstance = new MultiplayerClient();
+	mpClient = mpClientInstance;
+
+	mpClient.on("connection", ({ connected }) => {
+		const el = document.getElementById("mp-lobby-status");
+		if (el) el.textContent = connected ? "Connected to server" : "Disconnected";
+	});
+
+	mpClient.on("roomState", roomState => {
+		mpRoomState = roomState;
+		renderMpLobby(roomState);
+	});
+
+	mpClient.on("gameStarted", () => {
+		gameMode = "multiplayer";
+		syncStateFromMultiplayer();
+		hideStartScreen();
+		hideMpLobby();
+		startTicker();
+		render(state);
+	});
+
+	mpClient.on("dayAdvanced", payload => {
+		syncStateFromMultiplayer();
+		mpClient.leaderboard = payload.leaderboard || [];
+		render(state);
+		if (payload.finished) setAutoAdvance(false);
+	});
+
+	mpClient.on("actionResult", payload => {
+		if (!payload.ok) {
+			alert(payload.error || "Action rejected");
+			return;
+		}
+		syncStateFromMultiplayer();
+		if (payload.leaderboard) mpClient.leaderboard = payload.leaderboard;
+		render(state);
+	});
+
+	mpClient.on("error", payload => {
+		alert(payload.message || "Server error");
+	});
+
+	document.getElementById("mp-create-btn")?.addEventListener("click", async () => {
+		const name = document.getElementById("mp-player-name")?.value?.trim() || "Player";
+		try {
+			await mpClient.connect();
+			mpClient.createRoom(name);
+		} catch (err) {
+			alert(err.message || "Could not connect to multiplayer server");
+		}
+	});
+
+	document.getElementById("mp-join-btn")?.addEventListener("click", async () => {
+		const name = document.getElementById("mp-player-name")?.value?.trim() || "Player";
+		const code = document.getElementById("mp-room-code-input")?.value?.trim();
+		if (!code) return alert("Enter a room code");
+		try {
+			await mpClient.connect();
+			mpClient.joinRoom(code, name);
+		} catch (err) {
+			alert(err.message || "Could not connect to multiplayer server");
+		}
+	});
+
+	document.getElementById("mp-start-btn")?.addEventListener("click", () => {
+		if (!mpClient.isHost()) return alert("Only the host can start");
+		mpClient.startGame();
+	});
+
+	document.getElementById("mp-leave-btn")?.addEventListener("click", () => {
+		mpClient.leaveRoom();
+		gameMode = "solo";
+		mpRoomState = null;
+		showMpLobby(false);
+	});
+
+	document.getElementById("start-multiplayer-btn")?.addEventListener("click", () => {
+		showMpLobby(true);
+		mpClient.connect().catch(() => {});
+	});
+
+	document.getElementById("mp-back-btn")?.addEventListener("click", () => {
+		showMpLobby(false);
+	});
+}
+
+function showMpLobby(show) {
+	document.getElementById("mp-lobby")?.classList.toggle("mp-lobby--hidden", !show);
+}
+
+function hideMpLobby() {
+	showMpLobby(false);
+}
+
+function renderMpLobby(roomState) {
+	if (!roomState) return;
+	document.getElementById("mp-lobby-code").textContent = roomState.roomCode || "—";
+	const list = document.getElementById("mp-lobby-players");
+	if (list) {
+		list.innerHTML = (roomState.players || []).map(p =>
+			`<li>${p.displayName}${p.playerId === roomState.hostId ? " (host)" : ""}${p.connected === false ? " (away)" : ""}</li>`
+		).join("");
+	}
+	const startBtn = document.getElementById("mp-start-btn");
+	if (startBtn) {
+		const isHost = mpClient?.session?.playerId === roomState.hostId;
+		startBtn.hidden = !isHost;
+		startBtn.disabled = roomState.status !== "lobby";
+	}
+}
+
 
 function bondHoldingsDailyCoupon(state) {
 	return (state.bondHoldings || []).reduce((sum, b) => {
@@ -1072,6 +1255,7 @@ function setChange(elId, history, lookbackDays = 1) {
     const dayBtn = document.getElementById("day-btn");
     dayBtn.disabled = s.day >= s.maxDays;
     dayBtn.textContent = `⏭ Next day`;
+    renderMultiplayerPanel();
 
     patchIncomeIndicators(s, params);
 
@@ -3247,34 +3431,26 @@ function renderOptionsChain(s, isTradeLocked = false) {
 window._playCasinoHiLo = (guessHi) => {
 	const betEl = document.getElementById("casino-hilo-bet");
 	const bet = betEl ? parseFloat(betEl.value) : 50;
-	state = playCasinoHiLo(state, bet, guessHi);
-	render(state);
+	dispatchGameAction("playCasinoHiLo", { bet, guessHi }, s => playCasinoHiLo(s, bet, guessHi, params));
 };
 
 window._unlockBonds = () => {
-	state = unlockBonds(state);
-	render(state);
+	dispatchGameAction("unlockBonds", {}, unlockBonds);
 };
 window._unlockStocks = () => {
-	state = unlockStocks(state);
-	render(state);
+	dispatchGameAction("unlockStocks", {}, unlockStocks);
 };
 window._unlockCrypto = () => {
-	state = unlockCrypto(state);
-	render(state);
+	dispatchGameAction("unlockCrypto", {}, unlockCrypto);
 };
 window._unlockOptions = () => {
-	state = unlockOptions(state);
-	render(state);
+	dispatchGameAction("unlockOptions", {}, unlockOptions);
 };
-// Expose sell handler to DOM (bonds page uses onclick)
 window._sellBond = (id) => {
-state = sellBondEarly(state, id);
-render(state);
+	dispatchGameAction("sellBondEarly", { id }, s => sellBondEarly(s, id));
 };
       window._buyCorporateBond = (offerId, qty = 1) => {
-        state = buyCorporateBond(state, offerId, qty);
-        render(state);
+        dispatchGameAction("buyCorporateBond", { offerId, qty }, s => buyCorporateBond(s, offerId, qty));
       };
 
 document.getElementById("corp-bond-market-list")?.addEventListener("click", (e) => {
@@ -3283,8 +3459,7 @@ document.getElementById("corp-bond-market-list")?.addEventListener("click", (e) 
 	const offerId = btn.dataset.offerId;
 	if (!offerId) return;
 	const qty = parseInt(btn.dataset.qty, 10) || 1;
-	state = buyCorporateBond(state, offerId, qty);
-	render(state);
+	dispatchGameAction("buyCorporateBond", { offerId, qty }, s => buyCorporateBond(s, offerId, qty));
 });
 
 function getTradeQtyFromInput(amountId) {
@@ -3334,13 +3509,21 @@ function ownedQtyForAsset(prefix, assetId) {
 
 function executeTradeAsset(prefix, mode, id, qty) {
 	if (prefix === "if" || prefix === "ifu") {
-		state = mode === "buy" ? buyIndexFund(state, id, qty) : sellIndexFund(state, id, qty);
+		const action = mode === "buy" ? "buyIndexFund" : "sellIndexFund";
+		dispatchGameAction(action, { assetId: id, qty }, s =>
+			mode === "buy" ? buyIndexFund(s, id, qty) : sellIndexFund(s, id, qty));
 	} else if (prefix === "crypto") {
-		state = mode === "buy" ? buyCrypto(state, id, qty) : sellCrypto(state, id, qty);
+		const action = mode === "buy" ? "buyCrypto" : "sellCrypto";
+		dispatchGameAction(action, { assetId: id, qty }, s =>
+			mode === "buy" ? buyCrypto(s, id, qty) : sellCrypto(s, id, qty));
 	} else if (prefix === "stock") {
-		state = mode === "buy" ? buyStock(state, id, qty) : sellStock(state, id, qty);
+		const action = mode === "buy" ? "buyStock" : "sellStock";
+		dispatchGameAction(action, { assetId: id, qty }, s =>
+			mode === "buy" ? buyStock(s, id, qty) : sellStock(s, id, qty));
 	} else if (prefix === "options") {
-		state = mode === "buy" ? buyOption(state, id, qty) : sellOption(state, id, qty);
+		const action = mode === "buy" ? "buyOption" : "sellOption";
+		dispatchGameAction(action, { assetId: id, qty }, s =>
+			mode === "buy" ? buyOption(s, id, qty) : sellOption(s, id, qty));
 	}
 }
 
@@ -3349,52 +3532,44 @@ window._sellOptionLot = (holdingId) => {
 	if (!lot) return;
 	const amountId = `options-amount-${lot.optionId}`;
 	const qty = getTradeQtyFromInput(amountId);
-	state = sellOptionLot(state, holdingId, qty);
-	render(state);
+	dispatchGameAction("sellOptionLot", { holdingId, qty }, s => sellOptionLot(s, holdingId, qty));
 };
 
 window._sellAllOptionLot = (holdingId) => {
 	const lot = (state.optionHoldings || []).find(h => h.id === holdingId);
 	if (!lot || (lot.contracts || 0) <= 0) return;
-	state = sellOptionLot(state, holdingId, lot.contracts);
-	render(state);
+	dispatchGameAction("sellOptionLot", { holdingId, qty: lot.contracts }, s => sellOptionLot(s, holdingId, lot.contracts));
 };
 
 window._setOptionMarketDte = (dte) => {
-	state = setOptionMarketDte(state, params, dte);
-	render(state);
+	dispatchGameAction("setOptionMarketDte", { dte }, s => setOptionMarketDte(s, params, dte));
 };
 
 window._exerciseOptionLot = (holdingId) => {
-	state = exerciseOptionLot(state, holdingId, 1);
-	render(state);
+	dispatchGameAction("exerciseOptionLot", { holdingId, qty: 1 }, s => exerciseOptionLot(s, holdingId, 1));
 };
 
 window._openPerp = (side) => {
 	const qty = getTradeQtyFromInput(PERP_QTY_INPUT);
 	tradeQtyByInputId[PERP_QTY_INPUT] = qty;
-	state = openPerp(state, side, qty);
-	render(state);
+	dispatchGameAction("openPerp", { side, qty }, s => openPerp(s, side, qty, params));
 };
 
 window._closePerp = (side) => {
 	const qty = getTradeQtyFromInput(PERP_QTY_INPUT);
 	tradeQtyByInputId[PERP_QTY_INPUT] = qty;
-	state = closePerp(state, side, qty);
-	render(state);
+	dispatchGameAction("closePerp", { side, qty }, s => closePerp(s, side, qty));
 };
 
 window._closePerpLot = (holdingId) => {
 	const qty = getTradeQtyFromInput(PERP_QTY_INPUT);
-	state = closePerpLot(state, holdingId, qty);
-	render(state);
+	dispatchGameAction("closePerpLot", { lotId: holdingId, qty }, s => closePerpLot(s, holdingId, qty));
 };
 
 window._closeAllPerpLot = (holdingId) => {
 	const lot = (state.perpHoldings || []).find(h => h.id === holdingId);
 	if (!lot || (lot.contracts || 0) <= 0) return;
-	state = closePerpLot(state, holdingId, lot.contracts);
-	render(state);
+	dispatchGameAction("closePerpLot", { lotId: holdingId, qty: lot.contracts }, s => closePerpLot(s, holdingId, lot.contracts));
 };
 
 window._selectMarketAsset = (prefix, id) => {
@@ -3415,7 +3590,7 @@ window._tradeAsset = (prefix, mode, id) => {
 	if (prefix === "stock") selectedStockId = id;
 	if (prefix === "crypto") selectedCryptoId = id;
 	executeTradeAsset(prefix, mode, id, qty);
-	render(state);
+	if (!isMultiplayer()) render(state);
 };
 
 window._buyMaxAsset = (prefix, id) => {
@@ -3429,10 +3604,11 @@ window._buyMaxAsset = (prefix, id) => {
 	if (prefix === "crypto") selectedCryptoId = id;
 	if (prefix === "options") selectedOptionId = id;
 	executeTradeAsset(prefix, "buy", id, maxQty);
-	render(state);
+	if (!isMultiplayer()) render(state);
 };
 
 window._buyEveryStock = () => {
+	if (isMultiplayer()) return alert("Bulk buy all stocks is disabled in multiplayer");
 	const qty = getTradeQtyFromInput(STOCK_BULK_AMOUNT_ID);
 	tradeQtyByInputId[STOCK_BULK_AMOUNT_ID] = qty;
 	let s = state;
@@ -3454,7 +3630,7 @@ window._sellAllAsset = (prefix, id) => {
 	if (prefix === "stock") selectedStockId = id;
 	if (prefix === "crypto") selectedCryptoId = id;
 	executeTradeAsset(prefix, "sell", id, owned);
-	render(state);
+	if (!isMultiplayer()) render(state);
 };
 
 window._setAmount = (id, rawValue) => {
@@ -3698,6 +3874,15 @@ syncNetWorthChartControls(s);
 function advanceDays(count) {
 syncMarketCardAutobuysFromUi();
 const steps = Math.max(1, parseInt(count) || 1);
+if (isMultiplayer()) {
+	if (!isMpHost()) return;
+	try {
+		mpClient.advanceDay(steps);
+	} catch (err) {
+		alert(err.message || "Could not advance day");
+	}
+	return;
+}
 for (let i = 0; i < steps; i++) {
 	const prevDay = state.day;
 	state = nextDay(state, params);
@@ -3707,6 +3892,7 @@ render(state);
 }
 
 function setAutoAdvance(on) {
+	if (isMultiplayer() && on) return;
 	if (autoAdvanceTimerId !== null) {
 		clearInterval(autoAdvanceTimerId);
 		autoAdvanceTimerId = null;
@@ -3737,7 +3923,7 @@ function setAutoAdvance(on) {
 	syncAutoAdvanceUi();
 }
 
-document.getElementById("day-btn").onclick         = () => { syncMarketCardAutobuysFromUi(); state = nextDay(state, params); render(state); };
+document.getElementById("day-btn").onclick         = () => { syncMarketCardAutobuysFromUi(); if (isMultiplayer()) { advanceDays(1); return; } state = nextDay(state, params); render(state); };
 document.getElementById("advance-btn").onclick     = () => {
 	const days = parseInt(document.getElementById("advance-days").value) || 1;
 	advanceDays(days);
@@ -3745,8 +3931,7 @@ document.getElementById("advance-btn").onclick     = () => {
 document.getElementById("buy-bonds-btn").onclick = () => {
 	const face = parseFloat(document.getElementById("bond-face-value").value) || 1000;
 	const term = parseInt(document.getElementById("bond-term").value, 10) || 5;
-	state = buyBond(state, face, term);
-	render(state);
+	dispatchGameAction("buyBond", { face, term }, s => buyBond(s, face, term));
 };
 document.getElementById("if-autobuy-enabled")?.addEventListener("change", () => {
 	applyIndexFundAutobuyFromUi();
@@ -3903,4 +4088,5 @@ document.getElementById("start-import-input")?.addEventListener("change", async 
 	await handleSaveImportFile(file);
 });
 setupStartScreen();
+setupMultiplayerUi();
 document.getElementById("start-game-btn")?.focus();

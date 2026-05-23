@@ -1,5 +1,6 @@
 import { appendLog, fmt, addCumulativeRealizedPL } from "./shared.js";
 import { yieldForTerm } from "./yieldCurve.js";
+import { resolveRng } from "./rng.js";
 
 export const TREASURY_BOND_TERMS = [1, 2, 5, 10, 30];
 
@@ -32,8 +33,9 @@ function purchaseOneTreasuryBond(state, faceValue, term) {
     return { ok: false, state, msg: `Need ${fmt(faceValue)} — only have ${fmt(state.cash)}.`, type: "bad" };
   }
   const y = yieldForTerm(state, term);
+  const rng = resolveRng({});
   const bond = {
-    id: `${state.day}_${Math.random().toString(36).slice(2, 9)}`,
+    id: `${state.day}_${rng.id()}`,
     type: "treasury",
     issuer: "U.S. Treasury",
     faceValue,

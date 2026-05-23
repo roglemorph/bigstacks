@@ -1,4 +1,5 @@
-import { tradeAsset, evolveTrackedAssets, randn, appendLog, fmt, fmtSignedMoney2, DEFAULT_MARKET_DRIFT, costBasisForHifoSale } from "./shared.js";
+import { tradeAsset, evolveTrackedAssets, appendLog, fmt, fmtSignedMoney2, DEFAULT_MARKET_DRIFT, costBasisForHifoSale } from "./shared.js";
+import { resolveRng } from "./rng.js";
 import { UNLOCK_COST_CRYPTOS } from "./marketUnlock.js";
 
 /** Canonical OG listings (always three). */
@@ -55,13 +56,14 @@ const LAUNCH_NAME_SUFFIXES = [
   "swap",
 ];
 
-export function randomLaunchCoinName() {
+export function randomLaunchCoinName(params = {}) {
+  const rng = resolveRng(params);
   const n = LAUNCH_NAME_GREEK.length;
-  let i = Math.floor(Math.random() * n);
-  let j = Math.floor(Math.random() * (n - 1));
+  let i = rng.int(0, n - 1);
+  let j = rng.int(0, n - 2);
   if (j >= i) j += 1;
   const base = `${LAUNCH_NAME_GREEK[i]}-${LAUNCH_NAME_GREEK[j]}`;
-  const suffix = LAUNCH_NAME_SUFFIXES[Math.floor(Math.random() * LAUNCH_NAME_SUFFIXES.length)];
+  const suffix = LAUNCH_NAME_SUFFIXES[rng.int(0, LAUNCH_NAME_SUFFIXES.length - 1)];
   return suffix.startsWith(".") ? `${base}${suffix}` : `${base} ${suffix}`;
 }
 
@@ -71,7 +73,8 @@ export function randomCryptoStartPrice(params = {}) {
   let hi = Number.isFinite(params.cryptoStartPriceMax) ? params.cryptoStartPriceMax : CRYPTO_START_PRICE_MAX;
   if (lo > hi) [lo, hi] = [hi, lo];
   const span = hi - lo;
-  return Math.round((lo + Math.random() * span) * 100) / 100;
+  const rng = resolveRng(params);
+  return Math.round((lo + rng.random() * span) * 100) / 100;
 }
 
 /**
@@ -79,7 +82,8 @@ export function randomCryptoStartPrice(params = {}) {
  * Each coin gets its own fresh `history` / `monthlyHistory`.
  */
 export function buildInitialCryptos(params = {}) {
-  const winnerIdx = Math.floor(Math.random() * OG_CRYPTO_SPECS.length);
+  const rng = resolveRng(params);
+  const winnerIdx = rng.int(0, OG_CRYPTO_SPECS.length - 1);
   const ogs = OG_CRYPTO_SPECS.map((spec, i) => {
     const price = randomCryptoStartPrice(params);
     return {
@@ -95,12 +99,12 @@ export function buildInitialCryptos(params = {}) {
     };
   });
 
-  const proto = CRYPTO_MINT_PROTOTYPES[Math.floor(Math.random() * CRYPTO_MINT_PROTOTYPES.length)];
+  const proto = CRYPTO_MINT_PROTOTYPES[rng.int(0, CRYPTO_MINT_PROTOTYPES.length - 1)];
   const launchPrice = randomCryptoStartPrice(params);
   const launch = {
     ...proto,
-    id: `tok-1-${Math.random().toString(36).slice(2, 10)}`,
-    name: randomLaunchCoinName(),
+    id: `tok-1-${rng.id()}`,
+    name: randomLaunchCoinName(params),
     startPrice: launchPrice,
     coins: 0,
     costBasis: 0,
@@ -136,6 +140,7 @@ export function cryptosPortfolioValue(state) {
 }
 
 export function evolveCryptosForDay(s, params, isMonthEnd) {
+  const rng = resolveRng(params);
   const cryptoVol = params.volCrypto ?? 0.04;
   const drift = params.driftIndex ?? DEFAULT_MARKET_DRIFT;
   return evolveTrackedAssets(s.cryptos, {
@@ -143,18 +148,19 @@ export function evolveCryptosForDay(s, params, isMonthEnd) {
     includeMonthlyHistory: true,
     drift,
     isMonthEnd,
-    randn,
+    randn: () => rng.randn(),
     driftPerAsset: a => (Number.isFinite(a.cryptoExtraDrift) ? a.cryptoExtraDrift : 0),
   });
 }
 
 function mintListedCrypto(proto, newDay, params) {
+  const rng = resolveRng(params);
   const price = randomCryptoStartPrice(params);
-  const id = `tok-${newDay}-${Math.random().toString(36).slice(2, 10)}`;
+  const id = `tok-${newDay}-${rng.id()}`;
   return {
     ...proto,
     id,
-    name: randomLaunchCoinName(),
+    name: randomLaunchCoinName(params),
     startPrice: price,
     coins: 0,
     costBasis: 0,
@@ -213,7 +219,8 @@ export function evolveAndRotateCryptoMarket(s, params, isMonthEnd, newDay) {
 
   while (survivors.length < slotTarget) {
     seq += 1;
-    const proto = CRYPTO_MINT_PROTOTYPES[Math.floor(Math.random() * CRYPTO_MINT_PROTOTYPES.length)];
+    const rng = resolveRng(params);
+    const proto = CRYPTO_MINT_PROTOTYPES[rng.int(0, CRYPTO_MINT_PROTOTYPES.length - 1)];
     const newbie = mintListedCrypto(proto, newDay, params);
     survivors.push(newbie);
     logLines.push({

@@ -1,4 +1,5 @@
 import { appendLog, fmt, fmtSignedMoney2, randn, addCumulativeRealizedPL } from "./shared.js";
+import { resolveRng } from "./rng.js";
 import { UNLOCK_COST_OPTIONS } from "./marketUnlock.js";
 import { OPTION_SHARES_PER_CONTRACT } from "./options.js";
 
@@ -123,7 +124,7 @@ export function openPerp(state, side, qty, params = {}) {
     -premium
   );
   const holding = {
-    id: `${state.day}_${Math.random().toString(36).slice(2, 9)}`,
+    id: `${state.day}_${resolveRng({}).id()}`,
     perpId: PERP_ID,
     name: `${PERP_NAME} ${side === "long" ? "Long" : "Short"}`,
     side,
@@ -294,7 +295,7 @@ export function processPerpsForDay(s, cash, params = {}) {
   const prevDaily = dailyRate;
   const kappa = params.perpFundingKappa ?? 0.12;
   const vol = params.perpFundingVol ?? 0.00008;
-  let nextDaily = prevDaily + kappa * (targetDaily - prevDaily) + randn() * vol;
+  let nextDaily = prevDaily + kappa * (targetDaily - prevDaily) + randn(params) * vol;
   nextDaily = Math.max(-0.002, Math.min(0.002, nextDaily));
 
   const basisBps = Math.round(premium * 10000);

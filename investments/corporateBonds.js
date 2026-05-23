@@ -1,5 +1,6 @@
 import { appendLog, fmt, fmtSignedMoney2 } from "./shared.js";
 import { rollYieldInBand } from "./yieldCurve.js";
+import { resolveRng } from "./rng.js";
 
 /** Active corporate listings on the primary market (always refilled to this count). */
 export const CORPORATE_OFFER_COUNT = 5;
@@ -41,17 +42,18 @@ export function rollCorporateMarketYield(rating, params = {}, prevYield = null) 
   const spreadMult = Number.isFinite(params.corporateSpreadMult) ? params.corporateSpreadMult : 1;
   const yMin = profile.yieldMin * spreadMult;
   const yMax = profile.yieldMax * spreadMult;
-  return rollYieldInBand(yMin, yMax, prevYield);
+  return rollYieldInBand(yMin, yMax, prevYield, params);
 }
 
-export function randomCorporateIssuerName() {
-  const a = ISSUER_PREFIXES[Math.floor(Math.random() * ISSUER_PREFIXES.length)];
-  const b = ISSUER_SUFFIXES[Math.floor(Math.random() * ISSUER_SUFFIXES.length)];
+export function randomCorporateIssuerName(params = {}) {
+  const rng = resolveRng(params);
+  const a = ISSUER_PREFIXES[rng.int(0, ISSUER_PREFIXES.length - 1)];
+  const b = ISSUER_SUFFIXES[rng.int(0, ISSUER_SUFFIXES.length - 1)];
   return `${a} ${b}`;
 }
 
-function intBetween(min, max) {
-  return min + Math.floor(Math.random() * (max - min + 1));
+function intBetween(rng, min, max) {
+  return rng.int(min, max);
 }
 
 function slotTarget(params) {
@@ -65,21 +67,22 @@ function slotTarget(params) {
  * Mint one primary-market corporate issue.
  */
 export function mintCorporateOffer(params, seq, listedDay, usedNames) {
-  let issuer = randomCorporateIssuerName();
+  const rng = resolveRng(params);
+  let issuer = randomCorporateIssuerName(params);
   for (let attempt = 0; attempt < 48 && usedNames.has(issuer); attempt++) {
-    issuer = randomCorporateIssuerName();
+    issuer = randomCorporateIssuerName(params);
   }
   usedNames.add(issuer);
 
-  const profile = RATING_PROFILES[Math.floor(Math.random() * RATING_PROFILES.length)];
+  const profile = RATING_PROFILES[rng.int(0, RATING_PROFILES.length - 1)];
   const yieldRate = rollCorporateMarketYield(profile.rating, params);
   const units =
     CORPORATE_UNITS_MIN +
-    Math.floor(Math.random() * (CORPORATE_UNITS_MAX - CORPORATE_UNITS_MIN + 1));
-  const term = TERM_CHOICES[Math.floor(Math.random() * TERM_CHOICES.length)];
+    rng.int(0, CORPORATE_UNITS_MAX - CORPORATE_UNITS_MIN);
+  const term = TERM_CHOICES[rng.int(0, TERM_CHOICES.length - 1)];
 
   return {
-    id: `corp-${listedDay}-${seq}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `corp-${listedDay}-${seq}-${rng.id()}`,
     issuer,
     term,
     faceValue: 1000,
@@ -158,8 +161,9 @@ export function buyCorporateBond(state, offerId, qty = 1) {
   }
 
   const totalFace = bills * unitFace;
+  const rng = resolveRng({});
   const bond = {
-    id: `${state.day}_${Math.random().toString(36).slice(2, 9)}`,
+    id: `${state.day}_${rng.id()}`,
     type: "corporate",
     issuer: offer.issuer,
     rating: offer.rating,
@@ -208,6 +212,7 @@ function retireReason(offer) {
  * Drain inventory, roll issuer defaults, retire ended issues, mint replacements (always {@link CORPORATE_OFFER_COUNT} slots).
  */
 export function processCorporateBondsForDay(s, bondHoldings, cash, newDay, params = {}) {
+  const rng = resolveRng(params);
   const drainMin = Number.isFinite(params.corporateUnitsDrainMin)
     ? params.corporateUnitsDrainMin
     : CORPORATE_UNITS_DRAIN_MIN;
@@ -227,7 +232,7 @@ export function processCorporateBondsForDay(s, bondHoldings, cash, newDay, param
     if (offer.issuerDefaulted || (offer.unitsRemaining || 0) <= 0) return offer;
     const lo = Math.min(drainMin, drainMax);
     const hi = Math.max(drainMin, drainMax);
-    const drain = intBetween(lo, hi);
+    const drain = intBetween(rng, lo, hi);
     const nextUnits = Math.max(0, offer.unitsRemaining - drain);
     if (nextUnits < offer.unitsRemaining) {
       return { ...offer, unitsRemaining: nextUnits };
@@ -256,7 +261,7 @@ export function processCorporateBondsForDay(s, bondHoldings, cash, newDay, param
     const offer = offers[oi];
     if (offer.issuerDefaulted) continue;
     const pDefault = dailyDefaultChance(offer.annualDefaultProb) * defaultMult;
-    if (Math.random() >= pDefault) continue;
+    if (rng.random() >= pDefault) continue;
 
     const unsold = offer.unitsRemaining || 0;
     offers[oi] = { ...offer, issuerDefaulted: true, unitsRemaining: 0 };

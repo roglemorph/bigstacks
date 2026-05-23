@@ -196,6 +196,52 @@
 				}
 				.save-status--error { color: #c45c5c; }
 
+				#mp-lobby {
+					position: fixed;
+					inset: 0;
+					z-index: 1200;
+					background: rgba(0,0,0,0.92);
+					display: flex;
+					align-items: center;
+					justify-content: center;
+				}
+				#mp-lobby.mp-lobby--hidden { display: none; }
+				.mp-lobby__inner {
+					background: #141414;
+					border: 1px solid #2a2a2a;
+					padding: 24px;
+					width: min(420px, 92vw);
+					display: flex;
+					flex-direction: column;
+					gap: 10px;
+				}
+				.mp-lobby__title { color: #00ff88; font-size: 1.1em; }
+				.mp-lobby__status { color: #666; font-size: 0.8em; }
+				.mp-input {
+					background: #0f0f0f;
+					border: 1px solid #333;
+					color: #e0e0e0;
+					padding: 8px 10px;
+					font-family: inherit;
+				}
+				#mp-panel {
+					border-top: 1px solid #1e1e1e;
+					padding-top: 8px;
+					display: flex;
+					flex-direction: column;
+					gap: 6px;
+				}
+				#mp-panel[hidden] { display: none !important; }
+				.mp-leaderboard-row {
+					display: grid;
+					grid-template-columns: 28px 1fr auto;
+					gap: 6px;
+					font-size: 0.82em;
+					color: #aaa;
+				}
+				.mp-leaderboard-row--self { color: #00ff88; }
+				.mp-host-note { font-size: 0.72em; color: #666; }
+
 				/* ── SHARED ── */
 				.section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; padding: 16px; margin-bottom: 14px; }
 				.section-title { font-size: 0.8em; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
@@ -2030,6 +2076,17 @@
 					<div class="side-value white" id="s-return"></div>
 				</div>
 
+				<div id="mp-panel" hidden>
+					<hr class="side-divider">
+					<div class="side-label">Multiplayer</div>
+					<div class="side-value white">Room <span id="mp-room-code">—</span></div>
+					<div class="mp-host-note" id="mp-host-note"></div>
+					<div class="side-label" style="margin-top:6px;">Leaderboard</div>
+					<div id="mp-leaderboard"></div>
+					<div class="mp-host-note" id="mp-connection"></div>
+					<button class="btn" id="mp-leave-ingame-btn" type="button" onclick="document.getElementById('mp-leave-btn')?.click()">Leave room</button>
+				</div>
+
 				<hr class="side-divider">
 
 					<div class="side-actions">
@@ -2389,12 +2446,33 @@
 
 			</div>
 		</div>
+		<div id="mp-lobby" class="mp-lobby--hidden" role="dialog" aria-modal="true">
+			<div class="mp-lobby__inner">
+				<div class="mp-lobby__title">Multiplayer room</div>
+				<p class="mp-lobby__status" id="mp-lobby-status">Connect to play together on the same market.</p>
+				<input class="mp-input" id="mp-player-name" placeholder="Your name" maxlength="24" value="Player">
+				<input class="mp-input" id="mp-room-code-input" placeholder="Room code to join" maxlength="4">
+				<div class="side-action-row">
+					<button type="button" class="btn primary" id="mp-create-btn">Create room</button>
+					<button type="button" class="btn" id="mp-join-btn">Join room</button>
+				</div>
+				<div class="side-stat">
+					<div class="side-label">Room code</div>
+					<div class="side-value" id="mp-lobby-code">—</div>
+				</div>
+				<ul id="mp-lobby-players" style="color:#aaa;font-size:0.85em;padding-left:18px;"></ul>
+				<button type="button" class="btn primary" id="mp-start-btn" hidden>Start game</button>
+				<button type="button" class="btn" id="mp-leave-btn">Leave room</button>
+				<button type="button" class="btn" id="mp-back-btn">Back</button>
+			</div>
+		</div>
 		<div id="start-screen" role="dialog" aria-modal="true" aria-labelledby="start-screen-title">
 			<div class="start-screen__inner">
 				<h1 class="start-screen__title" id="start-screen-title">Invest Rogue</h1>
 				<p class="start-screen__tagline">You start with 10,000. You get 1,000 monthly. Get 1,000,000,000 as fast as possible or die</p>
 				<p class="start-screen__save-hint" id="start-screen-save-hint"></p>
 				<button type="button" class="btn primary start-screen__btn" id="continue-game-btn" hidden>Continue saved run</button>
+				<button type="button" class="btn start-screen__btn" id="start-multiplayer-btn">Multiplayer room</button>
 				<button type="button" class="btn start-screen__btn" id="start-import-btn">Import run</button>
 				<button type="button" class="btn start-screen__btn" id="start-game-btn">Begin run</button>
 				<input type="file" id="start-import-input" accept=".json,application/json" hidden>

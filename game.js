@@ -429,3 +429,15 @@ export function nextDay(state, params = {}) {
 
   return withNW;
 }
+
+export {
+  mergeForRender,
+  splitPlayerFromMerged,
+  newPlayerState,
+  buildRoomMarket,
+  leaderboardEntry,
+  sortLeaderboard,
+  stripPlayerFields,
+} from "./multiplayer/state.js";
+
+export { advanceSharedMarket, advancePlayerAfterShared } from "./multiplayer/advance.js";
