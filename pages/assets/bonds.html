@@ -2,6 +2,24 @@
 				<div id="bond-unlock-banner"></div>
 				<div id="bond-trading-body">
 				<div class="section">
+					<div class="section-title">Coupon income (holdings)</div>
+					<div class="stat-row income-stats-row">
+						<div class="stat-box">
+							<div class="stat-label">Daily</div>
+							<div class="stat-value pos" id="bonds-income-daily">—</div>
+						</div>
+						<div class="stat-box">
+							<div class="stat-label">30d</div>
+							<div class="stat-value pos" id="bonds-income-30d">—</div>
+						</div>
+						<div class="stat-box">
+							<div class="stat-label">300d</div>
+							<div class="stat-value pos" id="bonds-income-300d">—</div>
+						</div>
+					</div>
+					<p class="income-section-note">Coupon cash flow from treasury and corporate bonds you hold.</p>
+				</div>
+				<div class="section">
 					<div class="section-title">Yield Curve</div>
 					<p style="font-size:0.72em; color:#555; margin:-6px 0 10px 0;">The yield curve and corporate listing yields update every 90 days (mean-reverting). New treasuries price off the current curve; held treasuries and held corporates keep their purchase coupon.</p>
 					<canvas id="bonds-yield-curve" style="width:100%;height:120px;display:block;background:#111;border-radius:3px;"></canvas>

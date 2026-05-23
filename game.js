@@ -42,6 +42,7 @@ import {
   DEFAULT_TREASURY_BOND_AUTOBUY,
   processTreasuryBondAutobuy,
 } from "./investments/treasuryBonds.js";
+import { processMarketCardAutobuys } from "./investments/marketAutobuy.js";
 import { repriceBondsForQuarter, isBondQuarterEnd } from "./investments/bondRepricing.js";
 import { initialCasinoState, playCasinoHiLo } from "./investments/casino.js";
 import { fmt, addCumulativeRealizedPL, EMPTY_CUMULATIVE_REALIZED_PL, appendLog } from "./investments/shared.js";
@@ -98,6 +99,22 @@ export { buyBond, sellBondEarly, normalizeTreasuryBondAutobuy } from "./investme
 export { buyCorporateBond } from "./investments/corporateBonds.js";
 export { buyCrypto, sellCrypto } from "./investments/cryptos.js";
 export { buyStock, sellStock } from "./investments/stocks.js";
+export {
+  normalizeMarketCardAutobuy,
+  marketCardAutobuyKey,
+} from "./investments/marketAutobuy.js";
+
+export {
+  SAVE_VERSION,
+  SAVE_STORAGE_KEY,
+  buildSavePayload,
+  parseSavePayload,
+  normalizeLoadedState,
+  normalizeLoadedParams,
+  buildExportFilename,
+  savePayloadToJson,
+  payloadFromParsed,
+} from "./saveLoad.js";
 
 export const EMPTY_ASSET_UNLOCK_DAYS = {
   bonds: null,
@@ -205,6 +222,7 @@ export function newState(params = {}) {
     cumulativeRealizedPL: { ...EMPTY_CUMULATIVE_REALIZED_PL },
     indexFundAutobuy: { ...DEFAULT_INDEX_FUND_AUTOBUY },
     treasuryBondAutobuy: { ...DEFAULT_TREASURY_BOND_AUTOBUY },
+    marketCardAutobuy: {},
     log: [],
   };
   const startNetWorth = netWorth(st);
@@ -376,6 +394,7 @@ export function nextDay(state, params = {}) {
 
   updated = processIndexFundAutobuy(updated);
   updated = processTreasuryBondAutobuy(updated);
+  updated = processMarketCardAutobuys(updated);
 
   const bondPlDelta = (bondResult.bondRealizedPLDelta || 0) + (corpBondResult.bondRealizedPLDelta || 0);
   if (bondPlDelta !== 0) {
