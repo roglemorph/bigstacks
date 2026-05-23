@@ -62,21 +62,29 @@ export function openOptionHoldings(state) {
   return (state.optionHoldings || []).filter(h => day < h.expiryDay);
 }
 
-function optionLotMarkPrice(lot, underlyingPrice, asOfDay) {
-  if (asOfDay >= lot.expiryDay) return 0;
-  const strike = lot.strike;
-  const remainingDte = Math.max(1, lot.expiryDay - asOfDay);
+/** Shared intrinsic + time-value mark (same basis as listed chain fair value). */
+function optionContractFairValue(optionType, strike, underlyingPrice, dte, withTimeNoise = false) {
+  const remainingDte = Math.max(1, dte);
+  const dteNorm = Math.min(1, remainingDte / OPTION_REFERENCE_DTE);
   const intrinsicPerShare =
-    lot.optionType === "put"
+    optionType === "put"
       ? Math.max(strike - underlyingPrice, 0)
       : Math.max(underlyingPrice - strike, 0);
   const intrinsicTotal = intrinsicPerShare * OPTION_SHARES_PER_CONTRACT;
   const moneyness = Math.abs(underlyingPrice - strike) / Math.max(strike, 1);
-  const term0 = Math.max(1, lot.initialDte ?? MARKET_OPTION_DTE);
-  const dteNorm = Math.min(1, remainingDte / term0);
-  const baseTimeValuePerShare = Math.max(0.08, underlyingPrice * 0.014 * dteNorm * (1 - Math.min(moneyness, 1)));
-  const timeTotal = baseTimeValuePerShare * 0.95 * OPTION_SHARES_PER_CONTRACT;
+  const baseTimeValuePerShare = Math.max(0.12, underlyingPrice * 0.014 * dteNorm * (1 - Math.min(moneyness, 1)));
+  const timeValuePerShare = Math.max(
+    0,
+    baseTimeValuePerShare * (withTimeNoise ? (1 + randn() * 0.18) : 1)
+  );
+  const timeTotal = timeValuePerShare * OPTION_SHARES_PER_CONTRACT;
   return Math.max(OPTION_SHARES_PER_CONTRACT * 0.05, intrinsicTotal + timeTotal);
+}
+
+function optionLotMarkPrice(lot, underlyingPrice, asOfDay) {
+  if (asOfDay >= lot.expiryDay) return 0;
+  const remainingDte = Math.max(1, lot.expiryDay - asOfDay);
+  return optionContractFairValue(lot.optionType, lot.strike, underlyingPrice, remainingDte, false);
 }
 
 export function optionHoldingsMarkValue(state) {
@@ -91,6 +99,8 @@ export function optionHoldingsMarkValue(state) {
 /** Mark-to-market for one open lot (uses current index price and game day). */
 export function markOptionHolding(state, lot) {
   if (!lot || state.day >= lot.expiryDay) return 0;
+  const listed = (state.options || []).find(o => o.id === lot.optionId);
+  if (listed && listed.strike === lot.strike) return listed.price;
   const u = (state.indexFunds || []).find(f => f.id === "spy")?.price ?? 0;
   return optionLotMarkPrice(lot, u, state.day);
 }
@@ -346,19 +356,7 @@ export function listedOptionFairValue(optionBase, underlyingPrice, marketDte, pa
   const strikes = optionStrikesForUnderlying(underlyingPrice, params?.optionStrikeOffsetPct ?? 0.08);
   const strike = strikes[optionBase.strikeRef] ?? optionBase.strike ?? underlyingPrice;
   const dte = normalizeOptionMarketDte(marketDte);
-  const dteNorm = Math.min(1, dte / OPTION_REFERENCE_DTE);
-  const intrinsicPerShare = optionBase.optionType === "put"
-    ? Math.max(strike - underlyingPrice, 0)
-    : Math.max(underlyingPrice - strike, 0);
-  const intrinsicTotal = intrinsicPerShare * OPTION_SHARES_PER_CONTRACT;
-  const moneyness = Math.abs(underlyingPrice - strike) / Math.max(strike, 1);
-  const baseTimeValuePerShare = Math.max(0.12, underlyingPrice * 0.014 * dteNorm * (1 - Math.min(moneyness, 1)));
-  const timeValuePerShare = Math.max(
-    0,
-    baseTimeValuePerShare * (withTimeNoise ? (1 + randn() * 0.18) : 1)
-  );
-  const timeTotal = timeValuePerShare * OPTION_SHARES_PER_CONTRACT;
-  const target = intrinsicTotal + timeTotal;
+  const target = optionContractFairValue(optionBase.optionType, strike, underlyingPrice, dte, withTimeNoise);
   return { strike, target, dte };
 }
 
