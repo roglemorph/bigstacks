@@ -120,6 +120,7 @@ function setupMultiplayerUi() {
 	});
 
 	mpClient.on("dayAdvanced", payload => {
+		mpAdvanceInFlight = false;
 		syncStateFromMultiplayer();
 		mpClient.leaderboard = payload.leaderboard || [];
 		render(state);
@@ -137,6 +138,7 @@ function setupMultiplayerUi() {
 	});
 
 	mpClient.on("error", payload => {
+		mpAdvanceInFlight = false;
 		alert(payload.message || "Server error");
 	});
 
@@ -508,6 +510,7 @@ let renderedLogCount = 0;
       let tickerIndex = 0;
 let autoAdvanceTimerId = null;
 let autoAdvanceIntervalMs = 500;
+let mpAdvanceInFlight = false;
 const AUTO_ADVANCE_MS_MIN = 50;
 const AUTO_ADVANCE_MS_MAX = 1000;
 const OVERVIEW_CHANGE_LOOKBACK_DAYS = 30;
@@ -664,12 +667,17 @@ function syncAutoAdvanceUi() {
 	const msStr = ms.toLocaleString();
 	const running = autoAdvanceTimerId !== null;
 	const startBtn = document.getElementById("auto-advance-start-btn");
+	const mpHostOnly = isMultiplayer() && !isMpHost();
 	if (startBtn) {
 		startBtn.textContent = running
 			? `⏹ Stop · ${msStr} ms/day`
-			: `▶ Start · ${msStr} ms/day`;
+			: mpHostOnly
+				? `▶ Host only · ${msStr} ms/day`
+				: `▶ Start · ${msStr} ms/day`;
 		startBtn.classList.toggle("primary", !running);
 		startBtn.classList.toggle("danger", running);
+		startBtn.disabled = mpHostOnly;
+		startBtn.title = mpHostOnly ? "Only the host can auto-advance days" : "";
 	}
 	const speedDisplay = document.getElementById("auto-advance-speed-display");
 	if (speedDisplay) speedDisplay.textContent = `${msStr} ms`;
@@ -1263,6 +1271,7 @@ function setChange(elId, history, lookbackDays = 1) {
     dayBtn.disabled = s.day >= s.maxDays;
     dayBtn.textContent = `⏭ Next day`;
     renderMultiplayerPanel();
+    syncAutoAdvanceUi();
 
     patchIncomeIndicators(s, params);
 
@@ -3899,12 +3908,13 @@ render(state);
 }
 
 function setAutoAdvance(on) {
-	if (isMultiplayer() && on) return;
+	if (isMultiplayer() && on && !isMpHost()) return;
 	if (autoAdvanceTimerId !== null) {
 		clearInterval(autoAdvanceTimerId);
 		autoAdvanceTimerId = null;
 	}
 	if (!on) {
+		mpAdvanceInFlight = false;
 		syncAutoAdvanceUi();
 		render(state);
 		return;
@@ -3920,6 +3930,22 @@ function setAutoAdvance(on) {
 			return;
 		}
 		syncMarketCardAutobuysFromUi();
+		if (isMultiplayer()) {
+			if (!isMpHost()) {
+				setAutoAdvance(false);
+				return;
+			}
+			if (mpAdvanceInFlight) return;
+			mpAdvanceInFlight = true;
+			try {
+				mpClient.advanceDay(1);
+			} catch (err) {
+				mpAdvanceInFlight = false;
+				setAutoAdvance(false);
+				alert(err.message || "Could not advance day");
+			}
+			return;
+		}
 		const prevDay = state.day;
 		state = nextDay(state, params);
 		render(state, { liveOnly: true });
