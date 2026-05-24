@@ -112,7 +112,8 @@ export class RoomManager {
     return {
       playerId: hostId,
       roomCode: code,
-      roomState: this.roomState(room),
+      sessionToken: room.players.get(hostId).sessionToken,
+      roomState: this.roomStateForPlayer(room, hostId),
     };
   }
 
@@ -121,6 +122,22 @@ export class RoomManager {
     const room = this.getRoom(code);
     if (!room) throw new Error("Room not found");
     if (room.status !== "lobby") throw new Error("Game already started");
+
+    // Same browser tab reconnecting to a room it is already in — don't add a duplicate player.
+    for (const p of room.players.values()) {
+      if (p.ws === ws) {
+        p.displayName = (playerName || p.displayName || "Player").slice(0, 24);
+        p.connected = true;
+        p.disconnectedAt = null;
+        return {
+          playerId: p.playerId,
+          roomCode: code,
+          sessionToken: p.sessionToken,
+          roomState: this.roomStateForPlayer(room, p.playerId),
+        };
+      }
+    }
+
     if (room.players.size >= MAX_PLAYERS) throw new Error("Room is full");
 
     const playerId = randomId("p");
@@ -129,7 +146,8 @@ export class RoomManager {
     return {
       playerId,
       roomCode: code,
-      roomState: this.roomState(room),
+      sessionToken: room.players.get(playerId).sessionToken,
+      roomState: this.roomStateForPlayer(room, playerId),
     };
   }
 
@@ -155,6 +173,16 @@ export class RoomManager {
         displayName: p.displayName,
         connected: p.connected,
       })),
+    };
+  }
+
+  /** Lobby snapshot plus credentials for the receiving client only. */
+  roomStateForPlayer(room, playerId) {
+    const player = room.players.get(playerId);
+    return {
+      ...this.roomState(room),
+      playerId,
+      sessionToken: player?.sessionToken ?? null,
     };
   }
 
@@ -189,7 +217,7 @@ export class RoomManager {
       playerId,
       roomCode: room.roomCode,
       status: "lobby",
-      roomState: this.roomState(room),
+      roomState: this.roomStateForPlayer(room, playerId),
     };
   }
 

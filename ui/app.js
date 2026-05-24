@@ -176,6 +176,7 @@ function setupMultiplayerUi() {
 
 	document.getElementById("start-multiplayer-btn")?.addEventListener("click", () => {
 		showMpLobby(true);
+		mpClient.clearSession();
 		mpClient.connect().catch(() => {});
 	});
 
@@ -197,13 +198,19 @@ function renderMpLobby(roomState) {
 	document.getElementById("mp-lobby-code").textContent = roomState.roomCode || "—";
 	const list = document.getElementById("mp-lobby-players");
 	if (list) {
+		const selfId = mpClient?.session?.playerId;
 		list.innerHTML = (roomState.players || []).map(p =>
-			`<li>${p.displayName}${p.playerId === roomState.hostId ? " (host)" : ""}${p.connected === false ? " (away)" : ""}</li>`
+			`<li>${p.displayName}${p.playerId === roomState.hostId ? " (host)" : ""}${p.playerId === selfId ? " (you)" : ""}${p.connected === false ? " (away)" : ""}</li>`
 		).join("");
 	}
 	const startBtn = document.getElementById("mp-start-btn");
+	const joinBtn = document.getElementById("mp-join-btn");
+	const createBtn = document.getElementById("mp-create-btn");
+	const inRoom = !!mpClient?.session?.roomCode;
+	if (joinBtn) joinBtn.disabled = inRoom;
+	if (createBtn) createBtn.disabled = inRoom;
 	if (startBtn) {
-		const isHost = mpClient?.session?.playerId === roomState.hostId;
+		const isHost = mpClient?.isHost();
 		startBtn.hidden = !isHost;
 		startBtn.disabled = roomState.status !== "lobby";
 	}

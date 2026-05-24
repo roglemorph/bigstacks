@@ -40,7 +40,6 @@ export class MultiplayerClient {
       this.ws.onopen = () => {
         this.status = "connected";
         this.emit("connection", { connected: true });
-        this.tryReconnect();
         resolve();
       };
       this.ws.onerror = () => reject(new Error("WebSocket connection failed"));
@@ -76,7 +75,15 @@ export class MultiplayerClient {
   handle(type, payload) {
     switch (type) {
       case "roomState":
-        this.session.hostId = payload.hostId;
+        if (payload.playerId) {
+          this.session.playerId = payload.playerId;
+          this.session.roomCode = payload.roomCode;
+          this.session.sessionToken = payload.sessionToken;
+          writeSession(this.session);
+        }
+        if (payload.hostId) {
+          this.session.hostId = payload.hostId;
+        }
         this.emit("roomState", payload);
         break;
       case "gameStarted":

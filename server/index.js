@@ -65,7 +65,10 @@ wss.on("connection", ws => {
           const result = roomManager.joinRoom(payload.roomCode, payload.playerName, ws);
           ctx = { playerId: result.playerId, roomCode: result.roomCode };
           send(ws, "roomState", result.roomState);
-          broadcast(roomManager.getRoom(result.roomCode), "roomState", result.roomState);
+          const room = roomManager.getRoom(result.roomCode);
+          if (room) {
+            broadcast(room, "roomState", roomManager.roomState(room), result.playerId);
+          }
           break;
         }
         case "reconnect": {
