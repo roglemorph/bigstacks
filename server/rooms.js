@@ -34,6 +34,7 @@ import {
 } from "../multiplayer/state.js";
 import { advanceSharedMarket, advancePlayerAfterShared } from "../multiplayer/advance.js";
 import { applyPlayerAction } from "../multiplayer/actions.js";
+import { applyAutobuyConfig } from "../multiplayer/autobuy.js";
 import {
   randomRoomCode,
   randomId,
@@ -348,6 +349,14 @@ export class RoomManager {
       leaderboard,
       broadcast: true,
     };
+  }
+
+  syncAutobuy(room, playerId, config) {
+    if (room.status !== "playing") throw new Error("Game not started");
+    const player = room.players.get(playerId);
+    if (!player) throw new Error("Player not found");
+    player.playerState = applyAutobuyConfig(player.playerState, config);
+    return { ok: true, playerState: player.playerState };
   }
 
   buildLeaderboard(room) {

@@ -109,6 +109,12 @@ export class MultiplayerClient {
         }
         this.emit("actionResult", payload);
         break;
+      case "autobuySynced":
+        if (payload.ok && payload.playerState) {
+          this.playerState = payload.playerState;
+        }
+        this.emit("autobuySynced", payload);
+        break;
       case "leaderboard":
         this.leaderboard = payload.leaderboard || [];
         this.emit("leaderboard", payload);
@@ -137,12 +143,16 @@ export class MultiplayerClient {
     this.send("startGame", {});
   }
 
-  advanceDay(n = 1) {
-    this.send("advanceDay", { n });
+  advanceDay(n = 1, autobuy = null) {
+    this.send("advanceDay", { n, autobuy });
   }
 
   action(actionType, args = {}) {
     this.send("action", { actionType, args });
+  }
+
+  syncAutobuy(config) {
+    this.send("syncAutobuy", config);
   }
 
   leaveRoom() {

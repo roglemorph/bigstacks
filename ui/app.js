@@ -51,6 +51,30 @@ function commitState(next) {
 	render(state);
 }
 
+function syncAllAutobuysFromUi() {
+	applyIndexFundAutobuyFromUi();
+	applyTreasuryBondAutobuyFromUi();
+	syncMarketCardAutobuysFromUi();
+}
+
+function autobuyConfigFromState() {
+	return {
+		indexFundAutobuy: state.indexFundAutobuy,
+		treasuryBondAutobuy: state.treasuryBondAutobuy,
+		marketCardAutobuy: state.marketCardAutobuy,
+	};
+}
+
+function pushAutobuyConfigToServer() {
+	if (!isMultiplayer()) return;
+	syncAllAutobuysFromUi();
+	try {
+		mpClient.syncAutobuy(autobuyConfigFromState());
+	} catch (err) {
+		console.warn("Failed to sync autobuy config:", err);
+	}
+}
+
 function dispatchGameAction(actionType, args, localApply) {
 	if (!isMultiplayer()) {
 		commitState(localApply(state));
@@ -135,6 +159,10 @@ function setupMultiplayerUi() {
 		syncStateFromMultiplayer();
 		if (payload.leaderboard) mpClient.leaderboard = payload.leaderboard;
 		render(state);
+	});
+
+	mpClient.on("autobuySynced", () => {
+		syncStateFromMultiplayer();
 	});
 
 	mpClient.on("error", payload => {
@@ -2623,6 +2651,7 @@ function applyMarketCardAutobuyFromCard(prefix, assetId) {
 	};
 	const asset = findMarketCardAsset(prefix, assetId);
 	if (asset) patchMarketCardAutobuyStatus(card, prefix, asset, state);
+	pushAutobuyConfigToServer();
 }
 
 function findMarketCardAsset(prefix, assetId) {
@@ -2650,6 +2679,7 @@ function syncMarketCardAutobuyQty(prefix, assetId) {
 	const asset = findMarketCardAsset(prefix, assetId);
 	const card = document.querySelector(`[data-mkt-card="${prefix}:${assetId}"]`);
 	if (asset && card) patchMarketCardAutobuyStatus(card, prefix, asset, state);
+	if (prev.enabled) pushAutobuyConfigToServer();
 }
 
 function syncMarketCardAutobuysFromUi() {
@@ -2841,6 +2871,7 @@ function applyIndexFundAutobuyFromUi() {
 	};
 	tradeQtyByInputId[IF_AUTOBUY_SHARES_INPUT] = qty;
 	tradeQtyByInputId[IF_AUTOBUY_DAYS_INPUT] = everyDays;
+	pushAutobuyConfigToServer();
 }
 
 function renderIndexFundAutobuySteppers(s) {
@@ -2909,6 +2940,7 @@ function applyTreasuryBondAutobuyFromUi() {
 		}),
 	};
 	tradeQtyByInputId[BOND_AUTOBUY_DAYS_INPUT] = everyDays;
+	pushAutobuyConfigToServer();
 }
 
 function renderTreasuryBondAutobuySteppers(s) {
@@ -3888,12 +3920,12 @@ syncNetWorthChartControls(s);
 }
 
 function advanceDays(count) {
-syncMarketCardAutobuysFromUi();
+syncAllAutobuysFromUi();
 const steps = Math.max(1, parseInt(count) || 1);
 if (isMultiplayer()) {
 	if (!isMpHost()) return;
 	try {
-		mpClient.advanceDay(steps);
+		mpClient.advanceDay(steps, autobuyConfigFromState());
 	} catch (err) {
 		alert(err.message || "Could not advance day");
 	}
@@ -3938,7 +3970,8 @@ function setAutoAdvance(on) {
 			if (mpAdvanceInFlight) return;
 			mpAdvanceInFlight = true;
 			try {
-				mpClient.advanceDay(1);
+				syncAllAutobuysFromUi();
+				mpClient.advanceDay(1, autobuyConfigFromState());
 			} catch (err) {
 				mpAdvanceInFlight = false;
 				setAutoAdvance(false);
@@ -3956,7 +3989,7 @@ function setAutoAdvance(on) {
 	syncAutoAdvanceUi();
 }
 
-document.getElementById("day-btn").onclick         = () => { syncMarketCardAutobuysFromUi(); if (isMultiplayer()) { advanceDays(1); return; } state = nextDay(state, params); render(state); };
+document.getElementById("day-btn").onclick         = () => { if (isMultiplayer()) { advanceDays(1); return; } syncAllAutobuysFromUi(); state = nextDay(state, params); render(state); };
 document.getElementById("advance-btn").onclick     = () => {
 	const days = parseInt(document.getElementById("advance-days").value) || 1;
 	advanceDays(days);

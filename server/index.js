@@ -100,6 +100,9 @@ wss.on("connection", ws => {
         case "advanceDay": {
           const room = roomManager.requireRoom(ctx.roomCode);
           const n = Math.max(1, Math.min(365, parseInt(payload.n, 10) || 1));
+          if (payload.autobuy) {
+            roomManager.syncAutobuy(room, ctx.playerId, payload.autobuy);
+          }
           const result = roomManager.advanceDay(room, ctx.playerId, n);
           for (const p of room.players.values()) {
             send(p.ws, "dayAdvanced", {
@@ -124,6 +127,15 @@ wss.on("connection", ws => {
             broadcast(room, "leaderboard", { leaderboard: result.leaderboard }, ctx.playerId);
             send(ws, "leaderboard", { leaderboard: result.leaderboard });
           }
+          break;
+        }
+        case "syncAutobuy": {
+          const room = roomManager.requireRoom(ctx.roomCode);
+          const result = roomManager.syncAutobuy(room, ctx.playerId, payload || {});
+          send(ws, "autobuySynced", {
+            ok: true,
+            playerState: result.playerState,
+          });
           break;
         }
         case "leaveRoom": {
