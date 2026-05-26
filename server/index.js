@@ -27,14 +27,14 @@ const httpServer = createServer((req, res) => {
 const wss = new WebSocketServer({ server: httpServer });
 
 function send(ws, type, payload) {
-  if (ws.readyState === ws.OPEN) {
-    ws.send(JSON.stringify(makeMessage(type, payload)));
-  }
+  if (!ws || ws.readyState !== ws.OPEN) return;
+  ws.send(JSON.stringify(makeMessage(type, payload)));
 }
 
 function broadcast(room, type, payload, exceptPlayerId = null) {
   for (const p of room.players.values()) {
     if (exceptPlayerId && p.playerId === exceptPlayerId) continue;
+    if (!p.ws) continue;
     send(p.ws, type, payload);
   }
 }
