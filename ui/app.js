@@ -67,7 +67,6 @@ function autobuyConfigFromState() {
 
 function pushAutobuyConfigToServer() {
 	if (!isMultiplayer()) return;
-	syncAllAutobuysFromUi();
 	try {
 		mpClient.syncAutobuy(autobuyConfigFromState());
 	} catch (err) {
