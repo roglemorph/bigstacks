@@ -234,13 +234,41 @@
 				#mp-panel[hidden] { display: none !important; }
 				.mp-leaderboard-row {
 					display: grid;
-					grid-template-columns: 28px 1fr auto;
+					grid-template-columns: 28px 1fr auto auto;
 					gap: 6px;
 					font-size: 0.82em;
 					color: #aaa;
 				}
 				.mp-leaderboard-row--self { color: #00ff88; }
 				.mp-host-note { font-size: 0.72em; color: #666; }
+				.mp-advance-note {
+					font-size: 0.78em;
+					color: #666;
+					text-align: center;
+					padding: 8px 4px;
+					border: 1px dashed #333;
+					border-radius: 4px;
+				}
+				.mp-nw-overlay-legend {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 10px 14px;
+					margin-top: 8px;
+					font-size: 0.78em;
+					color: #888;
+				}
+				.mp-nw-overlay-legend[hidden] { display: none !important; }
+				.mp-nw-overlay-legend-item {
+					display: inline-flex;
+					align-items: center;
+					gap: 5px;
+				}
+				.mp-nw-overlay-swatch {
+					width: 14px;
+					height: 3px;
+					border-radius: 1px;
+					flex-shrink: 0;
+				}
 
 				/* ── SHARED ── */
 				.section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; padding: 16px; margin-bottom: 14px; }
@@ -2110,6 +2138,7 @@
 								</div>
 							</div>
 						</div>
+						<div class="mp-advance-note" id="mp-advance-note" hidden>Advance controlled by host</div>
 						<button class="btn" id="reset-btn">↺ New Run</button>
 						<hr class="side-divider">
 						<div class="side-action-row side-action-row--equal-btns">
@@ -2191,6 +2220,7 @@
 							</div>
 						</div>
 						<div class="nw-stack-legend" id="nw-stack-legend" aria-label="Net worth by asset"></div>
+						<div class="mp-nw-overlay-legend" id="mp-nw-overlay-legend" hidden aria-label="Other players net worth"></div>
 					</div>
 
 					<div class="overview-summary-grid">

@@ -41,6 +41,8 @@ const MP_FULL_RENDER_ACTIONS = new Set([
 	"unlockOptions",
 ]);
 
+const MP_NW_OVERLAY_COLORS = ["#ff6644", "#44aaff", "#ff44aa", "#aaaa44", "#66ffcc", "#cc88ff"];
+
 function isMultiplayer() {
 	return gameMode === "multiplayer" && mpClient;
 }
@@ -102,11 +104,24 @@ function renderMultiplayerUpdate() {
 	lastMpActionType = null;
 }
 
+function syncMpSidebarTimeControls() {
+	const dayRow = document.querySelector(".side-action-row--day-advance");
+	const autoPanel = document.querySelector(".auto-advance-panel");
+	const note = document.getElementById("mp-advance-note");
+	const mpNonHost = isMultiplayer() && !isMpHost();
+	if (dayRow) dayRow.hidden = mpNonHost;
+	if (autoPanel) autoPanel.hidden = mpNonHost;
+	if (note) note.hidden = !mpNonHost;
+}
+
 function renderMultiplayerPanel() {
 	const panel = document.getElementById("mp-panel");
 	if (!panel) return;
 	if (!isMultiplayer()) {
 		panel.hidden = true;
+		syncMpSidebarTimeControls();
+		const overlayLegend = document.getElementById("mp-nw-overlay-legend");
+		if (overlayLegend) overlayLegend.hidden = true;
 		return;
 	}
 	panel.hidden = false;
@@ -122,17 +137,30 @@ function renderMultiplayerPanel() {
 	}
 	const list = document.getElementById("mp-leaderboard");
 	if (list) {
+		const selfId = mpClient.session?.playerId;
 		const board = mpClient.leaderboard?.length
 			? mpClient.leaderboard
-			: [{ rank: 1, displayName: mpClient.playerState?.displayName || "You", netWorth: netWorth(state) }];
-		list.innerHTML = board.map(row => `
-			<div class="mp-leaderboard-row${row.playerId === mpClient.session.playerId ? " mp-leaderboard-row--self" : ""}">
+			: [{
+				rank: 1,
+				playerId: selfId,
+				displayName: mpClient.playerState?.displayName || "You",
+				netWorth: netWorth(state),
+				totalReturn: totalReturn(state),
+			}];
+		list.innerHTML = board.map(row => {
+			const pl = row.totalReturn ?? 0;
+			const plCls = pl >= 0 ? "pos" : "neg";
+			return `
+			<div class="mp-leaderboard-row${row.playerId === selfId ? " mp-leaderboard-row--self" : ""}">
 				<span>#${row.rank}</span>
 				<span>${row.displayName}</span>
 				<span>$${Math.round(row.netWorth).toLocaleString()}</span>
+				<span class="${plCls}">${fmtSigned(pl)}</span>
 			</div>
-		`).join("");
+		`;
+		}).join("");
 	}
+	syncMpSidebarTimeControls();
 }
 
 function setupMultiplayerUi() {
@@ -149,8 +177,9 @@ function setupMultiplayerUi() {
 		renderMpLobby(roomState);
 	});
 
-	mpClient.on("gameStarted", () => {
+	mpClient.on("gameStarted", payload => {
 		gameMode = "multiplayer";
+		mpClient.leaderboard = payload.leaderboard || [];
 		syncStateFromMultiplayer();
 		hideStartScreen();
 		hideMpLobby();
@@ -179,6 +208,12 @@ function setupMultiplayerUi() {
 
 	mpClient.on("autobuySynced", () => {
 		syncStateFromMultiplayer();
+	});
+
+	mpClient.on("leaderboard", payload => {
+		mpClient.leaderboard = payload.leaderboard || [];
+		renderMultiplayerPanel();
+		renderGraphs(state);
 	});
 
 	mpClient.on("error", payload => {
@@ -451,6 +486,49 @@ function netWorthStackSeriesForChart(s, mode, startDay) {
 function stackSnapshotTotal(snap) {
 	if (!snap) return null;
 	return NET_WORTH_STACK_LAYERS.reduce((sum, l) => sum + (snap[l.key] || 0), 0);
+}
+function expandNetWorthHistoryToDaySpan(history, chartDaySpan) {
+	if (!chartDaySpan || !history?.length) return history || [];
+	const { oldestDay, newestDay } = chartDaySpan;
+	const slotCount = Math.max(0, newestDay - oldestDay + 1);
+	const out = Array(slotCount).fill(null);
+	for (let day = oldestDay; day <= newestDay; day++) {
+		out[day - oldestDay] = history[day - 1] ?? null;
+	}
+	return out;
+}
+function bucketScalarsAtFixedDays(history, bucketEndDays) {
+	if (!history?.length || !bucketEndDays?.length) return [];
+	return bucketEndDays.map(day => history[day - 1] ?? null);
+}
+function netWorthHistoryPlotSeries(history, chartDaySpan, bucketEndDays) {
+	const raw = Array.isArray(history) ? history : [];
+	if (!raw.length || !chartDaySpan) return [];
+	if (chartDaySpan.bucketDays > 1) {
+		const ends = bucketEndDays?.length
+			? bucketEndDays
+			: fixedBucketEndDaysInRange(
+				chartDaySpan.oldestDay,
+				chartDaySpan.newestDay,
+				chartDaySpan.bucketDays,
+				chartDaySpan.currentDay ?? chartDaySpan.newestDay
+			);
+		return padFixedBucketsToNewestDay(
+			bucketScalarsAtFixedDays(raw, ends),
+			ends,
+			chartDaySpan.newestDay,
+			chartDaySpan.bucketDays
+		).plotData;
+	}
+	return expandNetWorthHistoryToDaySpan(raw, chartDaySpan);
+}
+function mpLeaderboardOverlayRows() {
+	if (!isMultiplayer()) return [];
+	const selfId = mpClient.session?.playerId;
+	return (mpClient.leaderboard || []).filter(row => row.playerId !== selfId);
+}
+function mpOverlayColorForIndex(index) {
+	return MP_NW_OVERLAY_COLORS[index % MP_NW_OVERLAY_COLORS.length];
 }
 function chartAxisEndDay(currentDay) {
 	return currentDay + CHART_TRAILING_BLANK_SLOTS;
@@ -2347,6 +2425,84 @@ ${rows}`;
     }
   }
 
+function drawMultiplayerNetWorthOverlays(canvas, chartDaySpan, yMax, bucketEndDays) {
+	if (!canvas || !chartDaySpan || !isMultiplayer()) return;
+	const rows = mpLeaderboardOverlayRows();
+	if (!rows.length) return;
+
+	const ctx = canvas.getContext("2d");
+	const w = canvas.clientWidth;
+	const h = canvas.clientHeight;
+	if (!w || !h) return;
+
+	const min = 0;
+	const max = Number.isFinite(yMax) ? yMax : 1;
+	const pad = { t: 4, b: 4 };
+	const plotH = h - pad.t - pad.b;
+	const yForValue = v => pad.t + (1 - (v - min) / Math.max(1e-6, max - min)) * plotH;
+	const xForPoint = (i, plotData) => {
+		const bucketDays = chartDaySpan.bucketDays || 1;
+		let day;
+		if (bucketDays > 1 && bucketEndDays?.length) {
+			day = bucketEndDays[Math.min(i, bucketEndDays.length - 1)];
+		} else {
+			day = chartDaySpan.oldestDay + i;
+		}
+		return chartXForDay(day, chartDaySpan.oldestDay, chartDaySpan.newestDay, w);
+	};
+
+	rows.forEach((row, rowIdx) => {
+		const plotData = netWorthHistoryPlotSeries(row.netWorthHistory, chartDaySpan, bucketEndDays);
+		if (!plotData?.length || plotData.length < 2) return;
+
+		let endIdx = plotData.length - 1;
+		while (endIdx >= 0 && (plotData[endIdx] == null || !Number.isFinite(plotData[endIdx]))) {
+			endIdx -= 1;
+		}
+		if (endIdx < 0) return;
+
+		ctx.beginPath();
+		let started = false;
+		for (let i = 0; i <= endIdx; i++) {
+			const v = plotData[i];
+			if (v == null || !Number.isFinite(v)) continue;
+			const x = xForPoint(i, plotData);
+			const y = yForValue(v);
+			if (!started) {
+				ctx.moveTo(x, y);
+				started = true;
+			} else {
+				ctx.lineTo(x, y);
+			}
+		}
+		if (started) {
+			ctx.strokeStyle = mpOverlayColorForIndex(rowIdx);
+			ctx.lineWidth = 1.5;
+			ctx.setLineDash([4, 3]);
+			ctx.stroke();
+			ctx.setLineDash([]);
+		}
+	});
+}
+
+function renderMpNetWorthOverlayLegend() {
+	const el = document.getElementById("mp-nw-overlay-legend");
+	if (!el) return;
+	const rows = mpLeaderboardOverlayRows();
+	if (!isMultiplayer() || rows.length === 0) {
+		el.hidden = true;
+		el.innerHTML = "";
+		return;
+	}
+	el.hidden = false;
+	el.innerHTML = rows.map((row, i) => `
+		<span class="mp-nw-overlay-legend-item">
+			<span class="mp-nw-overlay-swatch" style="background:${mpOverlayColorForIndex(i)}"></span>
+			${row.displayName}
+		</span>
+	`).join("");
+}
+
 function drawYieldCurve(s) {
 const canvas = document.getElementById("bonds-yield-curve");
 if (!canvas) return;
@@ -3906,7 +4062,16 @@ document.getElementById("if-yaxis"), document.getElementById("if-xaxis"), xLabel
 const nwFullStack = ensureNetWorthStackHistory(s);
 const nw = netWorth(s);
 const nwHistoryPeak = (s.netWorthHistory || []).reduce((m, v) => Math.max(m, v), nw);
-const nwPeak = Math.max(nw, nwHistoryPeak);
+let mpHistoryPeak = 0;
+if (isMultiplayer()) {
+	for (const row of mpClient.leaderboard || []) {
+		for (const v of row.netWorthHistory || []) {
+			if (Number.isFinite(v)) mpHistoryPeak = Math.max(mpHistoryPeak, v);
+		}
+		if (Number.isFinite(row.netWorth)) mpHistoryPeak = Math.max(mpHistoryPeak, row.netWorth);
+	}
+}
+const nwPeak = Math.max(nw, nwHistoryPeak, mpHistoryPeak);
 const nwYMax = nwPeak <= 50000 ? 50000 : nwPeak * 1.5;
 const nwDaySpan = netWorthChartDaySpan(
 	s,
@@ -3915,10 +4080,20 @@ const nwDaySpan = netWorthChartDaySpan(
 	netWorthMonthStartDay,
 	netWorthRecentDays
 );
+let nwBucketEndDays;
+if (nwDaySpan.bucketDays > 1) {
+	nwBucketEndDays = fixedBucketEndDaysInRange(
+		nwDaySpan.oldestDay,
+		nwDaySpan.newestDay,
+		nwDaySpan.bucketDays,
+		nwDaySpan.currentDay ?? nwDaySpan.newestDay
+	);
+}
 const nwXLabs = netWorthXLabelsForMode(s, netWorthChartMode, nwDaySpan);
 const nwVerticalLines = netWorthChartVerticalLines(s, nwDaySpan.oldestDay, nwDaySpan.newestDay);
+const nwCanvas = document.getElementById("networth-graph");
 drawStackedNetWorthChart(
-	document.getElementById("networth-graph"),
+	nwCanvas,
 	nwFullStack,
 	nwYMax,
 	document.getElementById("nw-xaxis"),
@@ -3926,6 +4101,13 @@ drawStackedNetWorthChart(
 	nwVerticalLines,
 	nwDaySpan
 );
+if (isMultiplayer()) {
+	drawMultiplayerNetWorthOverlays(nwCanvas, nwDaySpan, nwYMax, nwBucketEndDays);
+	renderMpNetWorthOverlayLegend();
+} else {
+	const overlayLegend = document.getElementById("mp-nw-overlay-legend");
+	if (overlayLegend) overlayLegend.hidden = true;
+}
 renderNetWorthStackLegend(snapshotNetWorthStack(s));
 const holdingsStack = snapshotNetWorthStack(s);
 drawHoldingsPieChart(document.getElementById("overview-holdings-pie"), holdingsStack);

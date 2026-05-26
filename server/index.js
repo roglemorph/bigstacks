@@ -84,6 +84,7 @@ wss.on("connection", ws => {
         case "startGame": {
           const room = roomManager.requireRoom(ctx.roomCode);
           const result = roomManager.startGame(room, ctx.playerId);
+          const leaderboard = roomManager.buildLeaderboard(room);
           for (const p of room.players.values()) {
             send(p.ws, "gameStarted", {
               sharedMarket: result.sharedMarket,
@@ -93,6 +94,7 @@ wss.on("connection", ws => {
               hostId: room.hostId,
               roomCode: room.roomCode,
               params: room.params,
+              leaderboard,
             });
           }
           break;

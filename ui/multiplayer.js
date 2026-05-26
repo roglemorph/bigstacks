@@ -93,6 +93,7 @@ export class MultiplayerClient {
         this.session.hostId = payload.hostId;
         this.sharedMarket = payload.sharedMarket;
         this.playerState = payload.playerState;
+        this.leaderboard = payload.leaderboard || [];
         writeSession(this.session);
         this.emit("gameStarted", payload);
         break;

@@ -7,6 +7,7 @@ import { EMPTY_CUMULATIVE_REALIZED_PL } from "../investments/shared.js";
 import { DEFAULT_INDEX_FUND_AUTOBUY } from "../investments/indexFunds.js";
 import { DEFAULT_TREASURY_BOND_AUTOBUY } from "../investments/treasuryBonds.js";
 import { initialCasinoState } from "../investments/casino.js";
+import { totalReturn } from "../game.js";
 
 export const EMPTY_ASSET_UNLOCK_DAYS = {
   bonds: null,
@@ -187,6 +188,8 @@ export function leaderboardEntry(player, shared, netWorthFn) {
     playerId: player.playerId,
     displayName: player.displayName,
     netWorth: Math.round(netWorthFn(merged)),
+    totalReturn: Math.round(totalReturn(merged)),
+    netWorthHistory: [...(player.netWorthHistory || [])],
     day: shared.day,
   };
 }

@@ -210,6 +210,7 @@ export class RoomManager {
           hostId: room.hostId,
           roomCode: room.roomCode,
           params: room.params,
+          leaderboard: this.buildLeaderboard(room),
         },
       };
     }
