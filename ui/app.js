@@ -3828,11 +3828,17 @@ window._buyMaxAsset = (prefix, id) => {
 };
 
 window._buyEveryStock = () => {
-	if (isMultiplayer()) return alert("Bulk buy all stocks is disabled in multiplayer");
 	const qty = getTradeQtyFromInput(STOCK_BULK_AMOUNT_ID);
 	tradeQtyByInputId[STOCK_BULK_AMOUNT_ID] = qty;
+	const stocks = state.stocks || [];
+	if (isMultiplayer()) {
+		for (const st of stocks) {
+			dispatchGameAction("buyStock", { assetId: st.id, qty }, s => buyStock(s, st.id, qty));
+		}
+		return;
+	}
 	let s = state;
-	for (const st of s.stocks || []) {
+	for (const st of stocks) {
 		s = buyStock(s, st.id, qty);
 	}
 	state = s;
