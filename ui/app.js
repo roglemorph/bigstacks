@@ -32,6 +32,14 @@ enhanceQuantityInputs();
 let gameMode = "solo";
 let mpClient = null;
 let mpRoomState = null;
+let lastMpActionType = null;
+
+const MP_FULL_RENDER_ACTIONS = new Set([
+	"unlockBonds",
+	"unlockStocks",
+	"unlockCrypto",
+	"unlockOptions",
+]);
 
 function isMultiplayer() {
 	return gameMode === "multiplayer" && mpClient;
@@ -80,10 +88,18 @@ function dispatchGameAction(actionType, args, localApply) {
 		return;
 	}
 	try {
+		lastMpActionType = actionType;
 		mpClient.action(actionType, args);
 	} catch (err) {
+		lastMpActionType = null;
 		alert(err.message || "Multiplayer action failed");
 	}
+}
+
+function renderMultiplayerUpdate() {
+	const fullRender = lastMpActionType && MP_FULL_RENDER_ACTIONS.has(lastMpActionType);
+	render(state, fullRender ? {} : { liveOnly: true });
+	lastMpActionType = null;
 }
 
 function renderMultiplayerPanel() {
@@ -146,18 +162,19 @@ function setupMultiplayerUi() {
 		mpAdvanceInFlight = false;
 		syncStateFromMultiplayer();
 		mpClient.leaderboard = payload.leaderboard || [];
-		render(state);
+		render(state, { liveOnly: true });
 		if (payload.finished) setAutoAdvance(false);
 	});
 
 	mpClient.on("actionResult", payload => {
 		if (!payload.ok) {
+			lastMpActionType = null;
 			alert(payload.error || "Action rejected");
 			return;
 		}
 		syncStateFromMultiplayer();
 		if (payload.leaderboard) mpClient.leaderboard = payload.leaderboard;
-		render(state);
+		renderMultiplayerUpdate();
 	});
 
 	mpClient.on("autobuySynced", () => {
