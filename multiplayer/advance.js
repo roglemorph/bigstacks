@@ -11,7 +11,7 @@ import { settleExpiredOptionLots } from "../investments/options.js";
 import { processIndexFundAutobuy } from "../investments/indexFunds.js";
 import { processTreasuryBondAutobuy } from "../investments/treasuryBonds.js";
 import { processMarketCardAutobuys } from "../investments/marketAutobuy.js";
-import { mergeForRender, mergeAssetHoldings, syncPlayerMarketFields, slimPlayerAssets } from "./state.js";
+import { mergeForRender, slimPlayerAssets } from "./state.js";
 import { indexFundsPortfolioValue } from "../investments/indexFunds.js";
 import { bondPortfolioValue } from "../investments/treasuryBonds.js";
 import { cryptosPortfolioValue } from "../investments/cryptos.js";
@@ -102,6 +102,14 @@ function zeroListed(assets, key) {
   return (assets || []).map(a => ({ ...a, [key]: 0, costBasis: 0, lots: [] }));
 }
 
+/** Minimal prev-day snapshot for delist settlement (avoids full-market clone). */
+export function snapshotDelistContext(shared) {
+  return {
+    stocks: (shared.stocks || []).map(s => ({ id: s.id, name: s.name, price: s.price })),
+    cryptos: (shared.cryptos || []).map(c => ({ id: c.id, name: c.name, price: c.price })),
+  };
+}
+
 /**
  * After shared market advances, update each player's portfolio.
  */
@@ -111,7 +119,6 @@ export function advancePlayerAfterShared(player, prevShared, shared, params) {
   const isMonthEnd = newDay % 30 === 0;
 
   p = settleDelistedAssets(p, prevShared, shared, newDay);
-  p = syncPlayerMarketFields(p, shared);
 
   let merged = mergeForRender(shared, p);
   let cash = merged.cash;

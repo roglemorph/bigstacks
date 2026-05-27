@@ -32,7 +32,7 @@ import {
   sortLeaderboard,
   mergeForRender,
 } from "../multiplayer/state.js";
-import { advanceSharedMarket, advancePlayerAfterShared } from "../multiplayer/advance.js";
+import { advanceSharedMarket, advancePlayerAfterShared, snapshotDelistContext } from "../multiplayer/advance.js";
 import { applyPlayerAction } from "../multiplayer/actions.js";
 import { applyAutobuyConfig } from "../multiplayer/autobuy.js";
 import {
@@ -41,6 +41,7 @@ import {
   randomSessionToken,
   MAX_PLAYERS,
   DISCONNECT_TTL_MS,
+  FINISHED_ROOM_TTL_MS,
 } from "./protocol.js";
 
 const DEFAULT_PARAMS = {};
@@ -100,11 +101,11 @@ export class RoomManager {
       hostId,
       status: "lobby",
       sharedMarket: null,
-      prevSharedMarket: null,
       params: { ...DEFAULT_PARAMS },
       seed: null,
       players: new Map(),
       createdAt: Date.now(),
+      finishedAt: null,
     };
 
     this.addPlayer(room, hostId, playerName, ws);
@@ -272,6 +273,17 @@ export class RoomManager {
     }
   }
 
+  sweepAllRooms() {
+    const now = Date.now();
+    for (const [code, room] of this.rooms) {
+      if (room.finishedAt && now - room.finishedAt > FINISHED_ROOM_TTL_MS) {
+        this.rooms.delete(code);
+        continue;
+      }
+      this.pruneRoom(room);
+    }
+  }
+
   startGame(room, hostId) {
     if (room.hostId !== hostId) throw new Error("Only the host can start the game");
     if (room.status !== "lobby") throw new Error("Game already started");
@@ -282,7 +294,6 @@ export class RoomManager {
     room.seed = seed;
     room.params = boot.params;
     room.sharedMarket = boot.market;
-    room.prevSharedMarket = JSON.parse(JSON.stringify(boot.market));
     room.status = "playing";
 
     for (const p of room.players.values()) {
@@ -301,7 +312,7 @@ export class RoomManager {
 
     for (let i = 0; i < n; i++) {
       if (room.sharedMarket.day >= room.sharedMarket.maxDays) break;
-      const prev = JSON.parse(JSON.stringify(room.sharedMarket));
+      const prev = snapshotDelistContext(room.sharedMarket);
       room.sharedMarket = advanceSharedMarket(room.sharedMarket, room.params, nextDay);
       for (const p of room.players.values()) {
         p.playerState = advancePlayerAfterShared(
@@ -311,11 +322,13 @@ export class RoomManager {
           room.params
         );
       }
-      room.prevSharedMarket = prev;
     }
 
     const leaderboard = this.buildLeaderboard(room);
     const finished = room.sharedMarket.day >= room.sharedMarket.maxDays;
+    if (finished && !room.finishedAt) {
+      room.finishedAt = Date.now();
+    }
 
     return {
       sharedMarket: room.sharedMarket,

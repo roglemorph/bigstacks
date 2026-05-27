@@ -1,6 +1,8 @@
 const MAX_PLAYERS = 8;
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const DISCONNECT_TTL_MS = 5 * 60 * 1000;
+const FINISHED_ROOM_TTL_MS = 10 * 60 * 1000;
+const SWEEP_INTERVAL_MS = 60 * 1000;
 
 export function makeMessage(type, payload = {}) {
   return { type, payload };
@@ -36,4 +38,4 @@ export function randomSessionToken() {
   return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 }
 
-export { MAX_PLAYERS, DISCONNECT_TTL_MS };
+export { MAX_PLAYERS, DISCONNECT_TTL_MS, FINISHED_ROOM_TTL_MS, SWEEP_INTERVAL_MS };

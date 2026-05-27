@@ -7,7 +7,12 @@ import { WebSocketServer } from "ws";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { RoomManager } from "./rooms.js";
-import { parseMessage, makeMessage } from "./protocol.js";
+import { parseMessage, makeMessage, SWEEP_INTERVAL_MS } from "./protocol.js";
+import {
+  stripSharedMarketForWire,
+  stripGameStartedForWire,
+  stripActionResultForWire,
+} from "./wire.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 3001;
@@ -75,7 +80,7 @@ wss.on("connection", ws => {
           const result = roomManager.reconnect(payload.roomCode, payload.playerId, payload.sessionToken, ws);
           ctx = { playerId: result.playerId, roomCode: result.roomCode };
           if (result.status === "playing") {
-            send(ws, "gameStarted", result.gameStarted);
+            send(ws, "gameStarted", stripGameStartedForWire(result.gameStarted));
           } else {
             send(ws, "roomState", result.roomState);
           }
@@ -85,9 +90,10 @@ wss.on("connection", ws => {
           const room = roomManager.requireRoom(ctx.roomCode);
           const result = roomManager.startGame(room, ctx.playerId);
           const leaderboard = roomManager.buildLeaderboard(room);
+          const slimMarket = stripSharedMarketForWire(result.sharedMarket);
           for (const p of room.players.values()) {
             send(p.ws, "gameStarted", {
-              sharedMarket: result.sharedMarket,
+              sharedMarket: slimMarket,
               playerState: p.playerState,
               playerId: p.playerId,
               sessionToken: p.sessionToken,
@@ -106,9 +112,10 @@ wss.on("connection", ws => {
             roomManager.syncAutobuy(room, ctx.playerId, payload.autobuy);
           }
           const result = roomManager.advanceDay(room, ctx.playerId, n);
+          const slimMarket = stripSharedMarketForWire(result.sharedMarket);
           for (const p of room.players.values()) {
             send(p.ws, "dayAdvanced", {
-              sharedMarket: result.sharedMarket,
+              sharedMarket: slimMarket,
               playerState: p.playerState,
               leaderboard: result.leaderboard,
               finished: result.finished,
@@ -119,12 +126,12 @@ wss.on("connection", ws => {
         case "action": {
           const room = roomManager.requireRoom(ctx.roomCode);
           const result = roomManager.applyAction(room, ctx.playerId, payload.actionType, payload.args || {});
-          send(ws, "actionResult", {
+          send(ws, "actionResult", stripActionResultForWire({
             ok: result.ok,
             error: result.error,
             playerState: result.player,
             sharedMarket: result.shared,
-          });
+          }));
           if (result.ok && result.broadcast) {
             broadcast(room, "leaderboard", { leaderboard: result.leaderboard }, ctx.playerId);
             send(ws, "leaderboard", { leaderboard: result.leaderboard });
@@ -167,4 +174,5 @@ wss.on("connection", ws => {
 
 httpServer.listen(PORT, () => {
   console.log(`Bigstacks multiplayer server listening on :${PORT}`);
+  setInterval(() => roomManager.sweepAllRooms(), SWEEP_INTERVAL_MS);
 });
