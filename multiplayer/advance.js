@@ -36,17 +36,6 @@ function netWorth(state) {
   return state.cash + portfolioValue(state);
 }
 
-function snapshotNetWorthStack(state) {
-  return {
-    cash: Math.round(Math.max(0, state.cash || 0)),
-    indexFunds: Math.round(Math.max(0, indexFundsPortfolioValue(state))),
-    bonds: Math.round(Math.max(0, bondPortfolioValue(state))),
-    stocks: Math.round(Math.max(0, stocksPortfolioValue(state))),
-    cryptos: Math.round(Math.max(0, cryptosPortfolioValue(state))),
-    options: Math.round(Math.max(0, optionHoldingsMarkValue(state) + perpHoldingsMarkValue(state))),
-  };
-}
-
 /**
  * Advance canonical empty-portfolio market one day (server authority).
  */
@@ -217,15 +206,13 @@ export function advancePlayerAfterShared(player, prevShared, shared, params) {
     stocks: slimPlayerAssets(updated.stocks, "shares"),
     cryptos: slimPlayerAssets(updated.cryptos, "coins"),
     netWorthHistory: player.netWorthHistory || [],
-    netWorthStackHistory: player.netWorthStackHistory || [],
     netWorthDailyStartDay: player.netWorthDailyStartDay ?? 1,
     netWorthHistoryBuckets: player.netWorthHistoryBuckets || [],
-    netWorthStackBuckets: player.netWorthStackBuckets || [],
   };
 
   const nwMerged = mergeForRender(shared, split);
   const nw = netWorth(nwMerged);
-  let nextPlayer = appendNetWorthHistoryDay(split, nw, snapshotNetWorthStack(nwMerged));
+  let nextPlayer = appendNetWorthHistoryDay(split, nw, null);
 
   if (newDay >= shared.maxDays) {
     nextPlayer = {

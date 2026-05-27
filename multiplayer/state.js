@@ -4,7 +4,7 @@
 
 import { createRng, withRng } from "../investments/rng.js";
 import { EMPTY_CUMULATIVE_REALIZED_PL } from "../investments/shared.js";
-import { initialNetWorthHistoryFields, netWorthHistoryForLeaderboard } from "../investments/netWorthHistory.js";
+import { initialNetWorthHistoryFields, initialNetWorthHistoryScalarFields, netWorthHistoryForLeaderboard, netWorthHistoryForLeaderboardWire } from "../investments/netWorthHistory.js";
 import { DEFAULT_INDEX_FUND_AUTOBUY } from "../investments/indexFunds.js";
 import { DEFAULT_TREASURY_BOND_AUTOBUY } from "../investments/treasuryBonds.js";
 import { initialCasinoState } from "../investments/casino.js";
@@ -103,14 +103,7 @@ export function newPlayerState(shared, params = {}, meta = {}) {
     marketCardAutobuy: {},
     casino: initialCasinoState(params),
     log: [],
-    ...initialNetWorthHistoryFields(cash, {
-      cash: Math.round(cash),
-      indexFunds: 0,
-      bonds: 0,
-      stocks: 0,
-      cryptos: 0,
-      options: 0,
-    }),
+    ...initialNetWorthHistoryScalarFields(cash),
     lastOptionRealized: null,
     indexFunds: slimHoldingsFromMarket(shared.indexFunds, "shares"),
     stocks: slimHoldingsFromMarket(shared.stocks, "shares"),
@@ -184,10 +177,8 @@ export function splitPlayerFromMerged(merged, shared) {
     casino: merged.casino,
     log: merged.log || [],
     netWorthHistory: merged.netWorthHistory || [],
-    netWorthStackHistory: merged.netWorthStackHistory || [],
     netWorthDailyStartDay: merged.netWorthDailyStartDay ?? 1,
     netWorthHistoryBuckets: merged.netWorthHistoryBuckets || [],
-    netWorthStackBuckets: merged.netWorthStackBuckets || [],
     lastOptionRealized: merged.lastOptionRealized,
     indexFunds: slimPlayerAssets(merged.indexFunds, "shares"),
     stocks: slimPlayerAssets(merged.stocks, "shares"),
@@ -209,6 +200,19 @@ export function buildRoomMarket(seed, params, newStateFn) {
 export function leaderboardEntry(player, shared, netWorthFn) {
   const merged = mergeForRender(shared, player);
   const historyPayload = netWorthHistoryForLeaderboard(player);
+  return {
+    playerId: player.playerId,
+    displayName: player.displayName,
+    netWorth: Math.round(netWorthFn(merged)),
+    totalReturn: Math.round(totalReturn(merged)),
+    ...historyPayload,
+    day: shared.day,
+  };
+}
+
+export function leaderboardEntryWire(player, shared, netWorthFn) {
+  const merged = mergeForRender(shared, player);
+  const historyPayload = netWorthHistoryForLeaderboardWire(player);
   return {
     playerId: player.playerId,
     displayName: player.displayName,

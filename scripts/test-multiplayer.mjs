@@ -6,7 +6,7 @@ import {
   snapshotDelistContext,
 } from "../multiplayer/advance.js";
 import { RoomManager } from "../server/rooms.js";
-import { stripSharedMarketForWire } from "../server/wire.js";
+import { stripSharedMarketForWire, stripPlayerStateForWire, stripLeaderboardForWire } from "../server/wire.js";
 import { FINISHED_ROOM_TTL_MS } from "../server/protocol.js";
 
 const seed = 12345;
@@ -46,6 +46,7 @@ if (stockId) {
   const fullSize = JSON.stringify(shared).length;
   console.log("delist snapshot smaller:", snapSize < fullSize / 10 ? "OK" : "FAIL", `snap=${snapSize} full=${fullSize}`);
   console.log("player stays slim:", !player.stocks.some(s => Array.isArray(s.history)) ? "OK" : "FAIL");
+  console.log("player scalar nw only:", !player.netWorthStackHistory?.length ? "OK" : "FAIL");
 } else {
   console.log("delist snapshot:", "SKIP (no stocks)");
 }
@@ -62,6 +63,12 @@ const maxHist = Math.max(
   0
 );
 console.log("wire history tail:", maxHist <= 30 ? "OK" : "FAIL", `max=${maxHist}`);
+
+const pl = { log: new Array(200).fill({ msg: "x", type: "info", day: 1 }), netWorthHistory: new Array(2000).fill(1000), netWorthHistoryBuckets: new Array(600).fill({ endDay: 1, value: 1000 }) };
+const slimPl = stripPlayerStateForWire(pl);
+console.log("wire player log tail:", slimPl.log.length <= 50 ? "OK" : "FAIL", slimPl.log.length);
+console.log("wire player nw tail:", slimPl.netWorthHistory.length <= 500 ? "OK" : "FAIL", slimPl.netWorthHistory.length);
+console.log("wire player bucket tail:", slimPl.netWorthHistoryBuckets.length <= 200 ? "OK" : "FAIL", slimPl.netWorthHistoryBuckets.length);
 
 // RoomManager bulk advance + finishedAt
 const rm = new RoomManager();
