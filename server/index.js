@@ -12,9 +12,6 @@ import {
   stripSharedMarketForWire,
   stripGameStartedForWire,
   stripActionResultForWire,
-  stripDayAdvancedForWire,
-  stripPlayerStateForWire,
-  stripLeaderboardForWire,
 } from "./wire.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -94,17 +91,16 @@ wss.on("connection", ws => {
           const result = roomManager.startGame(room, ctx.playerId);
           const leaderboard = roomManager.buildLeaderboard(room);
           const slimMarket = stripSharedMarketForWire(result.sharedMarket);
-          const slimLeaderboard = stripLeaderboardForWire(leaderboard);
           for (const p of room.players.values()) {
             send(p.ws, "gameStarted", {
               sharedMarket: slimMarket,
-              playerState: stripPlayerStateForWire(p.playerState),
+              playerState: p.playerState,
               playerId: p.playerId,
               sessionToken: p.sessionToken,
               hostId: room.hostId,
               roomCode: room.roomCode,
               params: room.params,
-              leaderboard: slimLeaderboard,
+              leaderboard,
             });
           }
           break;
@@ -117,13 +113,13 @@ wss.on("connection", ws => {
           }
           const result = roomManager.advanceDay(room, ctx.playerId, n);
           const slimMarket = stripSharedMarketForWire(result.sharedMarket);
-          const slimLeaderboard = stripLeaderboardForWire(result.leaderboard);
           for (const p of room.players.values()) {
-            send(p.ws, "dayAdvanced", stripDayAdvancedForWire({
+            send(p.ws, "dayAdvanced", {
               sharedMarket: slimMarket,
-              leaderboard: slimLeaderboard,
+              playerState: p.playerState,
+              leaderboard: result.leaderboard,
               finished: result.finished,
-            }, p.playerState));
+            });
           }
           break;
         }
@@ -137,9 +133,8 @@ wss.on("connection", ws => {
             sharedMarket: result.shared,
           }));
           if (result.ok && result.broadcast) {
-            const slimBoard = stripLeaderboardForWire(result.leaderboard);
-            broadcast(room, "leaderboard", { leaderboard: slimBoard }, ctx.playerId);
-            send(ws, "leaderboard", { leaderboard: slimBoard });
+            broadcast(room, "leaderboard", { leaderboard: result.leaderboard }, ctx.playerId);
+            send(ws, "leaderboard", { leaderboard: result.leaderboard });
           }
           break;
         }
@@ -148,7 +143,7 @@ wss.on("connection", ws => {
           const result = roomManager.syncAutobuy(room, ctx.playerId, payload || {});
           send(ws, "autobuySynced", {
             ok: true,
-            playerState: stripPlayerStateForWire(result.playerState),
+            playerState: result.playerState,
           });
           break;
         }

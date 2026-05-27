@@ -1,12 +1,7 @@
-/** Trim payloads before WebSocket JSON.stringify. */
-
-import { netWorthHistoryForLeaderboardWire } from "../investments/netWorthHistory.js";
+/** Trim shared market arrays before WebSocket JSON.stringify. */
 
 const WIRE_HISTORY_TAIL = 30;
 const WIRE_MONTHLY_TAIL = 24;
-const WIRE_LOG_TAIL = 50;
-const WIRE_NW_DAILY = 500;
-const WIRE_NW_BUCKETS = 200;
 
 function trimAssetHistory(asset) {
   if (!asset || typeof asset !== "object") return asset;
@@ -39,48 +34,11 @@ export function stripSharedMarketForWire(market) {
   };
 }
 
-export function stripPlayerStateForWire(player) {
-  if (!player) return player;
-  const log = Array.isArray(player.log)
-    ? player.log.slice(-WIRE_LOG_TAIL)
-    : [];
-  const nw = netWorthHistoryForLeaderboardWire(player, {
-    dailyTail: WIRE_NW_DAILY,
-    bucketTail: WIRE_NW_BUCKETS,
-  });
-  return {
-    ...player,
-    log,
-    netWorthHistory: nw.netWorthHistory,
-    netWorthDailyStartDay: nw.netWorthDailyStartDay,
-    netWorthHistoryBuckets: nw.netWorthHistoryBuckets,
-    netWorthStackHistory: undefined,
-    netWorthStackBuckets: undefined,
-  };
-}
-
-export function stripLeaderboardForWire(leaderboard) {
-  return (leaderboard || []).map(row => {
-    const nw = netWorthHistoryForLeaderboardWire(row, {
-      dailyTail: WIRE_NW_DAILY,
-      bucketTail: WIRE_NW_BUCKETS,
-    });
-    return {
-      ...row,
-      netWorthHistory: nw.netWorthHistory,
-      netWorthDailyStartDay: nw.netWorthDailyStartDay,
-      netWorthHistoryBuckets: nw.netWorthHistoryBuckets,
-    };
-  });
-}
-
 export function stripGameStartedForWire(payload) {
   if (!payload) return payload;
   return {
     ...payload,
     sharedMarket: stripSharedMarketForWire(payload.sharedMarket),
-    playerState: stripPlayerStateForWire(payload.playerState),
-    leaderboard: stripLeaderboardForWire(payload.leaderboard),
   };
 }
 
@@ -88,8 +46,7 @@ export function stripDayAdvancedForWire(payload, playerState) {
   return {
     ...payload,
     sharedMarket: stripSharedMarketForWire(payload.sharedMarket),
-    playerState: stripPlayerStateForWire(playerState),
-    leaderboard: stripLeaderboardForWire(payload.leaderboard),
+    playerState,
   };
 }
 
@@ -98,6 +55,5 @@ export function stripActionResultForWire(payload) {
   return {
     ...payload,
     sharedMarket: stripSharedMarketForWire(payload.sharedMarket),
-    playerState: stripPlayerStateForWire(payload.playerState),
   };
 }

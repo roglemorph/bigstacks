@@ -1,9 +1,7 @@
 /** Daily tail + bucket archive for net-worth chart series (preserves All time view). */
 
 export const NET_WORTH_DAILY_TAIL_MAX = 10000;
-export const NET_WORTH_MP_DAILY_TAIL_MAX = 1500;
 export const NET_WORTH_BUCKET_STEP = 10;
-export const NET_WORTH_BUCKET_MAX = 500;
 
 export function initialNetWorthHistoryFields(startNetWorth, startStack) {
   return {
@@ -13,20 +11,6 @@ export function initialNetWorthHistoryFields(startNetWorth, startStack) {
     netWorthHistoryBuckets: [],
     netWorthStackBuckets: [],
   };
-}
-
-/** MP server / player state — scalar net-worth only (no stack snapshots). */
-export function initialNetWorthHistoryScalarFields(startNetWorth) {
-  return {
-    netWorthHistory: [Math.round(startNetWorth)],
-    netWorthDailyStartDay: 1,
-    netWorthHistoryBuckets: [],
-  };
-}
-
-function trimBuckets(buckets, max = NET_WORTH_BUCKET_MAX) {
-  const arr = buckets || [];
-  return arr.length > max ? arr.slice(-max) : arr;
 }
 
 function normalizeNetWorthFields(state) {
@@ -40,8 +24,6 @@ function normalizeNetWorthFields(state) {
 }
 
 export function appendNetWorthHistoryDay(state, scalar, stackSnapshot) {
-  const trackStack = stackSnapshot != null;
-  const tailMax = trackStack ? NET_WORTH_DAILY_TAIL_MAX : NET_WORTH_MP_DAILY_TAIL_MAX;
   let {
     netWorthHistory,
     netWorthStackHistory,
@@ -51,42 +33,33 @@ export function appendNetWorthHistoryDay(state, scalar, stackSnapshot) {
   } = normalizeNetWorthFields(state);
 
   netWorthHistory = [...netWorthHistory, Math.round(scalar)];
-  if (trackStack) {
-    netWorthStackHistory = [...netWorthStackHistory, stackSnapshot];
-  }
+  netWorthStackHistory = [...netWorthStackHistory, stackSnapshot];
 
-  while (netWorthHistory.length > tailMax) {
+  while (netWorthHistory.length > NET_WORTH_DAILY_TAIL_MAX) {
     const dropDay = netWorthDailyStartDay;
     if (dropDay % NET_WORTH_BUCKET_STEP === 0) {
-      netWorthHistoryBuckets = trimBuckets([
+      netWorthHistoryBuckets = [
         ...netWorthHistoryBuckets,
         { endDay: dropDay, value: netWorthHistory[0] },
-      ]);
-      if (trackStack) {
-        netWorthStackBuckets = trimBuckets([
-          ...netWorthStackBuckets,
-          { endDay: dropDay, snapshot: netWorthStackHistory[0] },
-        ]);
-      }
+      ];
+      netWorthStackBuckets = [
+        ...netWorthStackBuckets,
+        { endDay: dropDay, snapshot: netWorthStackHistory[0] },
+      ];
     }
     netWorthHistory = netWorthHistory.slice(1);
-    if (trackStack) {
-      netWorthStackHistory = netWorthStackHistory.slice(1);
-    }
+    netWorthStackHistory = netWorthStackHistory.slice(1);
     netWorthDailyStartDay += 1;
   }
 
-  const next = {
+  return {
     ...state,
     netWorthHistory,
+    netWorthStackHistory,
     netWorthDailyStartDay,
     netWorthHistoryBuckets,
+    netWorthStackBuckets,
   };
-  if (trackStack) {
-    next.netWorthStackHistory = netWorthStackHistory;
-    next.netWorthStackBuckets = netWorthStackBuckets;
-  }
-  return next;
 }
 
 export function netWorthHistoryView(source) {
@@ -192,25 +165,5 @@ export function netWorthHistoryForLeaderboard(player) {
     netWorthHistory: [...view.daily],
     netWorthDailyStartDay: view.dailyStartDay,
     netWorthHistoryBuckets: view.buckets.map(b => ({ ...b })),
-  };
-}
-
-/** Trimmed overlay series for WebSocket leaderboard payloads. */
-export function netWorthHistoryForLeaderboardWire(player, {
-  dailyTail = 500,
-  bucketTail = 200,
-} = {}) {
-  const view = netWorthHistoryView(player);
-  const daily = view.daily.length > dailyTail ? view.daily.slice(-dailyTail) : [...view.daily];
-  const dailyStartDay = view.daily.length > dailyTail
-    ? view.dailyStartDay + (view.daily.length - dailyTail)
-    : view.dailyStartDay;
-  const buckets = view.buckets.length > bucketTail
-    ? view.buckets.slice(-bucketTail).map(b => ({ ...b }))
-    : view.buckets.map(b => ({ ...b }));
-  return {
-    netWorthHistory: daily,
-    netWorthDailyStartDay: dailyStartDay,
-    netWorthHistoryBuckets: buckets,
   };
 }
