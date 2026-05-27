@@ -201,19 +201,39 @@ function setupMultiplayerUi() {
 		mpAdvanceInFlight = false;
 		syncStateFromMultiplayer();
 		mpClient.leaderboard = payload.leaderboard || [];
-		const renderStart = autoAdvanceDebug.enabled && autoAdvanceTimerId !== null ? performance.now() : 0;
+		const daysAdvanced = Math.max(0, state.day - mpAdvanceStartDay);
+		const batch = mpLastBatchSize || daysAdvanced || 1;
+		updateMpAdvanceRttEma(mpRttMs);
+		const renderStart = autoAdvanceDebug.enabled && isAutoAdvanceRunning() ? performance.now() : 0;
 		render(state, { liveOnly: true });
-		if (autoAdvanceDebug.enabled && autoAdvanceTimerId !== null) {
-			autoAdvanceDebug.last.mpRttMs = mpRttMs;
-			autoAdvanceDebug.last.mpRenderMs = performance.now() - renderStart;
-			autoAdvanceDebugUpdateUi();
-			console.info("[auto-advance debug] mp dayAdvanced", {
-				mpRttMs: +mpRttMs.toFixed(1),
-				mpRenderMs: +(autoAdvanceDebug.last.mpRenderMs || 0).toFixed(1),
-				configMs: getAutoAdvanceIntervalMs(),
+		if (autoAdvanceDebug.enabled && isAutoAdvanceRunning()) {
+			const mpRenderMs = performance.now() - renderStart;
+			const configMs = getAutoAdvanceIntervalMs();
+			const effectiveMsPerDay =
+				daysAdvanced > 0 ? (mpRttMs + mpRenderMs) / daysAdvanced : mpRttMs + mpRenderMs;
+			autoAdvanceDebugRecordMpCompleted({
+				configMs,
+				batch,
+				daysAdvanced: daysAdvanced || batch,
+				mpRttMs,
+				mpRenderMs,
+				effectiveMsPerDay,
+				waitMs: Math.max(0, (daysAdvanced || batch) * configMs - mpRttMs),
 			});
+			autoAdvanceDebugUpdateUi();
+			if (autoAdvanceDebug.mpDay % 10 === 0) {
+				autoAdvanceDebugMaybeLogSummary();
+			}
 		}
-		if (payload.finished) setAutoAdvance(false);
+		if (payload.finished) {
+			setAutoAdvance(false);
+			return;
+		}
+		if (mpAutoAdvanceActive) {
+			const configMs = getAutoAdvanceIntervalMs();
+			const pacedDays = daysAdvanced || batch;
+			scheduleMpAutoAdvance(Math.max(0, pacedDays * configMs - mpRttMs));
+		}
 	});
 
 	mpClient.on("actionResult", payload => {
@@ -239,6 +259,7 @@ function setupMultiplayerUi() {
 
 	mpClient.on("error", payload => {
 		mpAdvanceInFlight = false;
+		if (mpAutoAdvanceActive) setAutoAdvance(false);
 		alert(payload.message || "Server error");
 	});
 
@@ -620,8 +641,16 @@ let autoAdvanceTimerId = null;
 let autoAdvanceIntervalMs = 500;
 let mpAdvanceInFlight = false;
 let mpAdvanceSentAt = 0;
+let mpAutoAdvanceTimeoutId = null;
+let mpAutoAdvanceActive = false;
+let mpAdvanceRttEma = 0;
+let mpAdvanceStartDay = 0;
+let mpLastBatchSize = 0;
 const AUTO_ADVANCE_MS_MIN = 5;
 const AUTO_ADVANCE_MS_MAX = 1000;
+const MP_AUTO_ADVANCE_RTT_DEFAULT = 130;
+const MP_AUTO_ADVANCE_RTT_MIN = 50;
+const MP_AUTO_ADVANCE_BATCH_MAX = 365;
 
 /** Set ?autoAdvanceDebug=1 or localStorage.autoAdvanceDebug=1 to profile auto-advance pacing. */
 const autoAdvanceDebug = {
@@ -629,15 +658,22 @@ const autoAdvanceDebug = {
 		new URLSearchParams(location.search).has("autoAdvanceDebug") ||
 		localStorage.getItem("autoAdvanceDebug") === "1",
 	tick: 0,
+	mpDay: 0,
 	lastTickAt: 0,
 	skippedMpInFlight: 0,
 	skippedMaxDay: 0,
 	rolling: [],
+	mpRolling: [],
 	last: {},
+	lastMpCompleted: null,
 };
 
+function isAutoAdvanceRunning() {
+	return autoAdvanceTimerId !== null || mpAutoAdvanceActive;
+}
+
 function isAutoAdvanceDebugActive() {
-	return autoAdvanceDebug.enabled && autoAdvanceTimerId !== null;
+	return autoAdvanceDebug.enabled && isAutoAdvanceRunning();
 }
 
 function autoAdvanceDebugEnsurePanel() {
@@ -655,37 +691,85 @@ function autoAdvanceDebugEnsurePanel() {
 
 function autoAdvanceDebugResetSession() {
 	autoAdvanceDebug.tick = 0;
+	autoAdvanceDebug.mpDay = 0;
 	autoAdvanceDebug.lastTickAt = 0;
 	autoAdvanceDebug.skippedMpInFlight = 0;
 	autoAdvanceDebug.skippedMaxDay = 0;
 	autoAdvanceDebug.rolling = [];
+	autoAdvanceDebug.mpRolling = [];
 	autoAdvanceDebug.last = {};
+	autoAdvanceDebug.lastMpCompleted = null;
+	mpAdvanceRttEma = 0;
+	mpLastBatchSize = 0;
 }
 
-function autoAdvanceDebugInferLimiter(sample) {
+function mpAutoAdvanceDaysRemaining() {
+	return Math.max(0, state.maxDays - state.day);
+}
+
+function computeMpAutoAdvanceBatch(configMs, rttMs, daysRemaining) {
+	const rtt = Math.max(MP_AUTO_ADVANCE_RTT_MIN, rttMs || mpAdvanceRttEma || MP_AUTO_ADVANCE_RTT_DEFAULT);
+	const batch = Math.max(1, Math.floor(rtt / configMs));
+	return Math.min(batch, daysRemaining, MP_AUTO_ADVANCE_BATCH_MAX);
+}
+
+function predictMpAutoAdvanceBatch() {
+	return computeMpAutoAdvanceBatch(
+		getAutoAdvanceIntervalMs(),
+		mpAdvanceRttEma,
+		mpAutoAdvanceDaysRemaining()
+	);
+}
+
+function updateMpAdvanceRttEma(rttMs) {
+	if (!Number.isFinite(rttMs) || rttMs <= 0) return;
+	mpAdvanceRttEma = mpAdvanceRttEma ? mpAdvanceRttEma * 0.8 + rttMs * 0.2 : rttMs;
+}
+
+function clearMpAutoAdvanceSchedule() {
+	if (mpAutoAdvanceTimeoutId !== null) {
+		clearTimeout(mpAutoAdvanceTimeoutId);
+		mpAutoAdvanceTimeoutId = null;
+	}
+	mpAutoAdvanceActive = false;
+}
+
+function autoAdvanceDebugInferLimiter(sample, { mpMode = false } = {}) {
+	if (sample?.skippedReason === "mpInFlight") return "mpAdvanceInFlight (timer fired while waiting on server)";
+	if (sample?.skippedReason === "maxDay") return "max day reached";
+	if (mpMode || Number.isFinite(sample?.mpRttMs)) {
+		const rtt = sample?.mpRttMs ?? autoAdvanceDebugAvgMp("mpRttMs");
+		const render = sample?.mpRenderMs ?? autoAdvanceDebugAvgMp("mpRenderMs");
+		const batch = sample?.batch ?? sample?.daysAdvanced;
+		const effective = sample?.effectiveMsPerDay ?? autoAdvanceDebugAvgMp("effectiveMsPerDay");
+		if (batch > 1 && effective != null) {
+			return `batched ~${batch} days/req · effective ~${effective.toFixed(1)} ms/day (target ${sample?.configMs ?? getAutoAdvanceIntervalMs()} ms)`;
+		}
+		if (rtt != null && rtt > (sample?.configMs ?? getAutoAdvanceIntervalMs())) {
+			return `server round-trip (~${rtt.toFixed(0)} ms) >> config (${sample?.configMs ?? getAutoAdvanceIntervalMs()} ms)`;
+		}
+		if (rtt != null) return `server round-trip (~${rtt.toFixed(0)} ms) + render (~${(render || 0).toFixed(1)} ms)`;
+		return "waiting for first mp dayAdvanced";
+	}
 	const config = sample.configMs || 0;
 	const gap = sample.gapMs || 0;
 	const work = sample.tickTotal || 0;
 	const parts = [];
-	if (sample.skippedReason === "mpInFlight") parts.push("mpAdvanceInFlight (waiting on server)");
-	else if (sample.skippedReason === "maxDay") parts.push("max day reached");
-	else {
-		const nextDay = sample.nextDay || 0;
-		const renderTotal = sample.renderTotal || 0;
-		const renderGraphs = sample.renderGraphs || 0;
-		const patchLive = sample.patchLive || 0;
-		const renderOther = Math.max(0, renderTotal - renderGraphs - patchLive);
-		const ranked = [
-			["nextDay()", nextDay],
-			["renderGraphs()", renderGraphs],
-			["render (other)", renderOther],
-			["patchTradingPanelsLive()", patchLive],
-		].sort((a, b) => b[1] - a[1]);
-		if (work > config + 1) parts.push(`callback work (~${work.toFixed(1)} ms > ${config} ms config)`);
-		if (gap > work + config + 5) parts.push(`timer gap (~${gap.toFixed(1)} ms) > work+config`);
-		if (ranked[0]?.[1] > 1) parts.push(`slowest: ${ranked[0][0]} ~${ranked[0][1].toFixed(1)} ms`);
-		if (!parts.length) parts.push("config interval (no dominant bottleneck yet)");
-	}
+	const nextDay = sample.nextDay || 0;
+	const renderTotal = sample.renderTotal || 0;
+	const renderGraphs = sample.renderGraphs || 0;
+	const patchLive = sample.patchLive || 0;
+	const renderOther = Math.max(0, renderTotal - renderGraphs - patchLive);
+	const ranked = [
+		["nextDay()", nextDay],
+		["renderGraphs()", renderGraphs],
+		["render (other)", renderOther],
+		["patchTradingPanelsLive()", patchLive],
+	].sort((a, b) => b[1] - a[1]);
+	if (work > config + 1) parts.push(`callback work (~${work.toFixed(1)} ms > ${config} ms config)`);
+	if (gap > work + config + 5) parts.push(`timer gap (~${gap.toFixed(1)} ms) > work+config`);
+	if (ranked[0]?.[1] > 1) parts.push(`slowest: ${ranked[0][0]} ~${ranked[0][1].toFixed(1)} ms`);
+	if (!parts.length) parts.push("config interval (no dominant bottleneck yet)");
 	return parts.join(" · ");
 }
 
@@ -696,44 +780,92 @@ function autoAdvanceDebugRecordSample(sample) {
 }
 
 function autoAdvanceDebugAvg(key) {
-	const rows = autoAdvanceDebug.rolling.filter(r => !r.skippedReason && Number.isFinite(r[key]));
+	const rows = autoAdvanceDebug.rolling.filter(r => r.kind === "spDay" && Number.isFinite(r[key]));
 	if (!rows.length) return null;
 	return rows.reduce((sum, r) => sum + r[key], 0) / rows.length;
+}
+
+function autoAdvanceDebugAvgMp(key) {
+	const rows = autoAdvanceDebug.mpRolling.filter(r => Number.isFinite(r[key]));
+	if (!rows.length) return null;
+	return rows.reduce((sum, r) => sum + r[key], 0) / rows.length;
+}
+
+function autoAdvanceDebugRecordMpCompleted(sample) {
+	autoAdvanceDebug.mpDay++;
+	autoAdvanceDebug.lastMpCompleted = sample;
+	autoAdvanceDebug.mpRolling.push(sample);
+	if (autoAdvanceDebug.mpRolling.length > 30) autoAdvanceDebug.mpRolling.shift();
 }
 
 function autoAdvanceDebugUpdateUi() {
 	const el = autoAdvanceDebugEnsurePanel();
 	if (!el) return;
 	const last = autoAdvanceDebug.last;
-	if (last.skippedReason) {
-		el.textContent =
-			`[auto-advance debug]\n` +
-			`skipped: ${last.skippedReason}\n` +
-			`config: ${last.configMs} ms · gap since last fire: ${(last.gapMs || 0).toFixed(1)} ms\n` +
-			`mp skips (session): ${autoAdvanceDebug.skippedMpInFlight}`;
-		return;
-	}
+	const mpLast = autoAdvanceDebug.lastMpCompleted;
+	const mpMode = isMultiplayer();
 	const avgGap = autoAdvanceDebugAvg("gapMs");
 	const avgWork = autoAdvanceDebugAvg("tickTotal");
 	const avgNext = autoAdvanceDebugAvg("nextDay");
 	const avgRender = autoAdvanceDebugAvg("renderTotal");
 	const avgGraphs = autoAdvanceDebugAvg("renderGraphs");
-	const avgPatch = autoAdvanceDebugAvg("patchLive");
-	const avgConfig = autoAdvanceDebugAvg("configMs");
-	el.textContent =
-		`[auto-advance debug] tick ${autoAdvanceDebug.tick}\n` +
-		`limiter: ${autoAdvanceDebugInferLimiter(last)}\n` +
-		`last  gap ${(last.gapMs || 0).toFixed(1)} ms · work ${(last.tickTotal || 0).toFixed(1)} ms · config ${last.configMs} ms\n` +
-		`last  nextDay ${(last.nextDay || 0).toFixed(1)} · render ${(last.renderTotal || 0).toFixed(1)} · graphs ${(last.renderGraphs || 0).toFixed(1)} · patchLive ${(last.patchLive || 0).toFixed(1)} ms\n` +
-		(avgGap != null
-			? `avg(${autoAdvanceDebug.rolling.length}) gap ${avgGap.toFixed(1)} · work ${avgWork.toFixed(1)} · config ${avgConfig.toFixed(1)} · nextDay ${avgNext.toFixed(1)} · render ${avgRender.toFixed(1)} · graphs ${avgGraphs.toFixed(1)} ms\n`
-			: "") +
-		(last.mpRttMs ? `last mp RTT ${last.mpRttMs.toFixed(1)} ms · mp render ${(last.mpRenderMs || 0).toFixed(1)} ms\n` : "") +
-		`mp skips (session): ${autoAdvanceDebug.skippedMpInFlight}`;
+	const avgMpRtt = autoAdvanceDebugAvgMp("mpRttMs");
+	const avgMpRender = autoAdvanceDebugAvgMp("mpRenderMs");
+	const avgEffective = autoAdvanceDebugAvgMp("effectiveMsPerDay");
+	const avgBatch = autoAdvanceDebugAvgMp("daysAdvanced");
+	const configMs = getAutoAdvanceIntervalMs();
+	const lines = [
+		"[auto-advance debug]",
+		mpMode
+			? `mode: multiplayer · batches ${autoAdvanceDebug.mpDay} · sends ${autoAdvanceDebug.tick}`
+			: `mode: single-player · days ${autoAdvanceDebug.tick}`,
+		`limiter: ${autoAdvanceDebugInferLimiter(mpLast || last, { mpMode })}`,
+		`config: ${configMs} ms · next batch ~${predictMpAutoAdvanceBatch()} days`,
+	];
+	if (last.skippedReason === "mpSent") {
+		lines.push(`last send: batch ${last.batch ?? "?"} · rtt est ${(mpAdvanceRttEma || MP_AUTO_ADVANCE_RTT_DEFAULT).toFixed(0)} ms`);
+	} else if (last.kind === "spDay") {
+		lines.push(
+			`last  gap ${(last.gapMs || 0).toFixed(1)} · work ${(last.tickTotal || 0).toFixed(1)} · nextDay ${(last.nextDay || 0).toFixed(1)} · render ${(last.renderTotal || 0).toFixed(1)} · graphs ${(last.renderGraphs || 0).toFixed(1)} ms`
+		);
+	}
+	if (mpLast) {
+		lines.push(
+			`last batch  ${mpLast.daysAdvanced} days · rtt ${mpLast.mpRttMs.toFixed(1)} · render ${mpLast.mpRenderMs.toFixed(1)} · ~${mpLast.effectiveMsPerDay.toFixed(1)} ms/day`
+		);
+	}
+	if (mpMode && avgMpRtt != null) {
+		lines.push(
+			`avg(${autoAdvanceDebug.mpRolling.length}) batch ${avgBatch.toFixed(1)} · rtt ${avgMpRtt.toFixed(1)} · render ${avgMpRender.toFixed(1)} · ~${avgEffective.toFixed(1)} ms/day`
+		);
+	} else if (!mpMode && avgGap != null) {
+		lines.push(
+			`avg(${autoAdvanceDebug.rolling.length}) gap ${avgGap.toFixed(1)} · work ${avgWork.toFixed(1)} · nextDay ${avgNext.toFixed(1)} · render ${avgRender.toFixed(1)} · graphs ${avgGraphs.toFixed(1)} ms`
+		);
+	}
+	el.textContent = lines.join("\n");
 }
 
 function autoAdvanceDebugMaybeLogSummary() {
-	if (!autoAdvanceDebug.enabled || autoAdvanceDebug.tick % 10 !== 0) return;
+	if (!autoAdvanceDebug.enabled) return;
+	const mpMode = isMultiplayer();
+	if (mpMode) {
+		if (autoAdvanceDebug.mpDay === 0 || autoAdvanceDebug.mpDay % 10 !== 0) return;
+		const avgMpRtt = autoAdvanceDebugAvgMp("mpRttMs");
+		const avgEffective = autoAdvanceDebugAvgMp("effectiveMsPerDay");
+		const avgBatch = autoAdvanceDebugAvgMp("daysAdvanced");
+		console.info("[auto-advance debug]", {
+			mpBatches: autoAdvanceDebug.mpDay,
+			configMs: getAutoAdvanceIntervalMs(),
+			avgBatchSize: avgBatch != null ? +avgBatch.toFixed(1) : null,
+			avgMpRttMs: avgMpRtt != null ? +avgMpRtt.toFixed(1) : null,
+			avgEffectiveMsPerDay: avgEffective != null ? +avgEffective.toFixed(1) : null,
+			nextBatch: predictMpAutoAdvanceBatch(),
+			limiter: autoAdvanceDebugInferLimiter(autoAdvanceDebug.lastMpCompleted, { mpMode: true }),
+		});
+		return;
+	}
+	if (autoAdvanceDebug.tick % 10 !== 0) return;
 	const avgGap = autoAdvanceDebugAvg("gapMs");
 	const avgWork = autoAdvanceDebugAvg("tickTotal");
 	const avgNext = autoAdvanceDebugAvg("nextDay");
@@ -745,7 +877,6 @@ function autoAdvanceDebugMaybeLogSummary() {
 		avgWorkMs: avgWork != null ? +avgWork.toFixed(1) : null,
 		avgNextDayMs: avgNext != null ? +avgNext.toFixed(1) : null,
 		avgRenderGraphsMs: avgGraphs != null ? +avgGraphs.toFixed(1) : null,
-		mpSkips: autoAdvanceDebug.skippedMpInFlight,
 		limiter: autoAdvanceDebugInferLimiter(autoAdvanceDebug.last),
 	});
 }
@@ -765,7 +896,32 @@ window.autoAdvanceDebugTools = {
 	},
 	dump() {
 		console.table(autoAdvanceDebug.rolling);
-		return autoAdvanceDebug.rolling;
+		console.table(autoAdvanceDebug.mpRolling);
+		return { timer: autoAdvanceDebug.rolling, mpDays: autoAdvanceDebug.mpRolling };
+	},
+	summary() {
+		const mpMode = isMultiplayer();
+		if (mpMode) {
+			const avgMpRtt = autoAdvanceDebugAvgMp("mpRttMs");
+			const avgEffective = autoAdvanceDebugAvgMp("effectiveMsPerDay");
+			const avgBatch = autoAdvanceDebugAvgMp("daysAdvanced");
+			return {
+				mode: "multiplayer",
+				configMs: getAutoAdvanceIntervalMs(),
+				avgBatchSize: avgBatch != null ? +avgBatch.toFixed(1) : null,
+				avgMpRttMs: avgMpRtt != null ? +avgMpRtt.toFixed(1) : null,
+				avgEffectiveMsPerDay: avgEffective != null ? +avgEffective.toFixed(1) : null,
+				nextBatch: predictMpAutoAdvanceBatch(),
+				limiter: autoAdvanceDebugInferLimiter(autoAdvanceDebug.lastMpCompleted, { mpMode: true }),
+			};
+		}
+		return {
+			mode: "single-player",
+			configMs: getAutoAdvanceIntervalMs(),
+			avgGapMs: autoAdvanceDebugAvg("gapMs"),
+			avgWorkMs: autoAdvanceDebugAvg("tickTotal"),
+			limiter: autoAdvanceDebugInferLimiter(autoAdvanceDebug.last),
+		};
 	},
 };
 const OVERVIEW_CHANGE_LOOKBACK_DAYS = 30;
@@ -911,21 +1067,124 @@ function setAutoAdvanceIntervalMs(ms, { restartIfRunning = true } = {}) {
 	}
 	syncAutoAdvanceUi();
 	if (restartIfRunning && autoAdvanceTimerId !== null) {
+		setAutoAdvance(true, { restart: true });
+	}
+}
+
+function restartAutoAdvanceTimer() {
+	if (autoAdvanceTimerId !== null) {
 		clearInterval(autoAdvanceTimerId);
 		autoAdvanceTimerId = null;
-		setAutoAdvance(true);
+	}
+	const ms = getAutoAdvanceIntervalMs();
+	autoAdvanceTimerId = setInterval(autoAdvanceTimerCallback, ms);
+	syncAutoAdvanceUi();
+}
+
+function scheduleMpAutoAdvance(delayMs) {
+	if (mpAutoAdvanceTimeoutId !== null) {
+		clearTimeout(mpAutoAdvanceTimeoutId);
+		mpAutoAdvanceTimeoutId = null;
+	}
+	if (!mpAutoAdvanceActive) return;
+	mpAutoAdvanceTimeoutId = setTimeout(() => {
+		mpAutoAdvanceTimeoutId = null;
+		runMpAutoAdvanceSend();
+	}, Math.max(0, delayMs));
+}
+
+function runMpAutoAdvanceSend() {
+	if (!mpAutoAdvanceActive) return;
+	if (!isMultiplayer() || !isMpHost()) {
+		setAutoAdvance(false);
+		return;
+	}
+	if (state.day >= state.maxDays) {
+		setAutoAdvance(false);
+		return;
+	}
+	if (mpAdvanceInFlight) return;
+
+	syncMarketCardAutobuysFromUi();
+	const configMs = getAutoAdvanceIntervalMs();
+	const batch = computeMpAutoAdvanceBatch(configMs, mpAdvanceRttEma, mpAutoAdvanceDaysRemaining());
+	mpAdvanceStartDay = state.day;
+	mpLastBatchSize = batch;
+	mpAdvanceInFlight = true;
+	const mpSendStart = autoAdvanceDebug.enabled ? performance.now() : 0;
+	try {
+		syncAllAutobuysFromUi();
+		mpClient.advanceDay(batch, autobuyConfigFromState());
+		mpAdvanceSentAt = performance.now();
+	} catch (err) {
+		mpAdvanceInFlight = false;
+		setAutoAdvance(false);
+		alert(err.message || "Could not advance day");
+		return;
+	}
+	if (autoAdvanceDebug.enabled) {
+		autoAdvanceDebug.tick++;
+		autoAdvanceDebug.last = {
+			configMs,
+			batch,
+			skippedReason: "mpSent",
+			mpSendMs: performance.now() - mpSendStart,
+		};
+		autoAdvanceDebugUpdateUi();
+	}
+}
+
+function autoAdvanceTimerCallback() {
+	const tickWallStart = performance.now();
+	const gapMs = autoAdvanceDebug.lastTickAt ? tickWallStart - autoAdvanceDebug.lastTickAt : 0;
+	autoAdvanceDebug.lastTickAt = tickWallStart;
+	const sample = { configMs: getAutoAdvanceIntervalMs(), gapMs, tickAt: tickWallStart };
+
+	if (state.day >= state.maxDays) {
+		if (autoAdvanceDebug.enabled) {
+			autoAdvanceDebug.skippedMaxDay++;
+			autoAdvanceDebugRecordSample({ ...sample, skippedReason: "maxDay" });
+			autoAdvanceDebugUpdateUi();
+		}
+		setAutoAdvance(false);
+		return;
+	}
+	syncMarketCardAutobuysFromUi();
+	const prevDay = state.day;
+	const nextDayStart = autoAdvanceDebug.enabled ? performance.now() : 0;
+	state = nextDay(state, params);
+	if (autoAdvanceDebug.enabled) sample.nextDay = performance.now() - nextDayStart;
+	render(state, { liveOnly: true });
+	if (autoAdvanceDebug.enabled) {
+		autoAdvanceDebug.tick++;
+		sample.kind = "spDay";
+		sample.tickTotal = performance.now() - tickWallStart;
+		autoAdvanceDebugRecordSample(sample);
+		autoAdvanceDebug.last = sample;
+		autoAdvanceDebugUpdateUi();
+		autoAdvanceDebugMaybeLogSummary();
+	}
+	if (state.day === prevDay || state.day >= state.maxDays) {
+		setAutoAdvance(false);
 	}
 }
 
 function syncAutoAdvanceUi() {
 	const ms = getAutoAdvanceIntervalMs();
 	const msStr = ms.toLocaleString();
-	const running = autoAdvanceTimerId !== null;
+	const running = isAutoAdvanceRunning();
 	const startBtn = document.getElementById("auto-advance-start-btn");
 	const mpHostOnly = isMultiplayer() && !isMpHost();
+	const mpBatchHint =
+		running && isMultiplayer() && isMpHost()
+			? (() => {
+				const batch = predictMpAutoAdvanceBatch();
+				return batch > 1 ? ` · ~${batch} days/req` : "";
+			})()
+			: "";
 	if (startBtn) {
 		startBtn.textContent = running
-			? `⏹ Stop · ${msStr} ms/day`
+			? `⏹ Stop · ${msStr} ms/day${mpBatchHint}`
 			: mpHostOnly
 				? `▶ Host only · ${msStr} ms/day`
 				: `▶ Start · ${msStr} ms/day`;
@@ -4290,12 +4549,13 @@ for (let i = 0; i < steps; i++) {
 render(state);
 }
 
-function setAutoAdvance(on) {
+function setAutoAdvance(on, { restart = false } = {}) {
 	if (isMultiplayer() && on && !isMpHost()) return;
 	if (autoAdvanceTimerId !== null) {
 		clearInterval(autoAdvanceTimerId);
 		autoAdvanceTimerId = null;
 	}
+	clearMpAutoAdvanceSchedule();
 	if (!on) {
 		mpAdvanceInFlight = false;
 		if (autoAdvanceDebug.enabled) document.getElementById("auto-advance-debug-panel")?.remove();
@@ -4307,82 +4567,17 @@ function setAutoAdvance(on) {
 		syncAutoAdvanceUi();
 		return;
 	}
-	if (autoAdvanceDebug.enabled) {
+	if (autoAdvanceDebug.enabled && !restart) {
 		autoAdvanceDebugResetSession();
 		autoAdvanceDebugEnsurePanel();
-		console.info("[auto-advance debug] profiling started — see panel under slider or autoAdvanceDebugTools.dump()");
+		console.info("[auto-advance debug] profiling started — autoAdvanceDebugTools.summary() for one-liner");
 	}
-	const ms = getAutoAdvanceIntervalMs();
-	autoAdvanceTimerId = setInterval(() => {
-		const tickWallStart = performance.now();
-		const gapMs = autoAdvanceDebug.lastTickAt ? tickWallStart - autoAdvanceDebug.lastTickAt : 0;
-		autoAdvanceDebug.lastTickAt = tickWallStart;
-		const sample = { configMs: ms, gapMs, tickAt: tickWallStart };
-
-		if (state.day >= state.maxDays) {
-			if (autoAdvanceDebug.enabled) {
-				autoAdvanceDebug.skippedMaxDay++;
-				autoAdvanceDebugRecordSample({ ...sample, skippedReason: "maxDay" });
-				autoAdvanceDebugUpdateUi();
-			}
-			setAutoAdvance(false);
-			return;
-		}
-		syncMarketCardAutobuysFromUi();
-		if (isMultiplayer()) {
-			if (!isMpHost()) {
-				setAutoAdvance(false);
-				return;
-			}
-			if (mpAdvanceInFlight) {
-				if (autoAdvanceDebug.enabled) {
-					autoAdvanceDebug.skippedMpInFlight++;
-					autoAdvanceDebugRecordSample({ ...sample, skippedReason: "mpInFlight" });
-					autoAdvanceDebugUpdateUi();
-					autoAdvanceDebugMaybeLogSummary();
-				}
-				return;
-			}
-			mpAdvanceInFlight = true;
-			const mpSendStart = autoAdvanceDebug.enabled ? performance.now() : 0;
-			try {
-				syncAllAutobuysFromUi();
-				mpClient.advanceDay(1, autobuyConfigFromState());
-				mpAdvanceSentAt = performance.now();
-			} catch (err) {
-				mpAdvanceInFlight = false;
-				setAutoAdvance(false);
-				alert(err.message || "Could not advance day");
-			}
-			if (autoAdvanceDebug.enabled) {
-				autoAdvanceDebug.tick++;
-				autoAdvanceDebugRecordSample({
-					...sample,
-					skippedReason: "mpSent",
-					mpSendMs: performance.now() - mpSendStart,
-					tickTotal: performance.now() - tickWallStart,
-				});
-				autoAdvanceDebugUpdateUi();
-				autoAdvanceDebugMaybeLogSummary();
-			}
-			return;
-		}
-		const prevDay = state.day;
-		const nextDayStart = autoAdvanceDebug.enabled ? performance.now() : 0;
-		state = nextDay(state, params);
-		if (autoAdvanceDebug.enabled) sample.nextDay = performance.now() - nextDayStart;
-		render(state, { liveOnly: true });
-		if (autoAdvanceDebug.enabled) {
-			autoAdvanceDebug.tick++;
-			sample.tickTotal = performance.now() - tickWallStart;
-			autoAdvanceDebugRecordSample(sample);
-			autoAdvanceDebugUpdateUi();
-			autoAdvanceDebugMaybeLogSummary();
-		}
-		if (state.day === prevDay || state.day >= state.maxDays) {
-			setAutoAdvance(false);
-		}
-	}, ms);
+	if (isMultiplayer()) {
+		mpAutoAdvanceActive = true;
+		scheduleMpAutoAdvance(0);
+	} else {
+		restartAutoAdvanceTimer();
+	}
 	syncAutoAdvanceUi();
 }
 
@@ -4473,7 +4668,7 @@ document.getElementById("bond-face-value").addEventListener("input", () => {
 	updateBondPreview(state);
 });
 document.getElementById("auto-advance-start-btn").addEventListener("click", () => {
-	setAutoAdvance(autoAdvanceTimerId === null);
+	setAutoAdvance(!isAutoAdvanceRunning());
 });
 document.getElementById("auto-advance-speed-slider").addEventListener("input", e => {
 	setAutoAdvanceIntervalMs(parseInt(e.target.value, 10));
