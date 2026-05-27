@@ -4,6 +4,7 @@
 
 import { createRng, withRng } from "../investments/rng.js";
 import { EMPTY_CUMULATIVE_REALIZED_PL } from "../investments/shared.js";
+import { initialNetWorthHistoryFields, netWorthHistoryForLeaderboard } from "../investments/netWorthHistory.js";
 import { DEFAULT_INDEX_FUND_AUTOBUY } from "../investments/indexFunds.js";
 import { DEFAULT_TREASURY_BOND_AUTOBUY } from "../investments/treasuryBonds.js";
 import { initialCasinoState } from "../investments/casino.js";
@@ -37,6 +38,9 @@ export function stripPlayerFields(state) {
   delete shared.log;
   delete shared.netWorthHistory;
   delete shared.netWorthStackHistory;
+  delete shared.netWorthDailyStartDay;
+  delete shared.netWorthHistoryBuckets;
+  delete shared.netWorthStackBuckets;
   delete shared.lastOptionRealized;
   delete shared.casino;
   delete shared.playerId;
@@ -52,6 +56,24 @@ export function stripPlayerFields(state) {
 function zeroHoldings(assets, key) {
   return (assets || []).map(a => ({
     ...a,
+    [key]: 0,
+    costBasis: 0,
+    lots: [],
+  }));
+}
+
+export function slimPlayerAssets(assets, key) {
+  return (assets || []).map(a => ({
+    id: a.id,
+    [key]: a[key] ?? 0,
+    costBasis: a.costBasis ?? 0,
+    lots: a.lots ? [...a.lots] : [],
+  }));
+}
+
+function slimHoldingsFromMarket(marketAssets, key) {
+  return (marketAssets || []).map(m => ({
+    id: m.id,
     [key]: 0,
     costBasis: 0,
     lots: [],
@@ -81,19 +103,18 @@ export function newPlayerState(shared, params = {}, meta = {}) {
     marketCardAutobuy: {},
     casino: initialCasinoState(params),
     log: [],
-    netWorthHistory: [Math.round(cash)],
-    netWorthStackHistory: [{
+    ...initialNetWorthHistoryFields(cash, {
       cash: Math.round(cash),
       indexFunds: 0,
       bonds: 0,
       stocks: 0,
       cryptos: 0,
       options: 0,
-    }],
+    }),
     lastOptionRealized: null,
-    indexFunds: zeroHoldings(shared.indexFunds, "shares"),
-    stocks: zeroHoldings(shared.stocks, "shares"),
-    cryptos: zeroHoldings(shared.cryptos, "coins"),
+    indexFunds: slimHoldingsFromMarket(shared.indexFunds, "shares"),
+    stocks: slimHoldingsFromMarket(shared.stocks, "shares"),
+    cryptos: slimHoldingsFromMarket(shared.cryptos, "coins"),
   };
 }
 
@@ -164,10 +185,13 @@ export function splitPlayerFromMerged(merged, shared) {
     log: merged.log || [],
     netWorthHistory: merged.netWorthHistory || [],
     netWorthStackHistory: merged.netWorthStackHistory || [],
+    netWorthDailyStartDay: merged.netWorthDailyStartDay ?? 1,
+    netWorthHistoryBuckets: merged.netWorthHistoryBuckets || [],
+    netWorthStackBuckets: merged.netWorthStackBuckets || [],
     lastOptionRealized: merged.lastOptionRealized,
-    indexFunds: mergeAssetHoldings(shared.indexFunds, merged.indexFunds, "shares"),
-    stocks: mergeAssetHoldings(shared.stocks, merged.stocks, "shares"),
-    cryptos: mergeAssetHoldings(shared.cryptos, merged.cryptos, "coins"),
+    indexFunds: slimPlayerAssets(merged.indexFunds, "shares"),
+    stocks: slimPlayerAssets(merged.stocks, "shares"),
+    cryptos: slimPlayerAssets(merged.cryptos, "coins"),
   };
 }
 
@@ -184,12 +208,13 @@ export function buildRoomMarket(seed, params, newStateFn) {
 
 export function leaderboardEntry(player, shared, netWorthFn) {
   const merged = mergeForRender(shared, player);
+  const historyPayload = netWorthHistoryForLeaderboard(player);
   return {
     playerId: player.playerId,
     displayName: player.displayName,
     netWorth: Math.round(netWorthFn(merged)),
     totalReturn: Math.round(totalReturn(merged)),
-    netWorthHistory: [...(player.netWorthHistory || [])],
+    ...historyPayload,
     day: shared.day,
   };
 }

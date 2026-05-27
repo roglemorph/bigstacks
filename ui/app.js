@@ -25,6 +25,14 @@ import {
 	MARKET_CARD_RETURN_DAYS,
 	CHART_CANVAS_FONT,
 } from "./chartConstants.js";
+import {
+	netWorthHistoryView,
+	netWorthHistoryPeak,
+	bucketStackSnapshotsAtFixedDays,
+	bucketScalarsAtFixedDays,
+	expandStackHistoryToDaySpan as expandStackHistoryToDaySpanFromState,
+	expandNetWorthHistoryToDaySpan as expandNetWorthHistoryToDaySpanFromState,
+} from "../investments/netWorthHistory.js";
 
 await loadAssetPartials();
 enhanceQuantityInputs();
@@ -425,17 +433,6 @@ function padStackHistoryTrailing(stacks) {
 	if (!Array.isArray(stacks) || !stacks.length) return stacks || [];
 	return [...stacks, ...Array(CHART_TRAILING_BLANK_SLOTS).fill(null)];
 }
-/** One slot per in-game day on the chart axis (incl. trailing blank days). */
-function expandStackHistoryToDaySpan(stackHistory, chartDaySpan) {
-	if (!chartDaySpan || !stackHistory?.length) return stackHistory || [];
-	const { oldestDay, newestDay } = chartDaySpan;
-	const slotCount = Math.max(0, newestDay - oldestDay + 1);
-	const out = Array(slotCount).fill(null);
-	for (let day = oldestDay; day <= newestDay; day++) {
-		out[day - oldestDay] = stackHistory[day - 1] ?? null;
-	}
-	return out;
-}
 /** Bucket end days at fixed calendar boundaries (10, 20, … or 1000, 2000, …). */
 function fixedBucketEndDaysInRange(oldestDay, newestDay, bucketDays, currentDay) {
 	const cap = Math.min(newestDay, currentDay);
@@ -445,10 +442,6 @@ function fixedBucketEndDaysInRange(oldestDay, newestDay, bucketDays, currentDay)
 	const out = [];
 	for (; d <= cap; d += bucketDays) out.push(d);
 	return out;
-}
-function bucketSnapshotsAtFixedDays(stackHistory, bucketEndDays) {
-	if (!stackHistory?.length || !bucketEndDays?.length) return [];
-	return bucketEndDays.map(day => stackHistory[day - 1] ?? null);
 }
 /** Extend fixed bucket axis with blank slots through chart end (next boundaries). */
 function padFixedBucketsToNewestDay(plotData, bucketEndDays, newestDay, bucketDays) {
@@ -467,43 +460,23 @@ function clampNetWorthChartStartDay(s, startDay) {
 	if (!Number.isFinite(day) || day < 1) return 1;
 	return Math.min(s.day, day);
 }
-function sliceNetWorthStackFromDay(stackHistory, startDay, s) {
+function sliceNetWorthStackFromDay(s, startDay) {
 	const start = clampNetWorthChartStartDay(s, startDay);
-	const idx = start - 1;
-	if (!stackHistory?.length || idx <= 0) return stackHistory || [];
-	if (idx >= stackHistory.length) {
-		return [stackHistory[stackHistory.length - 1]];
-	}
-	return stackHistory.slice(idx);
+	return expandStackHistoryToDaySpanFromState(s, { oldestDay: start, newestDay: s.day });
 }
 function netWorthStackSeriesForChart(s, mode, startDay) {
-	const full = ensureNetWorthStackHistory(s);
 	if (mode === "monthly") {
-		return sliceNetWorthStackFromDay(full, startDay, s);
+		return sliceNetWorthStackFromDay(s, startDay);
 	}
-	return trimDailyStackHistory(full, netWorthRecentDays);
+	const view = netWorthHistoryView(s);
+	return trimDailyStackHistory(view.stackDaily, netWorthRecentDays);
 }
 function stackSnapshotTotal(snap) {
 	if (!snap) return null;
 	return NET_WORTH_STACK_LAYERS.reduce((sum, l) => sum + (snap[l.key] || 0), 0);
 }
-function expandNetWorthHistoryToDaySpan(history, chartDaySpan) {
-	if (!chartDaySpan || !history?.length) return history || [];
-	const { oldestDay, newestDay } = chartDaySpan;
-	const slotCount = Math.max(0, newestDay - oldestDay + 1);
-	const out = Array(slotCount).fill(null);
-	for (let day = oldestDay; day <= newestDay; day++) {
-		out[day - oldestDay] = history[day - 1] ?? null;
-	}
-	return out;
-}
-function bucketScalarsAtFixedDays(history, bucketEndDays) {
-	if (!history?.length || !bucketEndDays?.length) return [];
-	return bucketEndDays.map(day => history[day - 1] ?? null);
-}
-function netWorthHistoryPlotSeries(history, chartDaySpan, bucketEndDays) {
-	const raw = Array.isArray(history) ? history : [];
-	if (!raw.length || !chartDaySpan) return [];
+function netWorthHistoryPlotSeries(source, chartDaySpan, bucketEndDays) {
+	if (!chartDaySpan) return [];
 	if (chartDaySpan.bucketDays > 1) {
 		const ends = bucketEndDays?.length
 			? bucketEndDays
@@ -514,13 +487,13 @@ function netWorthHistoryPlotSeries(history, chartDaySpan, bucketEndDays) {
 				chartDaySpan.currentDay ?? chartDaySpan.newestDay
 			);
 		return padFixedBucketsToNewestDay(
-			bucketScalarsAtFixedDays(raw, ends),
+			bucketScalarsAtFixedDays(source, ends),
 			ends,
 			chartDaySpan.newestDay,
 			chartDaySpan.bucketDays
 		).plotData;
 	}
-	return expandNetWorthHistoryToDaySpan(raw, chartDaySpan);
+	return expandNetWorthHistoryToDaySpanFromState(source, chartDaySpan);
 }
 function mpLeaderboardOverlayRows() {
 	if (!isMultiplayer()) return [];
@@ -1570,8 +1543,12 @@ function setChange(elId, history, lookbackDays = 1) {
     const casinoTabPlEl = document.getElementById("casino-tab-pl");
     if (casinoTabPlEl) setPlDisplay(casinoTabPlEl, cumRealized(s, "casino"), "stat-pl");
 
-    // Log — only append new entries
+    // Log — append new entries; rebuild if ring buffer dropped older rows
     const logEl = document.getElementById("log");
+    if (s.log.length < renderedLogCount) {
+      logEl.innerHTML = "";
+      renderedLogCount = 0;
+    }
     s.log.slice(renderedLogCount).forEach(({ msg, type, day }) => {
       const div = document.createElement("div");
       div.className = "log-entry " + (type || "");
@@ -2242,7 +2219,7 @@ ${rows}`;
     }
   }
 
-  function drawStackedNetWorthChart(canvas, stackHistory, yMax, xAxisEl, xLabels, verticalLines, chartDaySpan) {
+  function drawStackedNetWorthChart(canvas, source, yMax, xAxisEl, xLabels, verticalLines, chartDaySpan) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
@@ -2253,9 +2230,9 @@ ${rows}`;
     canvas.height = Math.floor(h * dpr);
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
-    if (!stackHistory?.length) return;
+    const view = netWorthHistoryView(source);
+    if (!view.stackDaily.length && !view.stackBuckets.length) return;
 
-    const raw = Array.isArray(stackHistory) ? stackHistory : [];
     let plotData;
     let bucketEndDays = chartDaySpan?.bucketEndDays;
     if (chartDaySpan?.bucketDays > 1) {
@@ -2268,7 +2245,7 @@ ${rows}`;
             chartDaySpan.currentDay ?? chartDaySpan.newestDay
           );
       const padded = padFixedBucketsToNewestDay(
-        bucketSnapshotsAtFixedDays(raw, ends),
+        bucketStackSnapshotsAtFixedDays(source, ends),
         ends,
         chartDaySpan.newestDay,
         chartDaySpan.bucketDays
@@ -2276,8 +2253,9 @@ ${rows}`;
       plotData = padded.plotData;
       bucketEndDays = padded.bucketEndDays;
     } else if (chartDaySpan) {
-      plotData = expandStackHistoryToDaySpan(raw, chartDaySpan);
+      plotData = expandStackHistoryToDaySpanFromState(source, chartDaySpan);
     } else {
+      const raw = view.stackDaily;
       plotData = padStackHistoryTrailing(raw.length === 1 ? [raw[0], raw[0]] : raw);
     }
     if (!plotData?.length || plotData.length < 2) return;
@@ -2452,7 +2430,7 @@ function drawMultiplayerNetWorthOverlays(canvas, chartDaySpan, yMax, bucketEndDa
 	};
 
 	rows.forEach((row, rowIdx) => {
-		const plotData = netWorthHistoryPlotSeries(row.netWorthHistory, chartDaySpan, bucketEndDays);
+		const plotData = netWorthHistoryPlotSeries(row, chartDaySpan, bucketEndDays);
 		if (!plotData?.length || plotData.length < 2) return;
 
 		let endIdx = plotData.length - 1;
@@ -4065,16 +4043,12 @@ drawChart(
 document.getElementById("price-graph"), series, "#00ff88",
 document.getElementById("if-yaxis"), document.getElementById("if-xaxis"), xLabels
 );
-const nwFullStack = ensureNetWorthStackHistory(s);
 const nw = netWorth(s);
-const nwHistoryPeak = (s.netWorthHistory || []).reduce((m, v) => Math.max(m, v), nw);
+const nwHistoryPeak = netWorthHistoryPeak(s, nw);
 let mpHistoryPeak = 0;
 if (isMultiplayer()) {
 	for (const row of mpClient.leaderboard || []) {
-		for (const v of row.netWorthHistory || []) {
-			if (Number.isFinite(v)) mpHistoryPeak = Math.max(mpHistoryPeak, v);
-		}
-		if (Number.isFinite(row.netWorth)) mpHistoryPeak = Math.max(mpHistoryPeak, row.netWorth);
+		mpHistoryPeak = Math.max(mpHistoryPeak, netWorthHistoryPeak(row, row.netWorth));
 	}
 }
 const nwPeak = Math.max(nw, nwHistoryPeak, mpHistoryPeak);
@@ -4100,7 +4074,7 @@ const nwVerticalLines = netWorthChartVerticalLines(s, nwDaySpan.oldestDay, nwDay
 const nwCanvas = document.getElementById("networth-graph");
 drawStackedNetWorthChart(
 	nwCanvas,
-	nwFullStack,
+	s,
 	nwYMax,
 	document.getElementById("nw-xaxis"),
 	nwXLabs,

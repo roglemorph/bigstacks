@@ -7,7 +7,7 @@ import { normalizeIndexFundAutobuy } from "./investments/indexFunds.js";
 import { normalizeTreasuryBondAutobuy } from "./investments/treasuryBonds.js";
 import { normalizeOptionMarketDte } from "./investments/options.js";
 import { normalizeMarketCardAutobuy } from "./investments/marketAutobuy.js";
-import { ensureAssetLots, EMPTY_CUMULATIVE_REALIZED_PL } from "./investments/shared.js";
+import { ensureAssetLots, EMPTY_CUMULATIVE_REALIZED_PL, trimLog } from "./investments/shared.js";
 
 const EMPTY_ASSET_UNLOCK_DAYS = {
   bonds: null,
@@ -46,7 +46,7 @@ export function normalizeLoadedState(raw) {
   state.optionHoldings = state.optionHoldings || [];
   state.perpHoldings = state.perpHoldings || [];
   state.bankruptStockDisplay = state.bankruptStockDisplay || [];
-  state.log = Array.isArray(state.log) ? state.log : [];
+  state.log = trimLog(Array.isArray(state.log) ? state.log : []);
 
   state.unlockedBonds = !!state.unlockedBonds;
   state.unlockedStocks = !!state.unlockedStocks;
@@ -70,6 +70,11 @@ export function normalizeLoadedState(raw) {
   state.yieldCurve = state.yieldCurve?.length ? state.yieldCurve : cloneYieldCurve(YIELD_CURVE);
   state.netWorthHistory = Array.isArray(state.netWorthHistory) ? state.netWorthHistory : [];
   state.netWorthStackHistory = Array.isArray(state.netWorthStackHistory) ? state.netWorthStackHistory : [];
+  state.netWorthDailyStartDay = Number.isFinite(state.netWorthDailyStartDay)
+    ? state.netWorthDailyStartDay
+    : 1;
+  state.netWorthHistoryBuckets = Array.isArray(state.netWorthHistoryBuckets) ? state.netWorthHistoryBuckets : [];
+  state.netWorthStackBuckets = Array.isArray(state.netWorthStackBuckets) ? state.netWorthStackBuckets : [];
 
   if (state.casino == null || typeof state.casino !== "object") {
     state.casino = { hiLoAnchor: 50 };

@@ -16,8 +16,15 @@ export function fmtSignedMoney2(n) {
   return sign + "$" + Math.abs(n).toFixed(2);
 }
 
+export const LOG_MAX_ENTRIES = 1000;
+
+export function trimLog(log) {
+  const arr = log || [];
+  return arr.length > LOG_MAX_ENTRIES ? arr.slice(-LOG_MAX_ENTRIES) : arr;
+}
+
 export function appendLog(state, msg, type) {
-  return { ...state, log: [...state.log, { msg, type, day: state.day }] };
+  return { ...state, log: trimLog([...(state.log || []), { msg, type, day: state.day }]) };
 }
 
 /** Running totals of realized P/L by asset bucket (closed trades, bond exits, option settlements). */
@@ -191,14 +198,13 @@ export function evolveTrackedAssets(assets, {
     const next = {
       ...asset,
       price,
-      history: includeMonthlyHistory
-        ? [...asset.history, price]
-        : [...asset.history, price].slice(-500),
+      history: [...(asset.history || []), price].slice(-500),
     };
     if (includeMonthlyHistory) {
+      const monthly = asset.monthlyHistory || [];
       next.monthlyHistory = isMonthEnd
-        ? [...(asset.monthlyHistory || []), price]
-        : (asset.monthlyHistory || []);
+        ? [...monthly, price].slice(-100)
+        : monthly;
     }
     return next;
   });

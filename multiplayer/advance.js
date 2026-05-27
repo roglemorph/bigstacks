@@ -2,7 +2,8 @@
 // MULTIPLAYER — day advance (shared market + per-player tick)
 // ============================================================
 
-import { fmt, addCumulativeRealizedPL, fmtSignedMoney2, costBasisForHifoSale } from "../investments/shared.js";
+import { fmt, addCumulativeRealizedPL, fmtSignedMoney2, costBasisForHifoSale, trimLog } from "../investments/shared.js";
+import { appendNetWorthHistoryDay } from "../investments/netWorthHistory.js";
 import { processBondHoldingsForDay } from "../investments/treasuryBonds.js";
 import { processCorporateBondsForDay } from "../investments/corporateBonds.js";
 import { processPerpsForDay } from "../investments/perps.js";
@@ -10,7 +11,7 @@ import { settleExpiredOptionLots } from "../investments/options.js";
 import { processIndexFundAutobuy } from "../investments/indexFunds.js";
 import { processTreasuryBondAutobuy } from "../investments/treasuryBonds.js";
 import { processMarketCardAutobuys } from "../investments/marketAutobuy.js";
-import { mergeForRender, mergeAssetHoldings, syncPlayerMarketFields } from "./state.js";
+import { mergeForRender, mergeAssetHoldings, syncPlayerMarketFields, slimPlayerAssets } from "./state.js";
 import { indexFundsPortfolioValue } from "../investments/indexFunds.js";
 import { bondPortfolioValue } from "../investments/treasuryBonds.js";
 import { cryptosPortfolioValue } from "../investments/cryptos.js";
@@ -163,10 +164,7 @@ export function advancePlayerAfterShared(player, prevShared, shared, params) {
     bondHoldings: updatedBonds,
     optionHoldings: settle.optionHoldings,
     perpHoldings: perpResult.perpHoldings,
-    log: newLog,
-    indexFunds: mergeAssetHoldings(shared.indexFunds, p.indexFunds, "shares"),
-    stocks: mergeAssetHoldings(shared.stocks, p.stocks, "shares"),
-    cryptos: mergeAssetHoldings(shared.cryptos, p.cryptos, "coins"),
+    log: trimLog(newLog),
   };
 
   merged = mergeForRender(shared, updated);
@@ -206,27 +204,33 @@ export function advancePlayerAfterShared(player, prevShared, shared, params) {
     treasuryBondAutobuy: updated.treasuryBondAutobuy,
     marketCardAutobuy: updated.marketCardAutobuy,
     casino: updated.casino,
-    log: updated.log,
+    log: trimLog(updated.log),
     lastOptionRealized: updated.lastOptionRealized,
-    indexFunds: mergeAssetHoldings(shared.indexFunds, updated.indexFunds, "shares"),
-    stocks: mergeAssetHoldings(shared.stocks, updated.stocks, "shares"),
-    cryptos: mergeAssetHoldings(shared.cryptos, updated.cryptos, "coins"),
+    indexFunds: slimPlayerAssets(updated.indexFunds, "shares"),
+    stocks: slimPlayerAssets(updated.stocks, "shares"),
+    cryptos: slimPlayerAssets(updated.cryptos, "coins"),
+    netWorthHistory: player.netWorthHistory || [],
+    netWorthStackHistory: player.netWorthStackHistory || [],
+    netWorthDailyStartDay: player.netWorthDailyStartDay ?? 1,
+    netWorthHistoryBuckets: player.netWorthHistoryBuckets || [],
+    netWorthStackBuckets: player.netWorthStackBuckets || [],
   };
 
   const nwMerged = mergeForRender(shared, split);
   const nw = netWorth(nwMerged);
-  split.netWorthHistory = [...(player.netWorthHistory || []), Math.round(nw)];
-  split.netWorthStackHistory = [...(player.netWorthStackHistory || []), snapshotNetWorthStack(nwMerged)];
+  let nextPlayer = appendNetWorthHistoryDay(split, nw, snapshotNetWorthStack(nwMerged));
 
   if (newDay >= shared.maxDays) {
-    split.log = [...split.log, {
-      msg: `── RUN OVER ── Net worth: $${fmt(nw)}`,
-      type: "event",
-      day: newDay,
-    }];
+    nextPlayer = {
+      ...nextPlayer,
+      log: trimLog([
+        ...(nextPlayer.log || []),
+        { msg: `── RUN OVER ── Net worth: $${fmt(nw)}`, type: "event", day: newDay },
+      ]),
+    };
   }
 
-  return split;
+  return nextPlayer;
 }
 
 function settleDelistedAssets(player, prevShared, shared, newDay) {
@@ -254,7 +258,7 @@ function settleDelistedAssets(player, prevShared, shared, newDay) {
       stockRealizedPLDelta += realizedPl;
       cash += proceeds;
       log.push({
-        msg: `${st.name} delisted — ${shares} share(s) liquidated at $${price.toFixed(2)} (P/L ${fmtSignedMoney2(realizedPl)}).`,
+        msg: `${prev?.name ?? st.name ?? st.id} delisted — ${shares} share(s) liquidated at $${price.toFixed(2)} (P/L ${fmtSignedMoney2(realizedPl)}).`,
         type: "bad",
         day: newDay,
       });
@@ -280,14 +284,14 @@ function settleDelistedAssets(player, prevShared, shared, newDay) {
       cryptoRealizedPLDelta += realizedPl;
       cash += proceeds;
       log.push({
-        msg: `${c.name} left the exchange — ${coins} coin(s) liquidated for $${proceeds.toFixed(2)} (P/L ${fmtSignedMoney2(realizedPl)}).`,
+        msg: `${prev?.name ?? c.name ?? c.id} left the exchange — ${coins} coin(s) liquidated for $${proceeds.toFixed(2)} (P/L ${fmtSignedMoney2(realizedPl)}).`,
         type: "bad",
         day: newDay,
       });
     }
   }
 
-  let next = { ...player, cash, stocks, cryptos, log };
+  let next = { ...player, cash, stocks, cryptos, log: trimLog(log) };
   if (stockRealizedPLDelta !== 0) {
     next = addCumulativeRealizedPL(next, "stocks", stockRealizedPLDelta);
   }

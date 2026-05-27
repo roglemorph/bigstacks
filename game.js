@@ -45,7 +45,8 @@ import {
 import { processMarketCardAutobuys } from "./investments/marketAutobuy.js";
 import { repriceBondsForQuarter, isBondQuarterEnd } from "./investments/bondRepricing.js";
 import { initialCasinoState, playCasinoHiLo } from "./investments/casino.js";
-import { fmt, addCumulativeRealizedPL, EMPTY_CUMULATIVE_REALIZED_PL, appendLog } from "./investments/shared.js";
+import { fmt, addCumulativeRealizedPL, EMPTY_CUMULATIVE_REALIZED_PL, appendLog, trimLog } from "./investments/shared.js";
+import { initialNetWorthHistoryFields, appendNetWorthHistoryDay } from "./investments/netWorthHistory.js";
 import {
   UNLOCK_COST_BONDS,
   UNLOCK_COST_STOCKS,
@@ -231,8 +232,7 @@ export function newState(params = {}) {
     ...st,
     startNetWorth,
     lastOptionRealized: null,
-    netWorthHistory: [Math.round(startNetWorth)],
-    netWorthStackHistory: [startStack],
+    ...initialNetWorthHistoryFields(startNetWorth, startStack),
   };
 }
 
@@ -377,7 +377,7 @@ export function nextDay(state, params = {}) {
     lifeIncomeTotal: (s.lifeIncomeTotal || 0) + (isMonthEnd ? stipend : 0),
     yieldCurve,
     indexFunds: updatedIndexFunds,
-    log: newLog,
+    log: trimLog(newLog),
     cryptos: cryptoRotation.cryptos,
     cryptoListingSeq: cryptoRotation.cryptoListingSeq,
     stocks: stockResult.stocks,
@@ -417,14 +417,10 @@ export function nextDay(state, params = {}) {
   }
 
   const nw = netWorth(updated);
-  const withNW = {
-    ...updated,
-    netWorthHistory: [...s.netWorthHistory, Math.round(nw)],
-    netWorthStackHistory: [...(s.netWorthStackHistory || []), snapshotNetWorthStack(updated)],
-  };
+  let withNW = appendNetWorthHistoryDay(updated, nw, snapshotNetWorthStack(updated));
 
   if (newDay >= s.maxDays) {
-    return { ...withNW, log: [...withNW.log, { msg: `── RUN OVER ── Net worth: $${fmt(nw)}`, type: "event", day: newDay }] };
+    return appendLog(withNW, `── RUN OVER ── Net worth: $${fmt(nw)}`, "event");
   }
 
   return withNW;
