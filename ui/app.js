@@ -633,7 +633,7 @@ let renderedLogCount = 0;
 let autoAdvanceTimerId = null;
 let autoAdvanceIntervalMs = 500;
 let mpAdvanceInFlight = false;
-const AUTO_ADVANCE_MS_MIN = 50;
+const AUTO_ADVANCE_MS_MIN = 5;
 const AUTO_ADVANCE_MS_MAX = 1000;
 const OVERVIEW_CHANGE_LOOKBACK_DAYS = 30;
 
@@ -4288,7 +4288,7 @@ document.getElementById("auto-advance-speed-slider").addEventListener("input", e
 document.querySelector(".auto-advance-speed-slider-row")?.addEventListener("wheel", e => {
 	if (!e.deltaY) return;
 	e.preventDefault();
-	const step = 10;
+	const step = 5;
 	setAutoAdvanceIntervalMs(getAutoAdvanceIntervalMs() + (e.deltaY > 0 ? -step : step));
 }, { passive: false });
 document.getElementById("reset-btn").onclick       = () => {
