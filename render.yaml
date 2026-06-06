@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: bigstacks
+    runtime: node
+    branch: mp
+    buildCommand: cd server && npm install
+    startCommand: node server/index.js
+    healthCheckPath: /health
