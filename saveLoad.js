@@ -8,6 +8,7 @@ import { normalizeTreasuryBondAutobuy } from "./investments/treasuryBonds.js";
 import { normalizeOptionMarketDte } from "./investments/options.js";
 import { normalizeMarketCardAutobuy } from "./investments/marketAutobuy.js";
 import { ensureAssetLots, EMPTY_CUMULATIVE_REALIZED_PL, trimLog } from "./investments/shared.js";
+import { backfillStockFundamentals } from "./investments/stocks.js";
 
 const EMPTY_ASSET_UNLOCK_DAYS = {
   bonds: null,
@@ -38,7 +39,7 @@ export function normalizeLoadedState(raw) {
 
   state.indexFunds = (state.indexFunds || []).map(f => ensureAssetLots(f, "shares"));
   state.cryptos = (state.cryptos || []).map(c => ensureAssetLots(c, "coins"));
-  state.stocks = (state.stocks || []).map(s => ensureAssetLots(s, "shares"));
+  state.stocks = (state.stocks || []).map(s => backfillStockFundamentals(ensureAssetLots(s, "shares")));
 
   state.bondHoldings = state.bondHoldings || [];
   state.corporateBondOffers = state.corporateBondOffers || [];

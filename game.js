@@ -95,11 +95,25 @@ export {
   buy,
   sell,
   normalizeIndexFundAutobuy,
+  computeIndexFundDailyDrift,
+  computeIndexFundEffectiveVol,
 } from "./investments/indexFunds.js";
 export { buyBond, sellBondEarly, normalizeTreasuryBondAutobuy } from "./investments/treasuryBonds.js";
 export { buyCorporateBond } from "./investments/corporateBonds.js";
 export { buyCrypto, sellCrypto } from "./investments/cryptos.js";
-export { buyStock, sellStock } from "./investments/stocks.js";
+export {
+  buyStock,
+  sellStock,
+  computeStockDailyDrift,
+  computeStockEffectiveVol,
+  stockPeRatio,
+  STOCK_DRIFT_DISPLAY_MIN,
+  STOCK_DRIFT_DISPLAY_MAX,
+  STOCK_VOL_DISPLAY_MIN,
+  STOCK_VOL_DISPLAY_MAX,
+  DRIFT_TICK_WIDTH_MIN,
+  DRIFT_TICK_WIDTH_MAX,
+} from "./investments/stocks.js";
 export {
   normalizeMarketCardAutobuy,
   marketCardAutobuyKey,

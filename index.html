@@ -273,6 +273,30 @@
 				/* ── SHARED ── */
 				.section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; padding: 16px; margin-bottom: 14px; }
 				.section-title { font-size: 0.8em; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+				.section--collapsible .section-collapse-trigger {
+					display: flex;
+					align-items: center;
+					justify-content: space-between;
+					width: 100%;
+					margin: 0;
+					padding: 0;
+					border: none;
+					background: none;
+					cursor: pointer;
+					color: inherit;
+					text-align: left;
+				}
+				.section--collapsible .section-collapse-trigger .section-title { margin-bottom: 0; }
+				.section--collapsible:not(.section--collapsed) .section-collapse-trigger { margin-bottom: 12px; }
+				.section--collapsible .section-collapse-chevron {
+					color: #666;
+					font-size: 0.85em;
+					transition: transform 0.15s ease;
+					flex-shrink: 0;
+					margin-left: 8px;
+				}
+				.section--collapsible.section--collapsed .section-collapse-chevron { transform: rotate(-90deg); }
+				.section--collapsible.section--collapsed .section-collapse-body { display: none; }
 				.section-row { display: flex; gap: 14px; align-items: stretch; margin-bottom: 14px; }
 				.section-row .section { flex: 1; margin-bottom: 0; min-width: 0; }
 
@@ -315,17 +339,58 @@
 				}
 				.overview-holdings-row:last-child { border-bottom: none; }
 
-				/* Overview: 3×2 summary grid, bottom-right cell intentionally empty */
+				/* Overview: featured top row (index + bonds), 3-column bottom row */
 				.overview-summary-grid {
 					display: grid;
-					grid-template-columns: repeat(3, 1fr);
-					grid-template-rows: repeat(2, auto);
+					grid-template-columns: repeat(6, 1fr);
+					grid-template-rows: auto auto;
 					gap: 14px;
 					margin-bottom: 14px;
 					align-items: stretch;
 				}
+				.overview-summary-grid > #overview-card-if { grid-column: 1 / 4; }
+				.overview-summary-grid > #overview-card-bonds { grid-column: 4 / 7; }
+				.overview-summary-grid > #overview-card-crypto { grid-column: 1 / 3; }
+				.overview-summary-grid > #overview-card-options { grid-column: 3 / 5; }
+				.overview-summary-grid > #overview-card-stocks { grid-column: 5 / 7; }
 				.overview-summary-grid > .section { margin-bottom: 0; min-width: 0; }
 				.overview-summary-grid > .section .stat-row { margin-bottom: 0; }
+				.overview-summary-grid > .section.overview-card--featured {
+					padding: 20px 22px;
+				}
+				.overview-summary-grid > .section.overview-card--featured .section-title {
+					font-size: 0.9em;
+					margin-bottom: 14px;
+				}
+				.overview-summary-grid > .section.overview-card--featured .stat-value {
+					font-size: 1.35em;
+				}
+				.overview-summary-grid > .section.overview-card--featured .stat-value-line .stat-pl {
+					font-size: 1.35em;
+				}
+				.overview-summary-grid > .section.overview-card--locked {
+					position: relative;
+					opacity: 0.45;
+				}
+				.overview-summary-grid > .section.overview-card--locked::after {
+					content: "";
+					position: absolute;
+					inset: 0;
+					z-index: 1;
+					pointer-events: none;
+					border-radius: inherit;
+					background: linear-gradient(
+						to top right,
+						transparent calc(50% - 0.75px),
+						rgba(255, 80, 80, 0.5) calc(50% - 0.75px),
+						rgba(255, 80, 80, 0.5) calc(50% + 0.75px),
+						transparent calc(50% + 0.75px)
+					);
+				}
+				.overview-summary-grid > .section.overview-card--locked .section-title {
+					text-decoration: line-through;
+					color: #666;
+				}
 				.overview-card-breakdown {
 					margin-top: 10px;
 					padding-top: 10px;
@@ -410,6 +475,9 @@
 						grid-template-columns: 1fr;
 						grid-template-rows: auto;
 					}
+					.overview-summary-grid > .section {
+						grid-column: 1 / -1 !important;
+					}
 					.overview-summary-grid-empty { display: none; }
 				}
 
@@ -445,11 +513,48 @@
 					gap: 8px;
 					width: 100%;
 				}
-				.auto-advance-start-btn {
+				.auto-advance-pause-btn {
 					width: 100%;
 					padding: 10px 12px;
 					font-size: 0.95em;
 					font-weight: 600;
+				}
+				.auto-advance-pause-overlay {
+					position: fixed;
+					inset: 0;
+					z-index: 20000;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					background: rgba(8, 8, 8, 0.78);
+					backdrop-filter: grayscale(1) brightness(0.42);
+				}
+				.auto-advance-pause-overlay--hidden {
+					display: none;
+				}
+				.auto-advance-pause-overlay__panel {
+					display: flex;
+					flex-direction: column;
+					align-items: center;
+					gap: 14px;
+					padding: 28px 36px;
+					border: 1px solid #333;
+					border-radius: 8px;
+					background: rgba(18, 18, 18, 0.95);
+					box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
+				}
+				.auto-advance-pause-overlay__title {
+					font-size: 1.1em;
+					color: #ccc;
+					letter-spacing: 0.08em;
+					text-transform: uppercase;
+				}
+				body.is-auto-advance-paused #sidebar,
+				body.is-auto-advance-paused #main,
+				body.is-auto-advance-paused #news-ticker {
+					filter: grayscale(0.92) brightness(0.48);
+					pointer-events: none;
+					user-select: none;
 				}
 				.auto-advance-speed-row {
 					display: flex;
@@ -738,12 +843,27 @@
 
 				.auto-row { display: flex; gap: 8px; align-items: center; font-size: 0.78em; color: #555; }
 				.chart-toggle-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
-				.chart-toggle-row .btn.active { border-color: #00ff88; color: #00ff88; background: #00ff8812; }
-				.nw-chart-bucket-row,
-				.nw-chart-start-row,
-				.nw-chart-recent-row { margin-top: -4px; }
-				.nw-chart-start-row[hidden],
-				.nw-chart-recent-row[hidden] { display: none !important; }
+				.chart-toggle-row .btn.active,
+				.nw-chart-controls-row .btn.active {
+					border-color: #00ff88;
+					color: #00ff88;
+					background: #00ff8818;
+					box-shadow: inset 0 0 0 1px #00ff8840;
+				}
+				.nw-chart-controls-row {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 8px 18px;
+					align-items: center;
+					margin-bottom: 10px;
+				}
+				.nw-chart-controls-group {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 8px;
+					align-items: center;
+				}
+				.nw-chart-controls-group[hidden] { display: none !important; }
 				.nw-chart-bucket-label {
 					font-size: 0.72em;
 					color: #666;
@@ -751,7 +871,9 @@
 					text-transform: uppercase;
 					letter-spacing: 0.04em;
 				}
-				.nw-chart-bucket-row .btn {
+				.nw-chart-bucket-row .btn,
+				.nw-chart-recent-row .btn,
+				.nw-chart-controls-group .btn {
 					font-size: 0.72em;
 					padding: 6px 10px;
 					min-width: 44px;
@@ -975,6 +1097,176 @@
 				text-transform: uppercase;
 				letter-spacing: 0.5px;
 				margin-top: -2px;
+				}
+				.market-card__fundamentals {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 4px 12px;
+				font-size: 0.78em;
+				color: #888;
+				line-height: 1.45;
+				margin-top: 6px;
+				}
+				.market-card__fundamentals .fund-k {
+				color: #666;
+				text-transform: uppercase;
+				letter-spacing: 0.4px;
+				font-size: 0.9em;
+				}
+				.market-card__fundamentals .fund-v {
+				color: #ccc;
+				font-size: 1.08em;
+				font-weight: 500;
+				}
+				.stock-chart-fundamentals {
+				margin: 8px 0 6px;
+				max-width: 520px;
+				font-size: 0.86em;
+				}
+				#page-stocks .market-card__sector {
+				font-size: 0.72em;
+				}
+				.market-card.market-card--featured .market-card__fundamentals {
+				font-size: 0.92em;
+				gap: 5px 16px;
+				margin-top: 8px;
+				}
+				.market-card.market-card--featured .market-card__sector {
+				font-size: 0.78em;
+				color: #777;
+				}
+				.stock-drift-vol {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-top: 4px;
+				width: 100%;
+				}
+				.stock-drift-vol__label {
+				font-size: 0.58em;
+				color: #555;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				flex-shrink: 0;
+				width: 28px;
+				}
+				.stock-drift-vol__track {
+				position: relative;
+				flex: 1;
+				height: 6px;
+				border-radius: 3px;
+				background: linear-gradient(to right, #ff5555 0%, #3a2020 45%, #203a28 55%, #00ff88 100%);
+				box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+				}
+				.stock-drift-vol__track::after {
+				content: "";
+				position: absolute;
+				left: 50%;
+				top: -1px;
+				bottom: -1px;
+				width: 1px;
+				background: rgba(255,255,255,0.12);
+				transform: translateX(-50%);
+				pointer-events: none;
+				}
+				.stock-drift-vol__tick {
+				position: absolute;
+				top: 50%;
+				height: 12px;
+				width: var(--tick-w, 4px);
+				margin-left: calc(var(--tick-w, 4px) / -2);
+				transform: translateY(-50%);
+				border-radius: 2px;
+				background: #ccc;
+				box-shadow: 0 0 4px rgba(0,0,0,0.5);
+				pointer-events: none;
+				}
+				.stock-drift-vol__tick.pos { background: #00ff88; }
+				.stock-drift-vol__tick.neg { background: #ff7777; }
+				.stock-drift-vol--panel {
+				max-width: 420px;
+				margin: 0 0 8px;
+				}
+				.stock-drift-vol--panel .stock-drift-vol__track {
+				height: 8px;
+				}
+				.stock-drift-vol--panel .stock-drift-vol__tick {
+				height: 18px;
+				}
+				.stock-chart-series-menu {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px 8px;
+				margin-top: 10px;
+				padding-top: 8px;
+				border-top: 1px solid #222;
+				}
+				.stock-chart-series-chip {
+				display: inline-flex;
+				flex-direction: column;
+				align-items: stretch;
+				gap: 4px;
+				font-size: 0.68em;
+				color: #888;
+				padding: 5px 8px 6px;
+				border: 1px solid #333;
+				border-left: 3px solid var(--chip-color, #66aaff);
+				border-radius: 3px;
+				cursor: pointer;
+				user-select: none;
+				transition: background 0.15s, color 0.15s, opacity 0.15s;
+				min-width: 88px;
+				}
+				.stock-chart-series-chip__top {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				}
+				.stock-chart-series-chip__label {
+				line-height: 1.2;
+				}
+				.stock-chart-series-chip:hover {
+				background: #1a1a1a;
+				color: #ccc;
+				}
+				.stock-chart-series-chip.active {
+				background: #1e1e1e;
+				color: #ddd;
+				}
+				.stock-chart-series-chip:not(.active) {
+				opacity: 0.45;
+				}
+				.stock-chart-series-chip input {
+				position: absolute;
+				opacity: 0;
+				width: 0;
+				height: 0;
+				pointer-events: none;
+				}
+				.stock-chart-series-chip__swatch {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				background: var(--chip-color, #66aaff);
+				flex-shrink: 0;
+				}
+				.stock-drift-vol--chip {
+				margin: 0;
+				width: 100%;
+				}
+				.stock-drift-vol--chip .stock-drift-vol__track {
+				height: 4px;
+				border-radius: 2px;
+				}
+				.stock-drift-vol--chip .stock-drift-vol__tick {
+				height: 8px;
+				}
+				.asset-holdings-fundamentals {
+				grid-column: 1 / -1;
+				font-size: 0.72em;
+				color: #666;
+				margin-top: -2px;
+				padding-bottom: 2px;
 				}
 				.market-card__title-row {
 				display: flex;
@@ -1258,16 +1550,65 @@
 				background: #101010;
 				border-radius: 3px;
 				}
+				.stock-market-selected-card {
+					margin: 0 0 14px 0;
+				}
+				.stock-market-selected-card .market-card--featured {
+					max-width: 100%;
+					padding: 14px 16px 12px;
+				}
+				.market-card.market-card--featured .market-card__title {
+					font-size: 1.15em;
+				}
+				.market-card.market-card--featured .market-card__price {
+					font-size: 1.1em;
+				}
+				.market-card canvas.spark.market-card__chart--featured {
+					height: 200px !important;
+					margin: 10px 0 6px;
+				}
 				.stock-market-bulk-bar {
 					margin: 0 0 14px 0;
+				}
+				.stock-market-bulk-bar--bottom {
+					margin: 14px 0 0 0;
 				}
 				.stock-market-bulk-bar .market-card--bulk {
 					max-width: 100%;
 				}
+				.stock-chart-series-chip--invest {
+					border-color: #66aaff;
+					box-shadow: 0 0 0 1px #66aaff44;
+				}
+				.market-card--compact-selected {
+					opacity: 0.48;
+					filter: saturate(0.55);
+					pointer-events: auto;
+				}
+				.market-card--compact-selected .market-card__title,
+				.market-card--compact-selected .market-card__fundamentals,
+				.market-card--compact-selected .stock-drift-vol {
+					opacity: 0.85;
+				}
+				.market-card__selected-note {
+					font-size: 0.62em;
+					color: #66aaff;
+					text-transform: uppercase;
+					letter-spacing: 0.4px;
+					margin-top: 6px;
+					padding-top: 6px;
+					border-top: 1px solid #2a2a2a;
+				}
 				.market-card.market-card--selectable { cursor: pointer; }
 				#page-stocks .market-card.market-card--selected {
-					border-color: #66aaff;
-					box-shadow: 0 0 0 1px #66aaff33;
+					border-color: #557799;
+					box-shadow: none;
+				}
+				#page-stocks .market-card.market-card--selected.market-card--compact-selected {
+					background: #161616;
+				}
+				#page-stocks .market-card.market-card--dblclick-select {
+					cursor: default;
 				}
 				.stock-bankrupt-list {
 					margin-top: 14px;
@@ -2030,6 +2371,146 @@
 				font-size: 0.84em;
 				}
 
+				/* ── TUTORIAL / HELP ── */
+				.tutorial-help-btn {
+					width: 100%;
+					font-size: 0.82em;
+					padding: 7px 10px;
+					margin-bottom: 4px;
+				}
+				.tutorial-overlay {
+					position: fixed;
+					inset: 0;
+					z-index: 1100;
+					background: rgba(0, 0, 0, 0.88);
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					padding: 20px;
+				}
+				.tutorial-overlay--hidden { display: none; }
+				.tutorial-panel {
+					background: #141414;
+					border: 1px solid #2a2a2a;
+					padding: 22px 24px;
+					width: min(480px, 94vw);
+					max-height: 88vh;
+					display: flex;
+					flex-direction: column;
+					gap: 12px;
+				}
+				.tutorial-panel--wide {
+					width: min(560px, 94vw);
+				}
+				.tutorial-panel__title {
+					color: #00ff88;
+					font-size: 1.05em;
+					letter-spacing: 0.06em;
+					text-transform: uppercase;
+				}
+				.tutorial-card__title {
+					color: #00ff88;
+					font-size: 1em;
+					margin-bottom: 8px;
+				}
+				.tutorial-card__body {
+					color: #aaa;
+					font-size: 0.86em;
+					line-height: 1.55;
+				}
+				.tutorial-card__body strong { color: #ddd; }
+				.tutorial-dots {
+					display: flex;
+					justify-content: center;
+					gap: 8px;
+					margin: 4px 0;
+				}
+				.tutorial-dot {
+					width: 8px;
+					height: 8px;
+					border-radius: 50%;
+					background: #333;
+				}
+				.tutorial-dot--active { background: #00ff88; }
+				.tutorial-panel__actions {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 8px;
+					align-items: center;
+					margin-top: 4px;
+				}
+				.tutorial-panel__actions .btn { flex: 1; min-width: 80px; }
+				.tutorial-panel__actions .tutorial-skip-btn {
+					flex: 0 0 auto;
+					margin-left: auto;
+					font-size: 0.78em;
+					color: #666;
+					background: none;
+					border: none;
+					cursor: pointer;
+					text-decoration: underline;
+					padding: 6px 4px;
+				}
+				.tutorial-panel__actions .tutorial-skip-btn:hover { color: #999; }
+				#tutorial-help-body {
+					overflow-y: auto;
+					flex: 1;
+					min-height: 0;
+					padding-right: 4px;
+				}
+				.tutorial-help-section {
+					margin-bottom: 14px;
+				}
+				.tutorial-help-section__title {
+					color: #00ff88;
+					font-size: 0.82em;
+					text-transform: uppercase;
+					letter-spacing: 1px;
+					margin-bottom: 5px;
+				}
+				.tutorial-help-section__body {
+					color: #888;
+					font-size: 0.8em;
+					line-height: 1.5;
+				}
+				.tutorial-help-section__body strong { color: #bbb; }
+				.tutorial-tip-banner {
+					display: flex;
+					align-items: flex-start;
+					gap: 12px;
+					background: #121a14;
+					border: 1px solid #1e3a28;
+					border-left: 3px solid #00ff88;
+					padding: 12px 14px;
+					margin-bottom: 18px;
+					border-radius: 2px;
+				}
+				.tutorial-tip-banner__content { flex: 1; min-width: 0; }
+				.tutorial-tip-banner__title {
+					color: #00ff88;
+					font-size: 0.78em;
+					text-transform: uppercase;
+					letter-spacing: 1px;
+					margin-bottom: 4px;
+				}
+				.tutorial-tip-banner__body {
+					color: #888;
+					font-size: 0.78em;
+					line-height: 1.45;
+				}
+				.tutorial-tip-banner__body strong { color: #bbb; }
+				.tutorial-tip-banner__dismiss {
+					flex-shrink: 0;
+					background: none;
+					border: none;
+					color: #555;
+					font-size: 1.2em;
+					line-height: 1;
+					cursor: pointer;
+					padding: 0 2px;
+				}
+				.tutorial-tip-banner__dismiss:hover { color: #aaa; }
+
 			</style>
 		</head>
 	<body>
@@ -2038,6 +2519,7 @@
 		<div id="sidebar">
 			<h1>
 				INVEST<br>ROGUE</h1>
+			<button type="button" class="btn tutorial-help-btn" id="help-btn">? Help</button>
 			<hr class="side-divider">
 
 				<div class="side-stat">
@@ -2126,7 +2608,7 @@
 							</div>
 						</div>
 						<div class="auto-advance-panel">
-							<button type="button" class="btn primary auto-advance-start-btn" id="auto-advance-start-btn">▶ Start · 500 ms/day</button>
+							<button type="button" class="btn auto-advance-pause-btn" id="auto-advance-pause-btn">⏸ Pause</button>
 							<div class="auto-advance-speed-row">
 								<div class="auto-advance-speed-slider-row">
 									<input type="range" id="auto-advance-speed-slider" class="auto-advance-speed-slider" min="5" max="1000" step="5" value="500" aria-label="Auto-advance speed in milliseconds">
@@ -2169,49 +2651,36 @@
 				<div class="page active" id="page-overview">
 					<div class="page-title">Overview</div>
 
-					<div class="section income-section">
-						<div class="section-title">Projected income</div>
-						<div class="stat-row income-stats-row">
-							<div class="stat-box">
-								<div class="stat-label">Daily</div>
-								<div class="stat-value pos" id="overview-income-daily">—</div>
+					<div class="section section--collapsible" id="nw-history-section">
+						<button type="button" class="section-collapse-trigger" id="nw-history-collapse-btn" aria-expanded="true" aria-controls="nw-history-body">
+							<span class="section-title">Net Worth History</span>
+							<span class="section-collapse-chevron" aria-hidden="true">▾</span>
+						</button>
+						<div class="section-collapse-body" id="nw-history-body">
+						<div class="nw-chart-controls-row">
+							<div class="nw-chart-controls-group">
+								<button class="btn active" id="nw-chart-daily-btn">Recent</button>
+								<button class="btn" id="nw-chart-monthly-btn">All time</button>
 							</div>
-							<div class="stat-box">
-								<div class="stat-label">30d</div>
-								<div class="stat-value pos" id="overview-income-30d">—</div>
+							<div class="nw-chart-controls-group nw-chart-recent-row" id="nw-chart-recent-row">
+								<span class="nw-chart-bucket-label">Days</span>
+								<button type="button" class="btn" id="nw-chart-recent-300-btn" data-nw-recent="300">300</button>
+								<button type="button" class="btn active" id="nw-chart-recent-1000-btn" data-nw-recent="1000">1000</button>
+								<button type="button" class="btn" id="nw-chart-recent-5000-btn" data-nw-recent="5000">5000</button>
+								<button type="button" class="btn" id="nw-chart-recent-10000-btn" data-nw-recent="10000">10000</button>
 							</div>
-							<div class="stat-box">
-								<div class="stat-label">300d</div>
-								<div class="stat-value pos" id="overview-income-300d">—</div>
+							<div class="nw-chart-controls-group nw-chart-bucket-row" id="nw-chart-bucket-row">
+								<span class="nw-chart-bucket-label">Bucket</span>
+								<button type="button" class="btn active" id="nw-chart-bucket-10-btn" data-nw-bucket="10">10d</button>
+								<button type="button" class="btn" id="nw-chart-bucket-30-btn" data-nw-bucket="30">30d</button>
+								<button type="button" class="btn" id="nw-chart-bucket-100-btn" data-nw-bucket="100">100d</button>
+								<button type="button" class="btn" id="nw-chart-bucket-300-btn" data-nw-bucket="300">300d</button>
+								<button type="button" class="btn" id="nw-chart-bucket-1000-btn" data-nw-bucket="1000">1000d</button>
 							</div>
-						</div>
-						<p class="income-section-note">30-day stipend plus bond coupon income at current holdings.</p>
-					</div>
-
-					<div class="section">
-						<div class="section-title">Net Worth History</div>
-						<div class="chart-toggle-row">
-							<button class="btn active" id="nw-chart-daily-btn">Recent</button>
-							<button class="btn" id="nw-chart-monthly-btn">All time</button>
-						</div>
-						<div class="chart-toggle-row nw-chart-recent-row" id="nw-chart-recent-row">
-							<span class="nw-chart-bucket-label">Days</span>
-							<button type="button" class="btn" id="nw-chart-recent-300-btn" data-nw-recent="300">300</button>
-							<button type="button" class="btn active" id="nw-chart-recent-1000-btn" data-nw-recent="1000">1000</button>
-							<button type="button" class="btn" id="nw-chart-recent-5000-btn" data-nw-recent="5000">5000</button>
-							<button type="button" class="btn" id="nw-chart-recent-10000-btn" data-nw-recent="10000">10000</button>
-						</div>
-						<div class="chart-toggle-row nw-chart-bucket-row" id="nw-chart-bucket-row">
-							<span class="nw-chart-bucket-label">Bucket</span>
-							<button type="button" class="btn active" id="nw-chart-bucket-10-btn" data-nw-bucket="10">10d</button>
-							<button type="button" class="btn" id="nw-chart-bucket-30-btn" data-nw-bucket="30">30d</button>
-							<button type="button" class="btn" id="nw-chart-bucket-100-btn" data-nw-bucket="100">100d</button>
-							<button type="button" class="btn" id="nw-chart-bucket-300-btn" data-nw-bucket="300">300d</button>
-							<button type="button" class="btn" id="nw-chart-bucket-1000-btn" data-nw-bucket="1000">1000d</button>
-						</div>
-						<div class="chart-toggle-row nw-chart-start-row" id="nw-chart-start-row" hidden>
-							<span class="nw-chart-bucket-label">From day</span>
-							<input type="number" id="nw-chart-start-day" class="amount-input" min="1" value="1" step="1" aria-label="All-time chart start day">
+							<div class="nw-chart-controls-group nw-chart-start-row" id="nw-chart-start-row" hidden>
+								<span class="nw-chart-bucket-label">From day</span>
+								<input type="number" id="nw-chart-start-day" class="amount-input" min="1" value="1" step="1" aria-label="All-time chart start day">
+							</div>
 						</div>
 						<div class="chart-wrap nw-chart-wrap">
 							<div class="chart-area" style="flex:1;">
@@ -2221,10 +2690,21 @@
 						</div>
 						<div class="nw-stack-legend" id="nw-stack-legend" aria-label="Net worth by asset"></div>
 						<div class="mp-nw-overlay-legend" id="mp-nw-overlay-legend" hidden aria-label="Other players net worth"></div>
+						</div>
+					</div>
+
+					<div class="section" id="overview-holdings-pie-section">
+						<div class="section-title">Holdings by class</div>
+						<div class="holdings-pie-wrap">
+							<div class="holdings-pie-canvas-wrap">
+								<canvas id="overview-holdings-pie" class="holdings-pie-canvas" aria-label="Holdings by asset class"></canvas>
+							</div>
+							<div class="holdings-pie-legend" id="overview-holdings-pie-legend" aria-label="Holdings breakdown legend"></div>
+						</div>
 					</div>
 
 					<div class="overview-summary-grid">
-					<div class="section">
+					<div class="section overview-card--featured" id="overview-card-if">
 						<div class="section-title">Index fund</div>
 						<div class="stat-row">
 							<div class="stat-box">
@@ -2251,7 +2731,7 @@
 						</div>
 						<div class="overview-card-breakdown" id="overview-card-if-breakdown"></div>
 					</div>
-					<div class="section">
+					<div class="section overview-card--featured" id="overview-card-bonds">
 						<div class="section-title">Bonds</div>
 						<div class="stat-row">
 							<div class="stat-box">
@@ -2264,20 +2744,7 @@
 						</div>
 						<div class="overview-card-breakdown" id="overview-card-bonds-breakdown"></div>
 					</div>
-					<div class="section">
-						<div class="section-title">Stocks</div>
-						<div class="stat-row">
-							<div class="stat-box">
-								<div class="stat-label">Total value · cum. P/L</div>
-								<div class="stat-value-line">
-									<span class="stat-value yellow" id="stock-value"></span>
-									<span class="stat-pl" id="stock-pl"></span>
-								</div>
-							</div>
-						</div>
-						<div class="overview-card-breakdown" id="overview-card-stocks-breakdown"></div>
-					</div>
-					<div class="section">
+					<div class="section" id="overview-card-crypto">
 						<div class="section-title">Crypto</div>
 						<div class="stat-row">
 							<div class="stat-box">
@@ -2290,7 +2757,7 @@
 						</div>
 						<div class="overview-card-breakdown" id="overview-card-crypto-breakdown"></div>
 					</div>
-					<div class="section">
+					<div class="section" id="overview-card-options">
 						<div class="section-title">Options</div>
 						<div class="stat-row">
 							<div class="stat-box">
@@ -2314,31 +2781,19 @@
 						<div class="overview-opt-chain-preview" id="overview-options-chain-preview"></div>
 						<div class="overview-card-breakdown" id="overview-card-options-breakdown"></div>
 					</div>
-					<div class="section">
-						<div class="section-title">Casino</div>
+					<div class="section" id="overview-card-stocks">
+						<div class="section-title">Stocks</div>
 						<div class="stat-row">
 							<div class="stat-box">
-								<div class="stat-label">Exposure · lifetime P/L</div>
+								<div class="stat-label">Total value · cum. P/L</div>
 								<div class="stat-value-line">
-									<span class="stat-value yellow" id="casino-value"></span>
-									<span class="stat-pl" id="casino-pl"></span>
+									<span class="stat-value yellow" id="stock-value"></span>
+									<span class="stat-pl" id="stock-pl"></span>
 								</div>
 							</div>
 						</div>
-						<div class="overview-card-breakdown">
-							<div class="overview-card-breakdown-empty">Cash games only — no holdings.</div>
-						</div>
+						<div class="overview-card-breakdown" id="overview-card-stocks-breakdown"></div>
 					</div>
-					</div>
-
-					<div class="section">
-						<div class="section-title">Holdings by class</div>
-						<div class="holdings-pie-wrap">
-							<div class="holdings-pie-canvas-wrap">
-								<canvas id="overview-holdings-pie" class="holdings-pie-canvas" aria-label="Holdings by asset class"></canvas>
-							</div>
-							<div class="holdings-pie-legend" id="overview-holdings-pie-legend" aria-label="Holdings breakdown legend"></div>
-						</div>
 					</div>
 
 					<div class="section">
@@ -2496,10 +2951,36 @@
 				<button type="button" class="btn" id="mp-back-btn">Back</button>
 			</div>
 		</div>
+		<div id="tutorial-intro" class="tutorial-overlay tutorial-overlay--hidden" role="dialog" aria-modal="true" aria-labelledby="tutorial-intro-heading" aria-hidden="true">
+			<div class="tutorial-panel">
+				<div class="tutorial-panel__title" id="tutorial-intro-heading">Getting started</div>
+				<div class="tutorial-card">
+					<div class="tutorial-card__title" id="tutorial-intro-title"></div>
+					<p class="tutorial-card__body" id="tutorial-intro-body"></p>
+				</div>
+				<div class="tutorial-dots" id="tutorial-intro-dots" aria-hidden="true"></div>
+				<div class="tutorial-panel__actions">
+					<button type="button" class="btn" id="tutorial-intro-back" hidden>Back</button>
+					<button type="button" class="btn primary" id="tutorial-intro-next">Next</button>
+					<button type="button" class="tutorial-skip-btn" id="tutorial-intro-skip">Skip intro</button>
+				</div>
+			</div>
+		</div>
+		<div id="tutorial-help" class="tutorial-overlay tutorial-overlay--hidden" role="dialog" aria-modal="true" aria-labelledby="tutorial-help-heading" aria-hidden="true">
+			<div class="tutorial-panel tutorial-panel--wide">
+				<div class="tutorial-panel__title" id="tutorial-help-heading">Help &amp; reference</div>
+				<div id="tutorial-help-body"></div>
+				<div class="tutorial-panel__actions">
+					<button type="button" class="btn" id="tutorial-help-replay">Replay intro</button>
+					<button type="button" class="btn" id="tutorial-help-reset-tips">Show tips again</button>
+					<button type="button" class="btn primary" id="tutorial-help-close">Close</button>
+				</div>
+			</div>
+		</div>
 		<div id="start-screen" role="dialog" aria-modal="true" aria-labelledby="start-screen-title">
 			<div class="start-screen__inner">
 				<h1 class="start-screen__title" id="start-screen-title">Invest Rogue</h1>
-				<p class="start-screen__tagline">You start with 10,000. You get 1,000 monthly. Get 1,000,000,000 as fast as possible or die</p>
+				<p class="start-screen__tagline">You start with 10,000. You get 1,000 monthly. Get 100,000,000 as fast as possible or die</p>
 				<p class="start-screen__save-hint" id="start-screen-save-hint"></p>
 				<button type="button" class="btn primary start-screen__btn" id="continue-game-btn" hidden>Continue saved run</button>
 				<button type="button" class="btn start-screen__btn" id="start-multiplayer-btn">Multiplayer room</button>
@@ -2510,6 +2991,12 @@
 		</div>
 		<div id="news-ticker">
 			<div class="ticker-track" id="news-ticker-track">Markets open quietly as traders watch the tape...</div>
+		</div>
+		<div id="auto-advance-pause-overlay" class="auto-advance-pause-overlay auto-advance-pause-overlay--hidden" aria-hidden="true">
+			<div class="auto-advance-pause-overlay__panel">
+				<div class="auto-advance-pause-overlay__title">Paused</div>
+				<button type="button" class="btn primary" id="auto-advance-resume-btn">▶ Resume</button>
+			</div>
 		</div>
 		<script>
 			// Local dev: ws://localhost:3001 (default in ui/multiplayer.js)

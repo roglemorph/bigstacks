@@ -49,6 +49,17 @@ export function indexFundsPortfolioValue(state) {
   return (state.indexFunds || []).reduce((sum, f) => sum + (f.shares * f.price), 0);
 }
 
+/** Expected daily drift used by evolveIndexFundsForDay (for UI drift bar). */
+export function computeIndexFundDailyDrift(_fund, params = {}) {
+  return Number.isFinite(params.driftIndex) ? params.driftIndex : DEFAULT_MARKET_DRIFT;
+}
+
+/** Daily vol used by evolveIndexFundsForDay (for UI drift bar tick width). */
+export function computeIndexFundEffectiveVol(fund, params = {}) {
+  const refVol = 0.0126;
+  return Number.isFinite(params.volIndex) ? params.volIndex : (fund?.dailyVol ?? refVol);
+}
+
 export function evolveIndexFundsForDay(s, params, isMonthEnd) {
   const rng = resolveRng(params);
   const dailyVol = params.volIndex ?? 0.0126;

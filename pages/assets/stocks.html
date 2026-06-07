@@ -3,6 +3,7 @@
 					<div class="section-title">Stock Market</div>
 					<div class="market-main-chart-panel" id="stock-market-chart-panel">
 						<div class="market-main-chart-head">Price chart — <span class="market-main-chart-title" id="stock-market-chart-title"></span></div>
+						<div id="stock-chart-fundamentals" class="market-card__fundamentals stock-chart-fundamentals"></div>
 						<div class="chart-toggle-row">
 							<button type="button" class="btn active" id="stock-chart-daily-btn">Daily (1 yr)</button>
 							<button type="button" class="btn" id="stock-chart-monthly-btn">Monthly (all)</button>
@@ -14,9 +15,11 @@
 								<div class="x-axis" id="stock-main-xaxis"></div>
 							</div>
 						</div>
+						<div id="stock-chart-series-menu" class="stock-chart-series-menu" aria-label="Stocks shown on chart"></div>
 					</div>
-					<div id="stock-market-bulk-bar" class="stock-market-bulk-bar"></div>
+					<div id="stock-market-selected-card" class="stock-market-selected-card"></div>
 					<div id="stock-market-list"></div>
+					<div id="stock-market-bulk-bar" class="stock-market-bulk-bar stock-market-bulk-bar--bottom"></div>
 					<div id="stock-bankrupt-list" class="stock-bankrupt-list" aria-live="polite"></div>
 				</div>
 				<div class="section">

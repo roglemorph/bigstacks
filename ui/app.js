@@ -1,17 +1,18 @@
-﻿import { newState, nextDay, buyIndexFund, sellIndexFund, normalizeIndexFundAutobuy, normalizeTreasuryBondAutobuy, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, sellOptionLot, exerciseOptionLot, openPerp, closePerp, closePerpLot, playCasinoHiLo, portfolioValue, netWorth, snapshotNetWorthStack, totalReturn, YIELD_CURVE, yieldForTerm, setOptionMarketDte, normalizeOptionMarketDte, openOptionHoldings, markOptionHolding, optionLotUnrealizedPLAtMark, optionLotUnrealizedPLIfExercised, optionsHoldingsUnrealizedPL, openPerpPositions, perpMarkPrice, perpFundingRateAnnual, perpOpenPremiumTotal, perpHoldingsMarkValue, perpHoldingsUnrealizedPL, perpPositionUnrealizedPL, perpPositionTotalPL, unlockBonds, unlockStocks, unlockCrypto, unlockOptions, UNLOCK_COST_BONDS, UNLOCK_COST_STOCKS, UNLOCK_COST_CRYPTOS, UNLOCK_COST_OPTIONS, MONTHLY_INCOME_AMOUNT, normalizeMarketCardAutobuy, marketCardAutobuyKey } from "../game.js?v=jobs";
+﻿import { newState, nextDay, buyIndexFund, sellIndexFund, normalizeIndexFundAutobuy, normalizeTreasuryBondAutobuy, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, sellOptionLot, exerciseOptionLot, openPerp, closePerp, closePerpLot, playCasinoHiLo, portfolioValue, netWorth, snapshotNetWorthStack, totalReturn, YIELD_CURVE, yieldForTerm, setOptionMarketDte, normalizeOptionMarketDte, openOptionHoldings, markOptionHolding, optionLotUnrealizedPLAtMark, optionLotUnrealizedPLIfExercised, optionsHoldingsUnrealizedPL, openPerpPositions, perpMarkPrice, perpFundingRateAnnual, perpOpenPremiumTotal, perpHoldingsMarkValue, perpHoldingsUnrealizedPL, perpPositionUnrealizedPL, perpPositionTotalPL, unlockBonds, unlockStocks, unlockCrypto, unlockOptions, UNLOCK_COST_BONDS, UNLOCK_COST_STOCKS, UNLOCK_COST_CRYPTOS, UNLOCK_COST_OPTIONS, MONTHLY_INCOME_AMOUNT, normalizeMarketCardAutobuy, marketCardAutobuyKey, computeStockDailyDrift, computeStockEffectiveVol, computeIndexFundDailyDrift, computeIndexFundEffectiveVol, stockPeRatio, STOCK_DRIFT_DISPLAY_MIN, STOCK_DRIFT_DISPLAY_MAX, STOCK_VOL_DISPLAY_MIN, STOCK_VOL_DISPLAY_MAX, DRIFT_TICK_WIDTH_MIN, DRIFT_TICK_WIDTH_MAX } from "../game.js?v=jobs";
 import {
 	fmt, fmtSigned, fmtIncomeAmount, formatPlPct, plTintIntensity, plTintDir,
 	applyPlTintToElement, plTintHtml, setPlDisplay, formatMarketCardOrderTotal,
 	formatCorpBondUnits, formatPerpFundingAnnText, formatTrailingPctChipText, trailingPctChipClass,
 	DISPLAY_RETURN_DAYS,
 } from "./format.js";
-import { readParams, applyParamsToForm, stipendPer30d } from "./params.js";
+import { readParams, applyParamsToForm } from "./params.js";
 import {
 	hasSavedGame, saveGameToStorage, loadGameFromStorage, formatSaveTimestamp,
 	downloadSaveFile, readSaveFromFile, writeParsedSaveToStorage,
 } from "./storage.js";
 import { loadAssetPartials } from "./partials.js";
 import { enhanceQuantityInputs } from "./numberSpinners.js";
+import { setupTutorial, maybeShowIntro, maybeShowTabTip } from "./tutorial.js";
 import { MultiplayerClient } from "./multiplayer.js";
 import { mergeForRender } from "../multiplayer/state.js";
 import {
@@ -32,6 +33,7 @@ import {
 	bucketScalarsAtFixedDays,
 	expandStackHistoryToDaySpan as expandStackHistoryToDaySpanFromState,
 	expandNetWorthHistoryToDaySpan as expandNetWorthHistoryToDaySpanFromState,
+	netWorthStackAtDay as netWorthStackAtDayFromState,
 } from "../investments/netWorthHistory.js";
 
 await loadAssetPartials();
@@ -193,6 +195,7 @@ function setupMultiplayerUi() {
 		hideMpLobby();
 		startTicker();
 		render(state);
+		beginAutoAdvance();
 	});
 
 	mpClient.on("dayAdvanced", payload => {
@@ -226,7 +229,7 @@ function setupMultiplayerUi() {
 			}
 		}
 		if (payload.finished) {
-			setAutoAdvance(false);
+			haltAutoAdvance();
 			return;
 		}
 		if (mpAutoAdvanceActive) {
@@ -259,7 +262,7 @@ function setupMultiplayerUi() {
 
 	mpClient.on("error", payload => {
 		mpAdvanceInFlight = false;
-		if (mpAutoAdvanceActive) setAutoAdvance(false);
+		if (mpAutoAdvanceActive) haltAutoAdvance();
 		alert(payload.message || "Server error");
 	});
 
@@ -347,27 +350,16 @@ function bondHoldingsDailyCoupon(state) {
 		return sum + fv * (y / 365);
 	}, 0);
 }
-function projectedIncomeBreakdown(state, params) {
-	const stipendDaily = stipendPer30d(params) / 30;
+function projectedIncomeBreakdown(state) {
 	const bondDaily = bondHoldingsDailyCoupon(state);
-	const totalDaily = stipendDaily + bondDaily;
 	return {
-		totalDaily,
-		total30d: totalDaily * 30,
-		total300d: totalDaily * 300,
 		bondDaily,
 		bond30d: bondDaily * 30,
 		bond300d: bondDaily * 300,
 	};
 }
-function patchIncomeIndicators(s, p) {
-	const inc = projectedIncomeBreakdown(s, p);
-	const overviewDaily = document.getElementById("overview-income-daily");
-	const overview30d = document.getElementById("overview-income-30d");
-	const overview300d = document.getElementById("overview-income-300d");
-	if (overviewDaily) overviewDaily.textContent = fmtIncomeAmount(inc.totalDaily);
-	if (overview30d) overview30d.textContent = fmt(inc.total30d);
-	if (overview300d) overview300d.textContent = fmt(inc.total300d);
+function patchIncomeIndicators(s) {
+	const inc = projectedIncomeBreakdown(s);
 	const bondsDaily = document.getElementById("bonds-income-daily");
 	const bonds30d = document.getElementById("bonds-income-30d");
 	const bonds300d = document.getElementById("bonds-income-300d");
@@ -471,11 +463,52 @@ function padStackHistoryTrailing(stacks) {
 function fixedBucketEndDaysInRange(oldestDay, newestDay, bucketDays, currentDay) {
 	const cap = Math.min(newestDay, currentDay);
 	const start = Math.max(1, oldestDay);
-	if (bucketDays < 1 || cap < start) return [];
-	let d = Math.ceil(start / bucketDays) * bucketDays;
+	if (bucketDays < 1) return cap >= 0 ? (cap > 0 ? [0, cap] : [0]) : [];
 	const out = [];
-	for (; d <= cap; d += bucketDays) out.push(d);
+	if (start <= 1 && cap >= 0) out.push(0);
+	else if (cap >= start) out.push(start);
+	if (cap < start) return out;
+	let d = Math.ceil(start / bucketDays) * bucketDays;
+	if (out.length && out[out.length - 1] >= d) d = out[out.length - 1] + bucketDays;
+	if (d > cap) {
+		if (cap > (out[out.length - 1] ?? -1)) out.push(cap);
+		return out;
+	}
+	for (; d <= cap; d += bucketDays) {
+		if (out[out.length - 1] !== d) out.push(d);
+	}
+	if (out.length === 1 && cap > out[0]) out.push(cap);
+	else if (out.length && out[out.length - 1] !== cap && cap > out[0]) out.push(cap);
 	return out;
+}
+function shouldAnchorChartAtDayZero(chartDaySpan) {
+	if (!chartDaySpan) return true;
+	return chartDaySpan.oldestDay <= 1;
+}
+function prependChartDayZeroAnchor(source, plotData, bucketEndDays, chartDaySpan) {
+	if (!shouldAnchorChartAtDayZero(chartDaySpan)) {
+		return { plotData, bucketEndDays };
+	}
+	if (bucketEndDays?.length && bucketEndDays[0] === 0) {
+		return { plotData, bucketEndDays };
+	}
+	const day0Snap = netWorthStackAtDayFromState(source, 0);
+	if (!day0Snap) return { plotData, bucketEndDays };
+	if (bucketEndDays?.length) {
+		return {
+			plotData: [day0Snap, ...(plotData || [])],
+			bucketEndDays: [0, ...bucketEndDays],
+		};
+	}
+	if (chartDaySpan && (chartDaySpan.bucketDays || 1) <= 1 && chartDaySpan.oldestDay >= 1) {
+		const days = [0];
+		for (let i = 0; i < (plotData?.length || 0); i++) days.push(chartDaySpan.oldestDay + i);
+		return {
+			plotData: [day0Snap, ...(plotData || [])],
+			bucketEndDays: days,
+		};
+	}
+	return { plotData, bucketEndDays };
 }
 /** Extend fixed bucket axis with blank slots through chart end (next boundaries). */
 function padFixedBucketsToNewestDay(plotData, bucketEndDays, newestDay, bucketDays) {
@@ -629,16 +662,23 @@ let renderedLogCount = 0;
       let netWorthChartBucketDays = 10;
       let netWorthRecentDays = 1000;
       let netWorthMonthStartDay = 1;
+      let netWorthHistoryCollapsed = false;
       let stockChartMode = "daily";
       let cryptoChartMode = "daily";
       let selectedOptionId = null;
       const PERP_QTY_INPUT = "perp-amount";
       let selectedStockId = null;
       let selectedCryptoId = null;
+      const stockChartVisibleIds = new Set();
+      const STOCK_CHART_LINE_COLORS = [
+        "#66aaff", "#ff8866", "#00ff88", "#ff66cc", "#ffcc00",
+        "#aa66ff", "#66ffee", "#ff7777", "#88ff66", "#cc88ff",
+      ];
       let tickerItems = [];
       let tickerIndex = 0;
 let autoAdvanceTimerId = null;
 let autoAdvanceIntervalMs = 500;
+let autoAdvancePaused = false;
 let mpAdvanceInFlight = false;
 let mpAdvanceSentAt = 0;
 let mpAutoAdvanceTimeoutId = null;
@@ -670,6 +710,80 @@ const autoAdvanceDebug = {
 
 function isAutoAdvanceRunning() {
 	return autoAdvanceTimerId !== null || mpAutoAdvanceActive;
+}
+
+function canAutoAdvanceNow() {
+	return state.day < state.maxDays && (!isMultiplayer() || isMpHost());
+}
+
+function showAutoAdvancePauseOverlay() {
+	const overlay = document.getElementById("auto-advance-pause-overlay");
+	if (overlay) {
+		overlay.classList.remove("auto-advance-pause-overlay--hidden");
+		overlay.setAttribute("aria-hidden", "false");
+	}
+	document.body.classList.add("is-auto-advance-paused");
+}
+
+function hideAutoAdvancePauseOverlay() {
+	const overlay = document.getElementById("auto-advance-pause-overlay");
+	if (overlay) {
+		overlay.classList.add("auto-advance-pause-overlay--hidden");
+		overlay.setAttribute("aria-hidden", "true");
+	}
+	document.body.classList.remove("is-auto-advance-paused");
+}
+
+function clearAutoAdvanceTimers() {
+	if (autoAdvanceTimerId !== null) {
+		clearInterval(autoAdvanceTimerId);
+		autoAdvanceTimerId = null;
+	}
+	clearMpAutoAdvanceSchedule();
+	mpAdvanceInFlight = false;
+}
+
+function haltAutoAdvance({ fullRender = false } = {}) {
+	autoAdvancePaused = false;
+	clearAutoAdvanceTimers();
+	hideAutoAdvancePauseOverlay();
+	if (autoAdvanceDebug.enabled) document.getElementById("auto-advance-debug-panel")?.remove();
+	syncAutoAdvanceUi();
+	if (fullRender) render(state);
+}
+
+function beginAutoAdvance({ restart = false } = {}) {
+	if (autoAdvancePaused || !canAutoAdvanceNow()) return;
+	if (restart) clearAutoAdvanceTimers();
+	if (isAutoAdvanceRunning()) return;
+	if (autoAdvanceDebug.enabled && !restart) {
+		autoAdvanceDebugResetSession();
+		autoAdvanceDebugEnsurePanel();
+		console.info("[auto-advance debug] profiling started — autoAdvanceDebugTools.summary() for one-liner");
+	}
+	if (isMultiplayer()) {
+		mpAutoAdvanceActive = true;
+		scheduleMpAutoAdvance(0);
+	} else {
+		restartAutoAdvanceTimer();
+	}
+	syncAutoAdvanceUi();
+}
+
+function pauseAutoAdvance() {
+	if (autoAdvancePaused || !canAutoAdvanceNow()) return;
+	autoAdvancePaused = true;
+	clearAutoAdvanceTimers();
+	showAutoAdvancePauseOverlay();
+	syncAutoAdvanceUi();
+}
+
+function resumeAutoAdvance() {
+	if (!autoAdvancePaused) return;
+	autoAdvancePaused = false;
+	hideAutoAdvancePauseOverlay();
+	beginAutoAdvance({ restart: false });
+	syncAutoAdvanceUi();
 }
 
 function isAutoAdvanceDebugActive() {
@@ -1016,11 +1130,13 @@ function hideStartScreen() {
 }
 
 function beginImportedRun(saved) {
-	setAutoAdvance(false);
+	haltAutoAdvance();
 	if (!importSavedRun(saved)) return false;
 	hideStartScreen();
 	startTicker();
 	render(state);
+	beginAutoAdvance();
+	maybeShowTabTip(document.querySelector(".nav-tab.active")?.dataset.page);
 	setupStartScreen();
 	updateSaveStatus(`Imported — Day ${saved.state.day.toLocaleString()}`);
 	return true;
@@ -1066,8 +1182,8 @@ function setAutoAdvanceIntervalMs(ms, { restartIfRunning = true } = {}) {
 		slider.value = String(autoAdvanceIntervalMs);
 	}
 	syncAutoAdvanceUi();
-	if (restartIfRunning && autoAdvanceTimerId !== null) {
-		setAutoAdvance(true, { restart: true });
+	if (restartIfRunning && !autoAdvancePaused && canAutoAdvanceNow()) {
+		beginAutoAdvance({ restart: true });
 	}
 }
 
@@ -1096,11 +1212,11 @@ function scheduleMpAutoAdvance(delayMs) {
 function runMpAutoAdvanceSend() {
 	if (!mpAutoAdvanceActive) return;
 	if (!isMultiplayer() || !isMpHost()) {
-		setAutoAdvance(false);
+		haltAutoAdvance();
 		return;
 	}
 	if (state.day >= state.maxDays) {
-		setAutoAdvance(false);
+		haltAutoAdvance();
 		return;
 	}
 	if (mpAdvanceInFlight) return;
@@ -1118,7 +1234,7 @@ function runMpAutoAdvanceSend() {
 		mpAdvanceSentAt = performance.now();
 	} catch (err) {
 		mpAdvanceInFlight = false;
-		setAutoAdvance(false);
+		haltAutoAdvance();
 		alert(err.message || "Could not advance day");
 		return;
 	}
@@ -1146,9 +1262,10 @@ function autoAdvanceTimerCallback() {
 			autoAdvanceDebugRecordSample({ ...sample, skippedReason: "maxDay" });
 			autoAdvanceDebugUpdateUi();
 		}
-		setAutoAdvance(false);
+		haltAutoAdvance();
 		return;
 	}
+	if (autoAdvancePaused) return;
 	syncMarketCardAutobuysFromUi();
 	const prevDay = state.day;
 	const nextDayStart = autoAdvanceDebug.enabled ? performance.now() : 0;
@@ -1165,7 +1282,7 @@ function autoAdvanceTimerCallback() {
 		autoAdvanceDebugMaybeLogSummary();
 	}
 	if (state.day === prevDay || state.day >= state.maxDays) {
-		setAutoAdvance(false);
+		haltAutoAdvance();
 	}
 }
 
@@ -1173,8 +1290,9 @@ function syncAutoAdvanceUi() {
 	const ms = getAutoAdvanceIntervalMs();
 	const msStr = ms.toLocaleString();
 	const running = isAutoAdvanceRunning();
-	const startBtn = document.getElementById("auto-advance-start-btn");
+	const pauseBtn = document.getElementById("auto-advance-pause-btn");
 	const mpHostOnly = isMultiplayer() && !isMpHost();
+	const canRun = canAutoAdvanceNow();
 	const mpBatchHint =
 		running && isMultiplayer() && isMpHost()
 			? (() => {
@@ -1182,16 +1300,18 @@ function syncAutoAdvanceUi() {
 				return batch > 1 ? ` · ~${batch} days/req` : "";
 			})()
 			: "";
-	if (startBtn) {
-		startBtn.textContent = running
-			? `⏹ Stop · ${msStr} ms/day${mpBatchHint}`
-			: mpHostOnly
-				? `▶ Host only · ${msStr} ms/day`
-				: `▶ Start · ${msStr} ms/day`;
-		startBtn.classList.toggle("primary", !running);
-		startBtn.classList.toggle("danger", running);
-		startBtn.disabled = mpHostOnly;
-		startBtn.title = mpHostOnly ? "Only the host can auto-advance days" : "";
+	if (pauseBtn) {
+		pauseBtn.textContent = autoAdvancePaused
+			? `⏸ Paused · ${msStr} ms/day`
+			: `⏸ Pause · ${msStr} ms/day${mpBatchHint}`;
+		pauseBtn.disabled = mpHostOnly || !canRun || autoAdvancePaused;
+		pauseBtn.title = mpHostOnly
+			? "Only the host can auto-advance days"
+			: !canRun
+				? "Run complete"
+				: autoAdvancePaused
+					? "Use Resume on the overlay"
+					: "Pause auto-advance";
 	}
 	const speedDisplay = document.getElementById("auto-advance-speed-display");
 	if (speedDisplay) speedDisplay.textContent = `${msStr} ms`;
@@ -1263,6 +1383,7 @@ document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
 tab.classList.add("active");
 document.getElementById("page-" + tab.dataset.page).classList.add("active");
 renderGraphs(state);
+maybeShowTabTip(tab.dataset.page);
 });
 });
 
@@ -1373,6 +1494,13 @@ function setChange(elId, history, lookbackDays = 1) {
       patchMarketCardOrderTotal(card);
       patchMarketCardReturnChips(card.querySelector(".market-card__chg-row"), a.history, a.price, state.day);
       patchMarketCardHoldings(card, prefix, a, state);
+      if (prefix === "stock") {
+        patchStockFundamentals(card, a);
+        patchStockDriftVol(card, a, readParams());
+      }
+      if (prefix === "if") {
+        patchIndexFundDriftVol(card, a, readParams());
+      }
       if (marketCardShowsAutobuy(prefix)) patchMarketCardAutobuyStatus(card, prefix, a, state);
       if (embedCardChart) {
         const sparkId = `${prefix}-spark-${a.id}`;
@@ -1387,19 +1515,21 @@ function setChange(elId, history, lookbackDays = 1) {
     if (marketSelection && marketSelection.selectedId) {
       const list = assets || [];
       const sel = list.find(x => x.id === marketSelection.selectedId) || list[0];
-      if (sel && marketSelection.canvasId) {
+      if (marketSelection.canvasId === "stock-market-main-chart") {
+        patchStockMainChart(state);
+      } else if (sel && marketSelection.canvasId) {
         const c = document.getElementById(marketSelection.canvasId);
         if (c) {
-          const mPrefix = marketSelection.canvasId === "stock-market-main-chart" ? "stock" : "crypto";
-          const yEl = mPrefix === "stock" ? document.getElementById("stock-main-yaxis") : document.getElementById("crypto-main-yaxis");
-          const xEl = mPrefix === "stock" ? document.getElementById("stock-main-xaxis") : document.getElementById("crypto-main-xaxis");
+          const mPrefix = "crypto";
+          const yEl = document.getElementById("crypto-main-yaxis");
+          const xEl = document.getElementById("crypto-main-xaxis");
           const { series, xLabs } = sparkSeriesAndXLabels(mPrefix, sel, state.day);
           drawChart(c, series, chartColor, yEl, xEl, xLabs, !yEl, null, null, null);
         }
-      }
-      if (marketSelection.titleElId && sel) {
-        const titleNode = document.getElementById(marketSelection.titleElId);
-        if (titleNode) titleNode.textContent = sel.name || "";
+        if (marketSelection.titleElId) {
+          const titleNode = document.getElementById(marketSelection.titleElId);
+          if (titleNode) titleNode.textContent = sel.name || "";
+        }
       }
     }
   }
@@ -1674,6 +1804,7 @@ function setChange(elId, history, lookbackDays = 1) {
           titleElId: "stock-market-chart-title",
         });
         patchStockBulkBarLive(s);
+        patchStockFeaturedCardLive(s);
       }
       renderBankruptStockMemorials(s);
     }
@@ -1788,7 +1919,7 @@ function setChange(elId, history, lookbackDays = 1) {
     renderMultiplayerPanel();
     syncAutoAdvanceUi();
 
-    patchIncomeIndicators(s, params);
+    patchIncomeIndicators(s);
 
     // Index Fund
     const indexAvgHistory = averageHistory(s.indexFunds, "history");
@@ -1807,6 +1938,7 @@ function setChange(elId, history, lookbackDays = 1) {
     }
     syncIndexFundAutobuyUi(s);
     renderOverviewHoldings(s);
+    patchOverviewCardLocks(s);
     renderOverviewCardBreakdowns(s);
 
     // Bonds — yield curve preview (uses live curve from state; sim runs even when locked — UI hidden until unlock)
@@ -1875,7 +2007,7 @@ function setChange(elId, history, lookbackDays = 1) {
       renderStockCards(s, tradingLocked);
     }
     if (s.unlockedStocks) {
-      renderAssetHoldings("stock-holdings-list", s.stocks, "shares", "No stock holdings.");
+      renderStockHoldings(s);
     }
 
     // Crypto
@@ -1942,8 +2074,6 @@ function setChange(elId, history, lookbackDays = 1) {
       }
     }
     renderOverviewOptionsChainPreview(s);
-    document.getElementById("casino-value").textContent = fmt(0);
-    setPlDisplay(document.getElementById("casino-pl"), cumRealized(s, "casino"), "stat-pl");
     const spyOnly = (s.indexFunds || []).filter(f => f.id === "spy");
     const optionStrikeLevels = [...new Set((s.options || []).map(o => o.strike).filter(v => Number.isFinite(v)))].sort((a, b) => a - b);
     if (s.unlockedOptions) {
@@ -1998,6 +2128,20 @@ function setChange(elId, history, lookbackDays = 1) {
     }
     scheduleSave();
     if (!liveOnly) enhanceQuantityInputs();
+  }
+
+  function patchOverviewCardLocks(s) {
+    const cards = [
+      { id: "overview-card-bonds", locked: !s.unlockedBonds },
+      { id: "overview-card-stocks", locked: !s.unlockedStocks },
+      { id: "overview-card-crypto", locked: !s.unlockedCrypto },
+      { id: "overview-card-options", locked: !s.unlockedOptions },
+    ];
+    for (const { id, locked } of cards) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      el.classList.toggle("overview-card--locked", locked);
+    }
   }
 
   function renderOverviewOptionsChainPreview(s) {
@@ -2344,12 +2488,68 @@ ${rows}`;
     return Math.max(0, Math.min(width, t * width));
   }
 
-  function drawChartVerticalLines(ctx, verticalLines, oldestDay, newestDay, w, pad, plotH) {
-    if (!verticalLines?.length || newestDay <= oldestDay) return;
+  /** Map a calendar day to canvas x using the actual first/last plotted days (edge-to-edge). */
+  function chartXForPlotDay(day, firstDay, lastDay, width) {
+    if (lastDay <= firstDay) return 0;
+    const t = (day - firstDay) / (lastDay - firstDay);
+    return Math.max(0, Math.min(width, t * width));
+  }
+
+  function resolveStackChartPlotDayExtent(plotData, bucketEndDays, chartDaySpan, endIdx) {
+    if (!chartDaySpan) {
+      return { firstDay: 0, lastDay: Math.max(0, endIdx) };
+    }
+    const bucketDays = chartDaySpan.bucketDays || 1;
+    if (bucketEndDays?.length) {
+      let firstIdx = 0;
+      while (firstIdx <= endIdx) {
+        const snap = plotData[firstIdx];
+        if (snap != null && Number.isFinite(stackSnapshotTotal(snap))) break;
+        firstIdx += 1;
+      }
+      const firstDay = bucketEndDays[Math.min(firstIdx, bucketEndDays.length - 1)] ?? chartDaySpan.oldestDay;
+      const lastDay = bucketEndDays[Math.min(endIdx, bucketEndDays.length - 1)] ?? chartDaySpan.currentDay ?? chartDaySpan.newestDay;
+      return clampPlotDayExtentToChartWindow({ firstDay, lastDay }, chartDaySpan);
+    }
+    return clampPlotDayExtentToChartWindow({
+      firstDay: chartDaySpan.oldestDay,
+      lastDay: chartDaySpan.oldestDay + endIdx,
+    }, chartDaySpan);
+  }
+
+  function clampPlotDayExtentToChartWindow(extent, chartDaySpan) {
+    if (!chartDaySpan) return extent;
+    const { oldestDay, currentDay, newestDay } = chartDaySpan;
+    const axisEnd = chartDaySpan.recentDays != null
+      ? (currentDay ?? extent.lastDay)
+      : (currentDay ?? newestDay ?? extent.lastDay);
+    const axisStart = oldestDay <= 1 && extent.firstDay === 0 ? 0 : oldestDay;
+    return { firstDay: axisStart, lastDay: axisEnd };
+  }
+
+  function chartWindowLeftDay(chartDaySpan) {
+    if (!chartDaySpan) return 0;
+    return chartDaySpan.oldestDay <= 1 ? 0 : chartDaySpan.oldestDay;
+  }
+
+  function prependChartLeftEdgeAnchor(source, plotData, bucketEndDays, leftDay) {
+    if (!Number.isFinite(leftDay) || !bucketEndDays?.length || bucketEndDays[0] <= leftDay) {
+      return { plotData, bucketEndDays };
+    }
+    const snap = netWorthStackAtDayFromState(source, leftDay);
+    if (!snap || !Number.isFinite(stackSnapshotTotal(snap))) return { plotData, bucketEndDays };
+    return {
+      plotData: [snap, ...(plotData || [])],
+      bucketEndDays: [leftDay, ...bucketEndDays],
+    };
+  }
+
+  function drawChartVerticalLines(ctx, verticalLines, plotFirstDay, plotLastDay, w, pad, plotH) {
+    if (!verticalLines?.length || plotLastDay <= plotFirstDay) return;
     verticalLines.forEach(line => {
       const day = line.day;
-      if (!Number.isFinite(day) || day < oldestDay || day > newestDay) return;
-      const x = chartXForDay(day, oldestDay, newestDay, w);
+      if (!Number.isFinite(day) || day < plotFirstDay || day > plotLastDay) return;
+      const x = chartXForPlotDay(day, plotFirstDay, plotLastDay, w);
       ctx.save();
       ctx.strokeStyle = line.color || "rgba(120, 120, 120, 0.45)";
       ctx.lineWidth = line.width ?? 1;
@@ -2374,8 +2574,8 @@ ${rows}`;
       const window = Math.max(1, Math.floor(Number(recentDays)) || DAILY_CHART_TRIM_DAYS);
       oldestDay = Math.max(1, currentDay - window + 1);
     }
-    const newestDay = currentDay + trail;
-    const span = { oldestDay, newestDay, bucketDays: bucket, currentDay };
+    const newestDay = mode === "monthly" ? currentDay + trail : currentDay;
+    const span = { oldestDay, newestDay, bucketDays: bucket, currentDay, recentDays: mode === "daily" ? Math.max(1, Math.floor(Number(recentDays)) || DAILY_CHART_TRIM_DAYS) : null };
     if (bucket > 1) {
       span.bucketEndDays = fixedBucketEndDaysInRange(oldestDay, newestDay, bucket, currentDay);
     }
@@ -2690,6 +2890,13 @@ ${rows}`;
       const raw = view.stackDaily;
       plotData = padStackHistoryTrailing(raw.length === 1 ? [raw[0], raw[0]] : raw);
     }
+    ({ plotData, bucketEndDays } = prependChartDayZeroAnchor(source, plotData, bucketEndDays, chartDaySpan));
+    ({ plotData, bucketEndDays } = prependChartLeftEdgeAnchor(
+      source,
+      plotData,
+      bucketEndDays,
+      chartWindowLeftDay(chartDaySpan)
+    ));
     if (!plotData?.length || plotData.length < 2) return;
 
     let endIdx = plotData.length - 1;
@@ -2699,6 +2906,9 @@ ${rows}`;
       endIdx -= 1;
     }
     if (endIdx < 0) return;
+
+    const plotDayExtent = resolveStackChartPlotDayExtent(plotData, bucketEndDays, chartDaySpan, endIdx);
+    const { firstDay: plotFirstDay, lastDay: plotLastDay } = plotDayExtent;
 
     const min = 0;
     const max = Number.isFinite(yMax) ? yMax : 1;
@@ -2712,16 +2922,15 @@ ${rows}`;
     const yForValue = v => pad.t + (1 - (v - min) / range) * plotH;
     const xForPoint = i => {
       if (chartDaySpan) {
-        const bucketDays = chartDaySpan.bucketDays || 1;
         let day;
-        if (bucketDays > 1 && bucketEndDays?.length) {
+        if (bucketEndDays?.length) {
           day = bucketEndDays[Math.min(i, bucketEndDays.length - 1)];
         } else {
           day = chartDaySpan.oldestDay + i;
         }
-        return chartXForDay(day, chartDaySpan.oldestDay, chartDaySpan.newestDay, w);
+        return chartXForPlotDay(day, plotFirstDay, plotLastDay, w);
       }
-      return plotData.length <= 1 ? 0 : (i / (plotData.length - 1)) * w;
+      return endIdx <= 0 ? 0 : (i / endIdx) * w;
     };
 
     ctx.strokeStyle = "#1e1e1e";
@@ -2735,7 +2944,7 @@ ${rows}`;
     });
 
     if (verticalLines?.length && chartDaySpan) {
-      drawChartVerticalLines(ctx, verticalLines, chartDaySpan.oldestDay, chartDaySpan.newestDay, w, pad, plotH);
+      drawChartVerticalLines(ctx, verticalLines, plotFirstDay, plotLastDay, w, pad, plotH);
     }
 
     const cumulativeBottom = (snap, throughLayerIdx) => {
@@ -2833,9 +3042,11 @@ ${rows}`;
         });
       }
     }
+
+    return plotDayExtent;
   }
 
-function drawMultiplayerNetWorthOverlays(canvas, chartDaySpan, yMax, bucketEndDays) {
+function drawMultiplayerNetWorthOverlays(canvas, chartDaySpan, yMax, bucketEndDays, plotDayExtent) {
 	if (!canvas || !chartDaySpan || !isMultiplayer()) return;
 	const rows = mpLeaderboardOverlayRows();
 	if (!rows.length) return;
@@ -2850,15 +3061,20 @@ function drawMultiplayerNetWorthOverlays(canvas, chartDaySpan, yMax, bucketEndDa
 	const pad = { t: 4, b: 4 };
 	const plotH = h - pad.t - pad.b;
 	const yForValue = v => pad.t + (1 - (v - min) / Math.max(1e-6, max - min)) * plotH;
-	const xForPoint = (i, plotData) => {
+	const plotFirstDay = plotDayExtent?.firstDay ?? chartDaySpan.oldestDay;
+	const plotLastDay = plotDayExtent?.lastDay ?? chartDaySpan.newestDay;
+	const xForPoint = (i, plotData, endIdx) => {
 		const bucketDays = chartDaySpan.bucketDays || 1;
 		let day;
-		if (bucketDays > 1 && bucketEndDays?.length) {
+		if (bucketEndDays?.length) {
 			day = bucketEndDays[Math.min(i, bucketEndDays.length - 1)];
 		} else {
 			day = chartDaySpan.oldestDay + i;
 		}
-		return chartXForDay(day, chartDaySpan.oldestDay, chartDaySpan.newestDay, w);
+		if (plotDayExtent) {
+			return chartXForPlotDay(day, plotFirstDay, plotLastDay, w);
+		}
+		return endIdx <= 0 ? 0 : (i / endIdx) * w;
 	};
 
 	rows.forEach((row, rowIdx) => {
@@ -2876,7 +3092,7 @@ function drawMultiplayerNetWorthOverlays(canvas, chartDaySpan, yMax, bucketEndDa
 		for (let i = 0; i <= endIdx; i++) {
 			const v = plotData[i];
 			if (v == null || !Number.isFinite(v)) continue;
-			const x = xForPoint(i, plotData);
+			const x = xForPoint(i, plotData, endIdx);
 			const y = yForValue(v);
 			if (!started) {
 				ctx.moveTo(x, y);
@@ -3037,6 +3253,445 @@ return `
         syncCorporateBondMarketDom(s);
       }
 
+
+function formatStockPeDisplay(stock) {
+	const pe = stockPeRatio(stock);
+	if (pe == null) return "N/M";
+	return `${pe.toFixed(1)}x`;
+}
+
+function formatStockRevGrowthDisplay(growth) {
+	const pct = (growth || 0) * 100;
+	return `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
+}
+
+function assetDriftVolMetrics(asset, params, driftFn, volFn) {
+	const drift = driftFn(asset, params);
+	const vol = volFn(asset, params);
+	const span = STOCK_DRIFT_DISPLAY_MAX - STOCK_DRIFT_DISPLAY_MIN;
+	const posPct = span > 0
+		? Math.min(100, Math.max(0, ((drift - STOCK_DRIFT_DISPLAY_MIN) / span) * 100))
+		: 50;
+	const volSpan = STOCK_VOL_DISPLAY_MAX - STOCK_VOL_DISPLAY_MIN;
+	const tickSpan = DRIFT_TICK_WIDTH_MAX - DRIFT_TICK_WIDTH_MIN;
+	let tickW = DRIFT_TICK_WIDTH_MIN;
+	if (volSpan > 0) {
+		const t = DRIFT_TICK_WIDTH_MIN + ((vol - STOCK_VOL_DISPLAY_MIN) / volSpan) * tickSpan;
+		tickW = Math.min(DRIFT_TICK_WIDTH_MAX, Math.max(DRIFT_TICK_WIDTH_MIN, t));
+	}
+	const driftPctDay = (drift * 100).toFixed(3);
+	const volPctDay = (vol * 100).toFixed(2);
+	const tickCls = drift > 0.000001 ? "pos" : drift < -0.000001 ? "neg" : "";
+	return {
+		drift,
+		vol,
+		posPct,
+		tickW: Math.round(tickW * 10) / 10,
+		tickCls,
+		title: `Drift ${drift >= 0 ? "+" : ""}${driftPctDay}%/day · Vol ${volPctDay}%/day`,
+	};
+}
+
+function stockDriftVolMetrics(stock, params) {
+	return assetDriftVolMetrics(stock, params, computeStockDailyDrift, computeStockEffectiveVol);
+}
+
+function indexFundDriftVolMetrics(fund, params) {
+	return assetDriftVolMetrics(fund, params, computeIndexFundDailyDrift, computeIndexFundEffectiveVol);
+}
+
+function assetDriftVolInnerHtml(metrics) {
+	return `
+		<span class="stock-drift-vol__label">Drift</span>
+		<div class="stock-drift-vol__track" aria-hidden="true">
+			<span class="stock-drift-vol__tick ${metrics.tickCls}" data-drift-tick style="left: ${metrics.posPct}%; --tick-w: ${metrics.tickW}px;"></span>
+		</div>`;
+}
+
+function assetDriftVolChipInnerHtml(metrics) {
+	return `
+		<div class="stock-drift-vol__track" aria-hidden="true">
+			<span class="stock-drift-vol__tick ${metrics.tickCls}" data-drift-tick style="left: ${metrics.posPct}%; --tick-w: ${metrics.tickW}px;"></span>
+		</div>`;
+}
+
+function stockFundamentalsInnerHtml(stock) {
+	const eps = Number.isFinite(stock?.eps) ? stock.eps : null;
+	const de = Number.isFinite(stock?.debtToEquity) ? stock.debtToEquity : null;
+	const divY = Number.isFinite(stock?.dividendYield) ? stock.dividendYield : null;
+	const rev = Number.isFinite(stock?.revenueGrowth) ? stock.revenueGrowth : null;
+	return `
+		<span><span class="fund-k">EPS</span> <span class="fund-v" data-stock-eps>${eps != null ? `$${eps.toFixed(2)}` : "—"}</span></span>
+		<span><span class="fund-k">D/E</span> <span class="fund-v" data-stock-de>${de != null ? `${de.toFixed(1)}x` : "—"}</span></span>
+		<span><span class="fund-k">P/E</span> <span class="fund-v" data-stock-pe>${formatStockPeDisplay(stock)}</span></span>
+		<span><span class="fund-k">Div</span> <span class="fund-v" data-stock-div>${divY != null ? `${(divY * 100).toFixed(1)}%` : "—"}</span></span>
+		<span><span class="fund-k">Rev</span> <span class="fund-v" data-stock-rev>${rev != null ? formatStockRevGrowthDisplay(rev) : "—"}</span></span>
+		<span></span>`;
+}
+
+function stockFundamentalsHtml(stock) {
+	return `<div class="market-card__fundamentals" data-stock-fundamentals>${stockFundamentalsInnerHtml(stock)}</div>`;
+}
+
+function assetDriftVolHtml(asset, params, metricsFn, panelClass = "") {
+	const m = metricsFn(asset, params);
+	const cls = panelClass ? `stock-drift-vol ${panelClass}` : "stock-drift-vol";
+	return `<div class="${cls}" data-asset-drift-vol title="${m.title}">${assetDriftVolInnerHtml(m)}</div>`;
+}
+
+function stockDriftVolHtml(stock, params, panelClass = "") {
+	return assetDriftVolHtml(stock, params, stockDriftVolMetrics, panelClass);
+}
+
+function stockDriftVolChipHtml(stock, params) {
+	const m = stockDriftVolMetrics(stock, params);
+	return `<div class="stock-drift-vol stock-drift-vol--chip" data-asset-drift-vol title="${m.title}">${assetDriftVolChipInnerHtml(m)}</div>`;
+}
+
+function indexFundDriftVolHtml(fund, params, panelClass = "") {
+	return assetDriftVolHtml(fund, params, indexFundDriftVolMetrics, panelClass);
+}
+
+function patchStockFundamentals(root, stock) {
+	const block = root?.querySelector?.("[data-stock-fundamentals]") ?? root;
+	if (!block) return;
+	const epsEl = block.querySelector("[data-stock-eps]");
+	if (epsEl) epsEl.textContent = Number.isFinite(stock?.eps) ? `$${stock.eps.toFixed(2)}` : "—";
+	const deEl = block.querySelector("[data-stock-de]");
+	if (deEl) deEl.textContent = Number.isFinite(stock?.debtToEquity) ? `${stock.debtToEquity.toFixed(1)}x` : "—";
+	const peEl = block.querySelector("[data-stock-pe]");
+	if (peEl) peEl.textContent = formatStockPeDisplay(stock);
+	const divEl = block.querySelector("[data-stock-div]");
+	if (divEl) divEl.textContent = Number.isFinite(stock?.dividendYield) ? `${(stock.dividendYield * 100).toFixed(1)}%` : "—";
+	const revEl = block.querySelector("[data-stock-rev]");
+	if (revEl) revEl.textContent = Number.isFinite(stock?.revenueGrowth) ? formatStockRevGrowthDisplay(stock.revenueGrowth) : "—";
+}
+
+function patchAssetDriftVol(root, asset, params, metricsFn) {
+	const el = root?.matches?.("[data-asset-drift-vol]")
+		? root
+		: root?.querySelector?.("[data-asset-drift-vol]");
+	if (!el) return;
+	const m = metricsFn(asset, params);
+	el.title = m.title;
+	const tick = el.querySelector("[data-drift-tick]");
+	if (tick) {
+		tick.style.left = `${m.posPct}%`;
+		tick.style.setProperty("--tick-w", `${m.tickW}px`);
+		tick.classList.remove("pos", "neg");
+		if (m.tickCls) tick.classList.add(m.tickCls);
+	}
+}
+
+function patchStockDriftVol(root, stock, params) {
+	patchAssetDriftVol(root, stock, params, stockDriftVolMetrics);
+}
+
+function patchIndexFundDriftVol(root, fund, params) {
+	patchAssetDriftVol(root, fund, params, indexFundDriftVolMetrics);
+}
+
+function patchStockChartPanelMeta(stock, params) {
+	const fundEl = document.getElementById("stock-chart-fundamentals");
+	if (!stock) {
+		if (fundEl) fundEl.innerHTML = "";
+		return;
+	}
+	if (fundEl) {
+		if (!fundEl.querySelector("[data-stock-fundamentals]")) {
+			fundEl.innerHTML = stockFundamentalsHtml(stock);
+		} else {
+			patchStockFundamentals(fundEl, stock);
+		}
+	}
+}
+
+function stockChartColorForIndex(index) {
+	return STOCK_CHART_LINE_COLORS[index % STOCK_CHART_LINE_COLORS.length];
+}
+
+function resetStockChartVisibility() {
+	stockChartVisibleIds.clear();
+}
+
+function syncStockChartVisibility(stocks) {
+	const list = stocks || [];
+	const ids = new Set(list.map(st => st.id));
+	for (const id of [...stockChartVisibleIds]) {
+		if (!ids.has(id)) stockChartVisibleIds.delete(id);
+	}
+	if (!stockChartVisibleIds.size && list.length) {
+		list.forEach(st => stockChartVisibleIds.add(st.id));
+	}
+}
+
+function stockSeriesForChart(asset, mode) {
+	if (mode === "monthly") {
+		return asset.monthlyHistory?.length ? asset.monthlyHistory : [asset.price];
+	}
+	return trimDailyChart(asset.history || []);
+}
+
+function prepareOverlayPlotLayers(layers) {
+	const padded = (layers || []).map(layer => {
+		const raw = layer.data || [];
+		const base = raw.length === 1 ? [raw[0], raw[0]] : raw;
+		return { ...layer, plotData: padChartSeriesTrailing(base) };
+	});
+	const maxLen = Math.max(2, ...padded.map(l => l.plotData.length));
+	return padded.map(layer => {
+		if (layer.plotData.length >= maxLen) {
+			return { ...layer, plotData: layer.plotData.slice(-maxLen) };
+		}
+		const padLeft = maxLen - layer.plotData.length;
+		return { ...layer, plotData: [...Array(padLeft).fill(null), ...layer.plotData] };
+	});
+}
+
+function drawOverlayChart(canvas, layers, yAxisEl, xAxisEl, xLabels) {
+	if (!canvas) return;
+	const ctx = canvas.getContext("2d");
+	const dpr = window.devicePixelRatio || 1;
+	const w = canvas.clientWidth;
+	const h = canvas.clientHeight;
+	if (!w || !h) return;
+	canvas.width = Math.floor(w * dpr);
+	canvas.height = Math.floor(h * dpr);
+	ctx.scale(dpr, dpr);
+	ctx.clearRect(0, 0, w, h);
+	const plotLayers = prepareOverlayPlotLayers(layers);
+	if (!plotLayers.length) return;
+
+	const numericValues = [];
+	for (const layer of plotLayers) {
+		for (const v of layer.plotData) {
+			if (v != null && Number.isFinite(v)) numericValues.push(v);
+		}
+	}
+	if (!numericValues.length) return;
+
+	let min = Math.min(...numericValues);
+	let max = Math.max(...numericValues);
+	if (max - min < 1e-9) max = min + 1e-6;
+	const range = max - min;
+	const hasX = xLabels && xLabels.length > 0;
+	const useDomXAxis = !!(xAxisEl && hasX);
+	const canvasXAxisH = hasX && !useDomXAxis ? 16 : 0;
+	const pad = { t: 4, b: 4 + canvasXAxisH };
+	const plotH = h - pad.t - pad.b;
+	const plotLen = plotLayers[0].plotData.length;
+
+	ctx.strokeStyle = "#1e1e1e";
+	ctx.lineWidth = 1;
+	[0, 0.5, 1].forEach(level => {
+		const y = pad.t + (1 - level) * plotH;
+		ctx.beginPath();
+		ctx.moveTo(0, y);
+		ctx.lineTo(w, y);
+		ctx.stroke();
+	});
+
+	for (const layer of plotLayers) {
+		const plotData = layer.plotData;
+		let endIdx = plotData.length - 1;
+		while (endIdx >= 0 && (plotData[endIdx] == null || !Number.isFinite(plotData[endIdx]))) {
+			endIdx -= 1;
+		}
+		if (endIdx < 0) continue;
+		ctx.beginPath();
+		let started = false;
+		for (let i = 0; i <= endIdx; i++) {
+			const v = plotData[i];
+			if (v == null || !Number.isFinite(v)) continue;
+			const x = plotLen <= 1 ? 0 : (i / (plotLen - 1)) * w;
+			const y = pad.t + (1 - (v - min) / range) * plotH;
+			if (!started) {
+				ctx.moveTo(x, y);
+				started = true;
+			} else {
+				ctx.lineTo(x, y);
+			}
+		}
+		if (started) {
+			ctx.strokeStyle = layer.color || "#66aaff";
+			ctx.lineWidth = 1.75;
+			ctx.stroke();
+		}
+	}
+
+	if (hasX) {
+		ctx.strokeStyle = "#3a3a3a";
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(0, pad.t + plotH);
+		ctx.lineTo(w, pad.t + plotH);
+		ctx.stroke();
+	}
+
+	if (yAxisEl) {
+		const fmtPrice = v => v >= 1000 ? "$" + (v / 1000).toFixed(1) + "k" : "$" + v.toFixed(0);
+		yAxisEl.innerHTML = `
+			<span>${fmtPrice(max)}</span>
+			<span>${fmtPrice((min + max) / 2)}</span>
+			<span>${fmtPrice(min)}</span>`;
+	}
+
+	if (hasX) {
+		if (useDomXAxis) {
+			xAxisEl.innerHTML = xLabels.map(l => `<span>${l}</span>`).join("");
+		}
+	}
+}
+
+function patchStockChartSeriesMenuDrift(stocks, params) {
+	const el = document.getElementById("stock-chart-series-menu");
+	if (!el) return;
+	for (const st of stocks || []) {
+		const chip = el.querySelector(`[data-stock-id="${CSS.escape(st.id)}"]`);
+		if (!chip) continue;
+		patchStockDriftVol(chip, st, params);
+	}
+}
+
+function renderStockChartSeriesMenu(stocks, params = readParams()) {
+	const el = document.getElementById("stock-chart-series-menu");
+	if (!el) return;
+	const list = stocks || [];
+	if (!list.length) {
+		el.innerHTML = "";
+		return;
+	}
+	el.innerHTML = list.map((st, i) => {
+		const color = stockChartColorForIndex(i);
+		const on = stockChartVisibleIds.has(st.id);
+		const invest = st.id === selectedStockId;
+		return `<label class="stock-chart-series-chip${on ? " active" : ""}${invest ? " stock-chart-series-chip--invest" : ""}" data-stock-id="${st.id}" style="--chip-color:${color}" title="Left-click: select for trading · Right-click: toggle chart line">
+			<input type="checkbox" ${on ? "checked" : ""} aria-label="Show ${st.name} on chart">
+			<span class="stock-chart-series-chip__top">
+				<span class="stock-chart-series-chip__swatch" aria-hidden="true"></span>
+				<span class="stock-chart-series-chip__label">${st.name}</span>
+			</span>
+			${stockDriftVolChipHtml(st, params)}
+		</label>`;
+	}).join("");
+	el.querySelectorAll(".stock-chart-series-chip").forEach((chip, i) => {
+		const st = list[i];
+		if (!st) return;
+		chip.addEventListener("click", e => {
+			e.preventDefault();
+			window._selectStockForInvestment(st.id);
+		});
+		chip.addEventListener("contextmenu", e => {
+			e.preventDefault();
+			window._toggleStockChartSeries(st.id);
+		});
+	});
+}
+
+function syncStockMarketSelectionHighlight(id) {
+	document.querySelectorAll("#stock-market-list [data-mkt-card^='stock:']").forEach(card => {
+		const cardId = card.getAttribute("data-mkt-card")?.split(":")[1];
+		card.classList.toggle("market-card--selected", cardId === id);
+	});
+	document.querySelectorAll("#stock-chart-series-menu .stock-chart-series-chip").forEach(chip => {
+		chip.classList.toggle("stock-chart-series-chip--invest", chip.getAttribute("data-stock-id") === id);
+	});
+}
+
+function patchStockChartSeriesChip(id, on) {
+	const el = document.getElementById("stock-chart-series-menu");
+	if (!el || !id) return;
+	const chip = el.querySelector(`[data-stock-id="${CSS.escape(id)}"]`);
+	if (!chip) return;
+	chip.classList.toggle("active", on);
+	const input = chip.querySelector("input");
+	if (input) input.checked = on;
+}
+
+function drawStockOverlayChart(s, updateSeriesMenu = false) {
+	const stocks = s.stocks || [];
+	syncStockChartVisibility(stocks);
+	const canvas = document.getElementById("stock-market-main-chart");
+	const yEl = document.getElementById("stock-main-yaxis");
+	const xEl = document.getElementById("stock-main-xaxis");
+	const titleEl = document.getElementById("stock-market-chart-title");
+	if (!canvas || !stocks.length) {
+		if (titleEl) titleEl.textContent = "";
+		return;
+	}
+
+	const visible = stocks.filter(st => stockChartVisibleIds.has(st.id));
+	if (!visible.length) {
+		stockChartVisibleIds.add(stocks[0].id);
+		return drawStockOverlayChart(s, updateSeriesMenu);
+	}
+
+	const mode = stockChartMode;
+	const layers = visible.map(st => {
+		const idx = stocks.findIndex(x => x.id === st.id);
+		return {
+			data: stockSeriesForChart(st, mode),
+			color: stockChartColorForIndex(idx >= 0 ? idx : 0),
+			label: st.name,
+		};
+	});
+
+	const ref = visible[0];
+	const { xLabs } = sparkSeriesAndXLabels("stock", ref, s.day);
+	drawOverlayChart(canvas, layers, yEl, xEl, xLabs);
+
+	if (titleEl) {
+		const n = visible.length;
+		const total = stocks.length;
+		titleEl.textContent = n === total ? "All stocks" : `${n} of ${total} stocks`;
+	}
+
+	if (updateSeriesMenu) renderStockChartSeriesMenu(stocks);
+}
+
+function patchStockMainChart(s, updateSeriesMenu = false) {
+	const stocks = s.stocks || [];
+	const params = readParams();
+	drawStockOverlayChart(s, updateSeriesMenu);
+	const sel = stocks.find(st => st.id === selectedStockId) || stocks[0];
+	if (sel) patchStockChartPanelMeta(sel, params);
+	if (!updateSeriesMenu) patchStockChartSeriesMenuDrift(stocks, params);
+}
+
+function renderStockHoldings(s) {
+	const el = document.getElementById("stock-holdings-list");
+	if (!el) return;
+	const holdings = (s.stocks || []).filter(a => (a.shares || 0) > 0);
+	if (!holdings.length) {
+		el.innerHTML = `<div style="color:#444;font-size:0.8em;">No stock holdings.</div>`;
+		return;
+	}
+	el.innerHTML = `
+<div class="asset-holdings-header">
+	<span>Asset</span>
+	<span>Qty</span>
+	<span>Avg cost</span>
+	<span>Mkt px</span>
+	<span>P/L</span>
+	<span>P/L %</span>
+</div>
+${holdings.map(a => {
+	const meta = computeAssetHoldingsPl(a, "shares");
+	if (!meta) return "";
+	const fundLine = `EPS $${(a.eps || 0).toFixed(2)} · P/E ${formatStockPeDisplay(a)}`;
+	return `
+<div class="asset-holdings-row held-pl-tint" data-pl-dir="${plTintDir(meta.plPct)}" style="--pl-tint:${plTintIntensity(meta.plPct).toFixed(3)}">
+	<span class="white">${a.name}</span>
+	<span>${meta.qty}</span>
+	<span>$${meta.avg.toFixed(2)}</span>
+	<span class="yellow">$${(a.price || 0).toFixed(2)}</span>
+	<span class="${meta.plCls}">${fmtSigned(meta.pl)}</span>
+	<span class="${meta.plCls}">${formatPlPct(meta.plPct)}</span>
+	<div class="asset-holdings-fundamentals">${fundLine}</div>
+</div>`;
+}).join("")}
+`;
+}
 
 function renderAssetHoldings(listElId, assets, qtyKey, emptyText) {
 const el = document.getElementById(listElId);
@@ -3277,11 +3932,49 @@ function syncMarketCardAutobuysFromUi() {
 	});
 }
 
+function stockQtyStorageKey(stockId) {
+	return `stock-amount-${stockId}`;
+}
+
+function stockFeaturedAmountId(stockId) {
+	return `stock-featured-amount-${stockId}`;
+}
+
+function resolveStockTradeAmountId(stockId) {
+	return document.getElementById(stockFeaturedAmountId(stockId))
+		? stockFeaturedAmountId(stockId)
+		: stockQtyStorageKey(stockId);
+}
+
+function stockIdFromAmountInputId(amountId) {
+	if (amountId.startsWith("stock-featured-amount-")) {
+		return amountId.slice("stock-featured-amount-".length);
+	}
+	if (amountId.startsWith("stock-amount-") && amountId !== STOCK_BULK_AMOUNT_ID) {
+		return amountId.slice("stock-amount-".length);
+	}
+	return null;
+}
+
+function syncStockTradeQty(stockId, qty) {
+	const q = Math.max(1, qty);
+	const gridId = stockQtyStorageKey(stockId);
+	tradeQtyByInputId[gridId] = q;
+	const gridEl = document.getElementById(gridId);
+	if (gridEl) gridEl.value = String(q);
+	const featuredEl = document.getElementById(stockFeaturedAmountId(stockId));
+	if (featuredEl) featuredEl.value = String(q);
+	patchMarketCardOrderTotalsForInput(gridId);
+	patchMarketCardOrderTotalsForInput(stockFeaturedAmountId(stockId));
+}
+
 function isMarketCardAmountInput(amountId) {
-	return /^(if|stock|crypto)-amount-/.test(amountId);
+	return /^(if|stock|crypto)-amount-/.test(amountId) || /^stock-featured-amount-/.test(amountId);
 }
 
 function marketCardKeyFromAmountId(amountId) {
+	const featured = amountId.match(/^stock-featured-amount-(.+)$/);
+	if (featured) return { prefix: "stock", assetId: featured[1] };
 	const m = amountId.match(/^(if|stock|crypto)-amount-(.+)$/);
 	if (!m) return null;
 	return { prefix: m[1], assetId: m[2] };
@@ -3316,9 +4009,17 @@ ${list.map(a => {
 		? `<canvas id="${sparkId}" class="spark market-card__chart"></canvas>`
 		: "";
 	const isSel = marketSelection && a.id === marketSelection.selectedId;
-	const cardClasses = `market-card${marketSelection ? " market-card--selectable" : ""}${isSel ? " market-card--selected" : ""}`;
-	const cardClick = marketSelection ? ` onclick="window._selectMarketAsset('${prefix}','${a.id}')"` : "";
-	const tradeRowStop = marketSelection ? ` onclick="event.stopPropagation()"` : "";
+	const stockDblSelect = marketSelection && prefix === "stock";
+	const cardClasses = `market-card${marketSelection && prefix !== "stock" ? " market-card--selectable" : ""}${stockDblSelect ? " market-card--dblclick-select" : ""}${isSel ? " market-card--selected" : ""}`;
+	const cardClick = marketSelection && prefix !== "stock"
+		? ` onclick="window._selectMarketAsset('${prefix}','${a.id}')"`
+		: "";
+	const cardDblClick = stockDblSelect
+		? ` ondblclick="window._selectStockForInvestment('${a.id}')" title="Double-click to show in panel above"`
+		: "";
+	const tradeRowStop = marketSelection && prefix !== "stock"
+		? ` onclick="event.stopPropagation()"`
+		: "";
 	if (prefix === "ifu") {
 		return `
 	<div class="${cardClasses}" data-mkt-card="${prefix}:${a.id}"${cardClick}>
@@ -3338,8 +4039,9 @@ ${list.map(a => {
 	const borderAttrs = hMeta
 		? ` data-pl-dir="${plTintDir(hMeta.plPct)}" style="--pl-tint:${plTintIntensity(hMeta.plPct).toFixed(3)}"`
 		: "";
-	return `
-	<div class="${cardClasses}${borderClass}" data-mkt-card="${prefix}:${a.id}" data-mkt-amount-id="${amountId}" data-mkt-unit-price="${a.price}"${borderAttrs}${cardClick}>
+	if (prefix === "stock" && marketSelection && isSel) {
+		return `
+	<div class="${cardClasses}${borderClass} market-card--compact-selected" data-mkt-card="${prefix}:${a.id}" data-mkt-unit-price="${a.price}"${borderAttrs}${cardDblClick}>
 		<div class="market-card__title-row">
 			<div class="market-card__title-block">
 				<div class="market-card__title">${a.name}</div>
@@ -3347,6 +4049,23 @@ ${list.map(a => {
 			</div>
 			${marketCardPriceColHtml(a.price, qty, a.history, a.price, null, state.day)}
 		</div>
+		${stockFundamentalsHtml(a)}
+		${stockDriftVolHtml(a, readParams())}
+		<div class="market-card__selected-note">Selected — trade in panel above</div>
+	</div>`;
+	}
+	return `
+	<div class="${cardClasses}${borderClass}" data-mkt-card="${prefix}:${a.id}" data-mkt-amount-id="${amountId}" data-mkt-unit-price="${a.price}"${borderAttrs}${cardClick}${cardDblClick}>
+		<div class="market-card__title-row">
+			<div class="market-card__title-block">
+				<div class="market-card__title">${a.name}</div>
+				${a.sector ? `<div class="market-card__sector">${a.sector}</div>` : ""}
+			</div>
+			${marketCardPriceColHtml(a.price, qty, a.history, a.price, null, state.day)}
+		</div>
+		${prefix === "stock" ? stockFundamentalsHtml(a) : ""}
+		${prefix === "stock" ? stockDriftVolHtml(a, readParams()) : ""}
+		${prefix === "if" ? indexFundDriftVolHtml(a, readParams()) : ""}
 		<div class="market-card__trade-row"${tradeRowStop}>
 			<div class="market-card__trade-mid">
 			<div class="market-card__trade-actions">
@@ -3395,26 +4114,29 @@ list.forEach(a => {
 });
 } else if (marketSelection) {
 	const sel = list.find(x => x.id === marketSelection.selectedId) || list[0];
-	if (marketSelection.titleElId) {
-		const titleNode = document.getElementById(marketSelection.titleElId);
-		if (titleNode) titleNode.textContent = sel.name || "";
+	if (marketSelection.canvasId === "stock-market-main-chart") {
+		patchStockMainChart(state, true);
+	} else {
+		if (marketSelection.titleElId) {
+			const titleNode = document.getElementById(marketSelection.titleElId);
+			if (titleNode) titleNode.textContent = sel?.name || "";
+		}
+		const yEl = document.getElementById("crypto-main-yaxis");
+		const xEl = document.getElementById("crypto-main-xaxis");
+		const { series, xLabs } = sparkSeriesAndXLabels("crypto", sel, state.day);
+		drawChart(
+			document.getElementById(marketSelection.canvasId),
+			series,
+			chartColor,
+			yEl,
+			xEl,
+			xLabs,
+			!yEl,
+			null,
+			null,
+			null
+		);
 	}
-	const mPrefix = marketSelection.canvasId === "stock-market-main-chart" ? "stock" : "crypto";
-	const yEl = mPrefix === "stock" ? document.getElementById("stock-main-yaxis") : document.getElementById("crypto-main-yaxis");
-	const xEl = mPrefix === "stock" ? document.getElementById("stock-main-xaxis") : document.getElementById("crypto-main-xaxis");
-	const { series, xLabs } = sparkSeriesAndXLabels(mPrefix, sel, state.day);
-	drawChart(
-		document.getElementById(marketSelection.canvasId),
-		series,
-		chartColor,
-		yEl,
-		xEl,
-		xLabs,
-		!yEl,
-		null,
-		null,
-		null
-	);
 }
 }
 
@@ -3651,6 +4373,89 @@ function renderBankruptStockMemorials(s) {
 		</div>`;
 }
 
+function stockFeaturedCardHtml(a, isTradeLocked) {
+	const amountId = stockFeaturedAmountId(a.id);
+	const qty = Math.max(1, tradeQtyByInputId[stockQtyStorageKey(a.id)] || 1);
+	const holdingsHtml = marketCardHoldingsHtml("stock", a);
+	const hMeta = marketCardHoldingsPlForAsset("stock", a);
+	const borderClass = hMeta ? " market-card--held-border" : "";
+	const borderAttrs = hMeta
+		? ` data-pl-dir="${plTintDir(hMeta.plPct)}" style="--pl-tint:${plTintIntensity(hMeta.plPct).toFixed(3)}"`
+		: "";
+	return `
+	<div class="market-card market-card--featured${borderClass}" data-stock-featured-card data-mkt-card="stock:${a.id}" data-mkt-amount-id="${amountId}" data-mkt-unit-price="${a.price}"${borderAttrs}>
+		<div class="market-card__title-row">
+			<div class="market-card__title-block">
+				<div class="market-card__title">${a.name}</div>
+				${a.sector ? `<div class="market-card__sector">${a.sector}</div>` : ""}
+			</div>
+			${marketCardPriceColHtml(a.price, qty, a.history, a.price, null, state.day)}
+		</div>
+		${stockFundamentalsHtml(a)}
+		${stockDriftVolHtml(a, readParams(), "stock-drift-vol--panel")}
+		<canvas id="stock-featured-spark" class="spark market-card__chart market-card__chart--featured"></canvas>
+		<div class="market-card__trade-row">
+			<div class="market-card__trade-mid">
+				<div class="market-card__trade-actions">
+					${marketCardTradeButtonsHtml("stock", a.id, isTradeLocked)}
+				</div>
+				<div class="market-card__trade-qty">
+					<div class="amount-stepper-wrap">
+						<div class="amount-stepper">
+							<input id="${amountId}" class="amount-input" type="number" min="1" value="${qty}" oninput="window._setAmount('${amountId}', this.value)">
+						</div>
+						${amountQtyPresetButtonsHtml(amountId)}
+					</div>
+					${marketCardAutobuyMetaHtml("stock", a.id, state)}
+					${holdingsHtml}
+				</div>
+			</div>
+		</div>
+	</div>`;
+}
+
+function renderStockFeaturedCard(s, isTradeLocked = false) {
+	const el = document.getElementById("stock-market-selected-card");
+	if (!el) return;
+	const stocks = s.stocks || [];
+	if (!s.unlockedStocks || !stocks.length) {
+		el.innerHTML = "";
+		return;
+	}
+	const stock = stocks.find(st => st.id === selectedStockId) || stocks[0];
+	selectedStockId = stock.id;
+	el.innerHTML = stockFeaturedCardHtml(stock, isTradeLocked);
+	const card = el.querySelector("[data-stock-featured-card]");
+	if (card) patchMarketCardAutobuyStatus(card, "stock", stock, s);
+	const canvas = document.getElementById("stock-featured-spark");
+	if (canvas) {
+		const { series, xLabs } = sparkSeriesAndXLabels("stock", stock, s.day);
+		drawChart(canvas, series, "#66aaff", null, null, xLabs, true, null, null, null);
+	}
+}
+
+function patchStockFeaturedCardLive(s) {
+	const card = document.querySelector("[data-stock-featured-card]");
+	if (!card) return;
+	const stockId = card.getAttribute("data-mkt-card")?.split(":")[1];
+	const stock = (s.stocks || []).find(st => st.id === stockId);
+	if (!stock) return;
+	const priceEl = card.querySelector(".market-card__price");
+	if (priceEl) priceEl.textContent = `$${stock.price.toFixed(2)}`;
+	card.setAttribute("data-mkt-unit-price", String(stock.price));
+	patchMarketCardOrderTotal(card);
+	patchMarketCardReturnChips(card.querySelector(".market-card__chg-row"), stock.history, stock.price, s.day);
+	patchMarketCardHoldings(card, "stock", stock, s);
+	patchStockFundamentals(card, stock);
+	patchStockDriftVol(card, stock, readParams());
+	if (marketCardShowsAutobuy("stock")) patchMarketCardAutobuyStatus(card, "stock", stock, s);
+	const canvas = document.getElementById("stock-featured-spark");
+	if (canvas) {
+		const { series, xLabs } = sparkSeriesAndXLabels("stock", stock, s.day);
+		drawChart(canvas, series, "#66aaff", null, null, xLabs, true, null, null, null);
+	}
+}
+
 function stockBulkTradeBarHtml(stocks, isTradeLocked) {
 	const qty = Math.max(1, tradeQtyByInputId[STOCK_BULK_AMOUNT_ID] || 1);
 	const lockTitle = isTradeLocked ? ' title="Auto will stop on buy."' : "";
@@ -3699,10 +4504,12 @@ const stocks = s.stocks || [];
 const panel = document.getElementById("stock-market-chart-panel");
 const listEl = document.getElementById("stock-market-list");
 const bulkEl = document.getElementById("stock-market-bulk-bar");
+const selectedEl = document.getElementById("stock-market-selected-card");
 const holdEl = document.getElementById("stock-holdings-list");
 	if (!s.unlockedStocks) {
 	if (panel) panel.style.display = "none";
 	if (bulkEl) bulkEl.innerHTML = "";
+	if (selectedEl) selectedEl.innerHTML = "";
 	if (listEl) {
 		listEl.innerHTML = `<div class="asset-unlock-panel">The stock market is closed until you buy access.<br><br>One-time fee: <strong>${fmt(UNLOCK_COST_STOCKS)}</strong><br><button type="button" class="btn primary asset-unlock-panel__btn" onclick="window._unlockStocks()">Unlock stock market</button></div>`;
 	}
@@ -3719,6 +4526,7 @@ if (!list.length) {
 	selectedStockId = null;
 	if (panel) panel.style.display = "none";
 	if (bulkEl) bulkEl.innerHTML = "";
+	if (selectedEl) selectedEl.innerHTML = "";
 	const ti = document.getElementById("stock-market-chart-title");
 	if (ti) ti.textContent = "";
 	renderMarketCards("stock-market-list", stocks, "stock", "#66aaff", isTradeLocked, false);
@@ -3726,13 +4534,14 @@ if (!list.length) {
 	return;
 }
 if (panel) panel.style.display = "";
-renderStockBulkBar(s, isTradeLocked);
+renderStockFeaturedCard(s, isTradeLocked);
 renderMarketCards("stock-market-list", stocks, "stock", "#66aaff", isTradeLocked, false, null, {
 	selectedId: selectedStockId,
 	canvasId: "stock-market-main-chart",
 	titleElId: "stock-market-chart-title",
 });
-renderBankruptStockMemorials(s);
+renderStockBulkBar(s, isTradeLocked);
+	renderBankruptStockMemorials(s);
 }
 
 function renderCryptoCards(s, isTradeLocked = false) {
@@ -4203,9 +5012,42 @@ window._closeAllPerpLot = (holdingId) => {
 };
 
 window._selectMarketAsset = (prefix, id) => {
-	if (prefix === "stock") selectedStockId = id;
-	else if (prefix === "crypto") selectedCryptoId = id;
+	if (prefix === "crypto") selectedCryptoId = id;
 	render(state);
+};
+
+window._selectStockForInvestment = (id) => {
+	if (!id || !state.unlockedStocks) return;
+	const stocks = state.stocks || [];
+	const stock = stocks.find(st => st.id === id);
+	if (!stock) return;
+	if (selectedStockId === id) return;
+	selectedStockId = id;
+	renderStockFeaturedCard(state, false);
+	patchStockChartPanelMeta(stock, readParams());
+	renderMarketCards("stock-market-list", stocks, "stock", "#66aaff", false, false, null, {
+		selectedId: selectedStockId,
+		canvasId: "stock-market-main-chart",
+		titleElId: "stock-market-chart-title",
+	});
+	syncStockMarketSelectionHighlight(id);
+};
+
+window._toggleStockChartSeries = (id) => {
+	if (!id || !state.unlockedStocks) return;
+	const stocks = state.stocks || [];
+	if (!stocks.some(st => st.id === id)) return;
+	const wasOn = stockChartVisibleIds.has(id);
+	if (wasOn) {
+		if (stockChartVisibleIds.size <= 1) return;
+		stockChartVisibleIds.delete(id);
+	} else {
+		stockChartVisibleIds.add(id);
+	}
+	drawStockOverlayChart(state, false);
+	patchStockChartSeriesChip(id, !wasOn);
+	const sel = stocks.find(st => st.id === selectedStockId) || stocks[0];
+	if (sel) patchStockChartPanelMeta(sel, readParams());
 };
 
 window._onMarketCardAutobuyChange = (prefix, assetId) => {
@@ -4213,11 +5055,11 @@ window._onMarketCardAutobuyChange = (prefix, assetId) => {
 };
 
 window._tradeAsset = (prefix, mode, id) => {
-	const amountId = `${prefix}-amount-${id}`;
+	const amountId = prefix === "stock" ? resolveStockTradeAmountId(id) : `${prefix}-amount-${id}`;
 	const qty = getTradeQtyFromInput(amountId);
-	tradeQtyByInputId[amountId] = qty;
+	if (prefix === "stock") syncStockTradeQty(id, qty);
+	else tradeQtyByInputId[amountId] = qty;
 	if (prefix === "options") selectedOptionId = id;
-	if (prefix === "stock") selectedStockId = id;
 	if (prefix === "crypto") selectedCryptoId = id;
 	executeTradeAsset(prefix, mode, id, qty);
 	if (!isMultiplayer()) render(state);
@@ -4226,11 +5068,13 @@ window._tradeAsset = (prefix, mode, id) => {
 window._buyMaxAsset = (prefix, id) => {
 	const maxQty = maxBuyQtyForAsset(prefix, id);
 	if (maxQty <= 0) return;
-	const amountId = `${prefix}-amount-${id}`;
-	tradeQtyByInputId[amountId] = maxQty;
-	const el = document.getElementById(amountId);
-	if (el) el.value = String(maxQty);
-	if (prefix === "stock") selectedStockId = id;
+	const amountId = prefix === "stock" ? resolveStockTradeAmountId(id) : `${prefix}-amount-${id}`;
+	if (prefix === "stock") syncStockTradeQty(id, maxQty);
+	else {
+		tradeQtyByInputId[amountId] = maxQty;
+		const el = document.getElementById(amountId);
+		if (el) el.value = String(maxQty);
+	}
 	if (prefix === "crypto") selectedCryptoId = id;
 	if (prefix === "options") selectedOptionId = id;
 	executeTradeAsset(prefix, "buy", id, maxQty);
@@ -4258,12 +5102,14 @@ window._buyEveryStock = () => {
 window._sellAllAsset = (prefix, id) => {
 	const owned = ownedQtyForAsset(prefix, id);
 	if (owned <= 0) return;
-	const amountId = `${prefix}-amount-${id}`;
-	tradeQtyByInputId[amountId] = owned;
-	const el = document.getElementById(amountId);
-	if (el) el.value = String(owned);
+	if (prefix === "stock") syncStockTradeQty(id, owned);
+	else {
+		const amountId = `${prefix}-amount-${id}`;
+		tradeQtyByInputId[amountId] = owned;
+		const el = document.getElementById(amountId);
+		if (el) el.value = String(owned);
+	}
 	if (prefix === "options") selectedOptionId = id;
-	if (prefix === "stock") selectedStockId = id;
 	if (prefix === "crypto") selectedCryptoId = id;
 	executeTradeAsset(prefix, "sell", id, owned);
 	if (!isMultiplayer()) render(state);
@@ -4271,6 +5117,12 @@ window._sellAllAsset = (prefix, id) => {
 
 window._setAmount = (id, rawValue) => {
 	const qty = Math.max(1, parseInt(rawValue, 10) || 1);
+	const stockId = stockIdFromAmountInputId(id);
+	if (stockId) {
+		syncStockTradeQty(stockId, qty);
+		syncMarketCardAutobuyQty("stock", stockId);
+		return;
+	}
 	tradeQtyByInputId[id] = qty;
 	if (isMarketCardAmountInput(id)) {
 		const parsed = marketCardKeyFromAmountId(id);
@@ -4301,6 +5153,12 @@ window._bumpAmount = (id, dir) => {
 	const step = getTradeQtyStep(id);
 	const current = parseInt(el.value, 10) || 1;
 	const next = Math.max(1, current + dir * step);
+	const stockId = stockIdFromAmountInputId(id);
+	if (stockId) {
+		syncStockTradeQty(stockId, next);
+		syncMarketCardAutobuyQty("stock", stockId);
+		return;
+	}
 	el.value = next;
 	tradeQtyByInputId[id] = next;
 	if (isMarketCardAmountInput(id)) {
@@ -4324,6 +5182,13 @@ window._bumpAmount = (id, dir) => {
 window._setTradeQtyPreset = (amountId, qty) => {
 	const presets = getQtyPresetsForInput(amountId);
 	if (!presets.includes(qty)) return;
+	const stockId = stockIdFromAmountInputId(amountId);
+	if (stockId) {
+		tradeStepByInputId[amountId] = qty;
+		syncStockTradeQty(stockId, qty);
+		syncMarketCardAutobuyQty("stock", stockId);
+		return;
+	}
 	tradeStepByInputId[amountId] = qty;
 	tradeQtyByInputId[amountId] = qty;
 	const el = document.getElementById(amountId);
@@ -4400,18 +5265,36 @@ function netWorthXLabelsForMode(s, mode, chartDaySpan) {
 		const hist = trimDailyStackHistory(ensureNetWorthStackHistory(s), netWorthRecentDays);
 		return dailyXLabels(hist, d);
 	}
-	const { oldestDay, newestDay, bucketDays, bucketEndDays } = chartDaySpan;
+	const { oldestDay, newestDay, bucketDays, bucketEndDays, currentDay } = chartDaySpan;
+	if (mode === "daily") {
+		const ends = bucketEndDays?.length
+			? bucketEndDays
+			: fixedBucketEndDaysInRange(oldestDay, newestDay, bucketDays, d);
+		const axisStart = ends[0] === 0 && oldestDay <= 1 ? 0 : oldestDay;
+		const axisEnd = currentDay ?? d;
+		const midDay = Math.round((axisStart + axisEnd) / 2);
+		return [`Day ${axisStart}`, `Day ${midDay}`, `Day ${axisEnd}`];
+	}
 	if (bucketDays > 1 || mode === "monthly") {
 		const ends = bucketEndDays?.length
 			? bucketEndDays
 			: fixedBucketEndDaysInRange(oldestDay, newestDay, bucketDays, d);
+		const leftDay = ends[0] === 0 ? 0 : oldestDay;
 		const midDay = ends.length
 			? ends[Math.floor((ends.length - 1) / 2)]
 			: oldestDay;
-		return [`Day ${oldestDay}`, `Day ${midDay}`, `Day ${newestDay}`];
+		return [`Day ${leftDay}`, `Day ${midDay}`, `Day ${newestDay}`];
 	}
 	const pseudoLen = newestDay - oldestDay + 1;
 	return dailyXLabels(Array(Math.max(1, pseudoLen)).fill(0), d);
+}
+
+function syncNetWorthHistoryCollapse() {
+	const section = document.getElementById("nw-history-section");
+	const btn = document.getElementById("nw-history-collapse-btn");
+	if (!section) return;
+	section.classList.toggle("section--collapsed", netWorthHistoryCollapsed);
+	if (btn) btn.setAttribute("aria-expanded", netWorthHistoryCollapsed ? "false" : "true");
 }
 
 function syncNetWorthChartControls(s) {
@@ -4432,6 +5315,11 @@ function syncNetWorthChartControls(s) {
 	NET_WORTH_RECENT_DAY_OPTIONS.forEach(days => {
 		const b = document.getElementById(`nw-chart-recent-${days}-btn`);
 		if (b) b.classList.toggle("active", recent && netWorthRecentDays === days);
+	});
+	const dNw = netWorthChartMode === "daily";
+	[["nw-chart-daily-btn", dNw], ["nw-chart-monthly-btn", !dNw]].forEach(([id, on]) => {
+		const b = document.getElementById(id);
+		if (b) b.classList.toggle("active", on);
 	});
 }
 
@@ -4462,6 +5350,7 @@ function syncLinkedChartToggleButtons() {
 		const b = document.getElementById(id);
 		if (b) b.classList.toggle("active", on);
 	});
+	syncNetWorthHistoryCollapse();
 }
 
 function renderGraphs(s) {
@@ -4475,6 +5364,16 @@ drawChart(
 document.getElementById("price-graph"), series, "#00ff88",
 document.getElementById("if-yaxis"), document.getElementById("if-xaxis"), xLabels
 );
+const leadFund = (s.indexFunds || [])[0];
+if (leadFund) {
+	const ifDriftEl = document.getElementById("if-chart-drift-vol");
+	if (ifDriftEl) {
+		if (!ifDriftEl.querySelector("[data-drift-tick]")) {
+			ifDriftEl.innerHTML = assetDriftVolInnerHtml(indexFundDriftVolMetrics(leadFund, readParams()));
+		}
+		patchIndexFundDriftVol(ifDriftEl, leadFund, readParams());
+	}
+}
 const nw = netWorth(s);
 const nwHistoryPeak = netWorthHistoryPeak(s, nw);
 let mpHistoryPeak = 0;
@@ -4504,7 +5403,7 @@ if (nwDaySpan.bucketDays > 1) {
 const nwXLabs = netWorthXLabelsForMode(s, netWorthChartMode, nwDaySpan);
 const nwVerticalLines = netWorthChartVerticalLines(s, nwDaySpan.oldestDay, nwDaySpan.newestDay);
 const nwCanvas = document.getElementById("networth-graph");
-drawStackedNetWorthChart(
+const nwPlotExtent = drawStackedNetWorthChart(
 	nwCanvas,
 	s,
 	nwYMax,
@@ -4514,7 +5413,7 @@ drawStackedNetWorthChart(
 	nwDaySpan
 );
 if (isMultiplayer()) {
-	drawMultiplayerNetWorthOverlays(nwCanvas, nwDaySpan, nwYMax, nwBucketEndDays);
+	drawMultiplayerNetWorthOverlays(nwCanvas, nwDaySpan, nwYMax, nwBucketEndDays, nwPlotExtent);
 	renderMpNetWorthOverlayLegend();
 } else {
 	const overlayLegend = document.getElementById("mp-nw-overlay-legend");
@@ -4549,38 +5448,6 @@ for (let i = 0; i < steps; i++) {
 render(state);
 }
 
-function setAutoAdvance(on, { restart = false } = {}) {
-	if (isMultiplayer() && on && !isMpHost()) return;
-	if (autoAdvanceTimerId !== null) {
-		clearInterval(autoAdvanceTimerId);
-		autoAdvanceTimerId = null;
-	}
-	clearMpAutoAdvanceSchedule();
-	if (!on) {
-		mpAdvanceInFlight = false;
-		if (autoAdvanceDebug.enabled) document.getElementById("auto-advance-debug-panel")?.remove();
-		syncAutoAdvanceUi();
-		render(state);
-		return;
-	}
-	if (state.day >= state.maxDays) {
-		syncAutoAdvanceUi();
-		return;
-	}
-	if (autoAdvanceDebug.enabled && !restart) {
-		autoAdvanceDebugResetSession();
-		autoAdvanceDebugEnsurePanel();
-		console.info("[auto-advance debug] profiling started — autoAdvanceDebugTools.summary() for one-liner");
-	}
-	if (isMultiplayer()) {
-		mpAutoAdvanceActive = true;
-		scheduleMpAutoAdvance(0);
-	} else {
-		restartAutoAdvanceTimer();
-	}
-	syncAutoAdvanceUi();
-}
-
 document.getElementById("day-btn").onclick         = () => { if (isMultiplayer()) { advanceDays(1); return; } syncAllAutobuysFromUi(); state = nextDay(state, params); render(state); };
 document.getElementById("advance-btn").onclick     = () => {
 	const days = parseInt(document.getElementById("advance-days").value) || 1;
@@ -4612,6 +5479,11 @@ document.getElementById("nw-chart-daily-btn").onclick = () => {
 	netWorthChartMode = "daily";
 	render(state);
 };
+document.getElementById("nw-history-collapse-btn")?.addEventListener("click", () => {
+	netWorthHistoryCollapsed = !netWorthHistoryCollapsed;
+	syncNetWorthHistoryCollapse();
+	if (!netWorthHistoryCollapsed) renderGraphs(state);
+});
 document.getElementById("nw-chart-monthly-btn").onclick = () => {
 	netWorthChartMode = "monthly";
 	render(state);
@@ -4667,8 +5539,11 @@ document.getElementById("bond-term").addEventListener("change", () => {
 document.getElementById("bond-face-value").addEventListener("input", () => {
 	updateBondPreview(state);
 });
-document.getElementById("auto-advance-start-btn").addEventListener("click", () => {
-	setAutoAdvance(!isAutoAdvanceRunning());
+document.getElementById("auto-advance-pause-btn")?.addEventListener("click", () => {
+	pauseAutoAdvance();
+});
+document.getElementById("auto-advance-resume-btn")?.addEventListener("click", () => {
+	resumeAutoAdvance();
 });
 document.getElementById("auto-advance-speed-slider").addEventListener("input", e => {
 	setAutoAdvanceIntervalMs(parseInt(e.target.value, 10));
@@ -4680,11 +5555,13 @@ document.querySelector(".auto-advance-speed-slider-row")?.addEventListener("whee
 	setAutoAdvanceIntervalMs(getAutoAdvanceIntervalMs() + (e.deltaY > 0 ? -step : step));
 }, { passive: false });
 document.getElementById("reset-btn").onclick       = () => {
-setAutoAdvance(false);
+haltAutoAdvance();
+resetStockChartVisibility();
 state = { ...newState(params), log: [{ msg: "New run started.", type: "info", day: 1 }] };
 document.getElementById("log").innerHTML = "";
 renderedLogCount = 0;
 render(state);
+beginAutoAdvance();
 };
 document.getElementById("export-btn")?.addEventListener("click", () => {
 	const ok = downloadSaveFile(state, params, collectUiMeta());
@@ -4700,12 +5577,14 @@ document.getElementById("save-import-input")?.addEventListener("change", async e
 	await handleSaveImportFile(file);
 });
 document.getElementById("dbg-apply-btn").onclick   = () => {
-setAutoAdvance(false);
+haltAutoAdvance();
 params = readParams();
+resetStockChartVisibility();
 state = { ...newState(params), log: [{ msg: `New run started with custom params.`, type: "info", day: 1 }] };
 document.getElementById("log").innerHTML = "";
 renderedLogCount = 0;
 render(state);
+beginAutoAdvance();
 };
 
 function bootGameFromStartScreen() {
@@ -4716,12 +5595,15 @@ function bootGameFromStartScreen() {
 		overlay.setAttribute("aria-hidden", "true");
 	}
 	params = readParams();
+	resetStockChartVisibility();
 	state = { ...newState(params), log: [{ msg: "New run started.", type: "info", day: 1 }] };
 	renderedLogCount = 0;
 	const logEl = document.getElementById("log");
 	if (logEl) logEl.innerHTML = "";
 	startTicker();
 	render(state);
+	beginAutoAdvance();
+	maybeShowIntro({ isNewRun: true });
 }
 
 function bootGameFromSavedRun() {
@@ -4731,6 +5613,8 @@ function bootGameFromSavedRun() {
 	hideStartScreen();
 	startTicker();
 	render(state);
+	beginAutoAdvance();
+	maybeShowTabTip(document.querySelector(".nav-tab.active")?.dataset.page);
 	updateSaveStatus("Loaded saved run");
 }
 
@@ -4746,14 +5630,15 @@ document.getElementById("start-import-input")?.addEventListener("change", async 
 	await handleSaveImportFile(file);
 });
 setupStartScreen();
+setupTutorial();
 setupMultiplayerUi();
 if (autoAdvanceDebug.enabled) {
 	autoAdvanceDebugEnsurePanel();
 	const panel = document.getElementById("auto-advance-debug-panel");
 	if (panel) {
 		panel.textContent =
-			"[auto-advance debug] armed\nAdd ?autoAdvanceDebug=1 or autoAdvanceDebugTools.enable() · start auto-advance to profile";
+			"[auto-advance debug] armed\nAdd ?autoAdvanceDebug=1 or autoAdvanceDebugTools.enable() · starts with the game";
 	}
-	console.info("[auto-advance debug] enabled — start auto-advance to profile; autoAdvanceDebugTools.dump() for history");
+	console.info("[auto-advance debug] enabled — begins when a run starts; autoAdvanceDebugTools.dump() for history");
 }
 document.getElementById("start-game-btn")?.focus();
