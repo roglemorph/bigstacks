@@ -34,6 +34,7 @@ import {
 	maxAutoAdvanceDaysForEnergy,
 	resolveEnergyParams,
 	DEFAULT_ENERGY_PER_GAME_DAY,
+	ENERGY_ENABLED_IN_MULTIPLAYER,
 } from "../investments/energy.js";
 import { grantXpForDays, xpProgressInLevel } from "../investments/progression.js";
 import {
@@ -90,6 +91,10 @@ const MP_NW_OVERLAY_COLORS = ["#ff6644", "#44aaff", "#ff44aa", "#aaaa44", "#66ff
 
 function isMultiplayer() {
 	return gameMode === "multiplayer" && mpClient;
+}
+
+function isEnergyEnabled() {
+	return !isMultiplayer() || ENERGY_ENABLED_IN_MULTIPLAYER;
 }
 
 function isMpHost() {
@@ -419,7 +424,7 @@ function setupMultiplayerUi() {
 		const daysAdvanced = Math.max(0, state.day - mpAdvanceStartDay);
 		const batch = mpLastBatchSize || daysAdvanced || 1;
 		const now = Date.now();
-		if (wasAuto) {
+		if (wasAuto && isEnergyEnabled()) {
 			const configMs = getAutoAdvanceIntervalMs();
 			state = drainEnergyForAutoAdvance(
 				state,
@@ -943,22 +948,40 @@ const autoAdvanceDebug = {
 	lastMpCompleted: null,
 };
 
+function syncEnergyUiForMode() {
+	const enabled = isEnergyEnabled();
+	const energyStat = document.getElementById("energy-stat");
+	if (energyStat) energyStat.hidden = !enabled;
+	const bmTab = document.querySelector('.sidebar-page-tab[data-page="black-market"]');
+	if (bmTab) bmTab.hidden = !enabled;
+	const insightStat = document.getElementById("s-insight")?.closest(".side-stat");
+	if (insightStat) insightStat.hidden = !enabled;
+	const energyCostEl = document.getElementById("auto-advance-energy-cost");
+	if (energyCostEl) energyCostEl.hidden = !enabled;
+	if (!enabled && activePageId() === "black-market") {
+		activatePage("index-fund");
+	}
+}
+
 function syncPlayerProgressionToMp() {
 	if (!isMultiplayer() || !mpClient?.playerState) return;
-	mpClient.playerState = {
-		...mpClient.playerState,
-		energy: state.energy,
-		energyMax: state.energyMax,
-		energyUpdatedAt: state.energyUpdatedAt,
+	const patch = {
 		xp: state.xp,
 		level: state.level,
 		log: state.log,
 		blackMarketLevels: state.blackMarketLevels,
 		insight: state.insight,
 	};
+	if (isEnergyEnabled()) {
+		patch.energy = state.energy;
+		patch.energyMax = state.energyMax;
+		patch.energyUpdatedAt = state.energyUpdatedAt;
+	}
+	mpClient.playerState = { ...mpClient.playerState, ...patch };
 }
 
 function patchEnergyFlowIndicators(s) {
+	if (!isEnergyEnabled()) return;
 	const intervalMs = getAutoAdvanceIntervalMs();
 	const gain = energyGainPerGameDay(s, params);
 	const drain = energyDrainPerGameDay(s, intervalMs, params);
@@ -984,7 +1007,18 @@ function patchEnergyFlowIndicators(s) {
 }
 
 function patchProgressionEnergySidebar(s) {
+	syncEnergyUiForMode();
 	const now = Date.now();
+	if (!isEnergyEnabled()) {
+		const xpProg = xpProgressInLevel(s.xp ?? 0, params);
+		const levelEl = document.getElementById("s-level");
+		if (levelEl) levelEl.textContent = String(xpProg.level);
+		const xpEl = document.getElementById("s-xp");
+		if (xpEl) xpEl.textContent = `${xpProg.xpIntoLevel.toLocaleString()} / ${xpProg.xpForNext.toLocaleString()}`;
+		const xpFill = document.getElementById("s-xp-fill");
+		if (xpFill) xpFill.style.width = `${xpProg.pct}%`;
+		return;
+	}
 	const displayEnergy = isAutoAdvanceRunning()
 		? Math.max(0, s.energy ?? 0)
 		: effectiveEnergy(s, now, params);
@@ -1032,6 +1066,7 @@ function restartAutoAdvancePacingIfActive() {
 
 /** Drop to 500 ms/day when energy runs out; keep auto-advance running (no pause). */
 function handleAutoAdvanceEnergyShortfall() {
+	if (!isEnergyEnabled()) return;
 	const now = Date.now();
 	const currentMs = getAutoAdvanceIntervalMs();
 	if (canRunAutoAdvanceAtInterval(state, currentMs, params, now)) {
@@ -1074,15 +1109,19 @@ function applyManualAdvanceRewards(prevDay) {
 	if (daysAdvanced <= 0) return;
 	if (!isMultiplayer()) {
 		state = grantXpForDays(state, daysAdvanced, params);
-		state = grantEnergyPerGameDay(state, daysAdvanced, params);
+		if (isEnergyEnabled()) {
+			state = grantEnergyPerGameDay(state, daysAdvanced, params);
+		}
 	}
-	const stipendDays = countStipendDays(prevDay, state.day);
-	state = grantEnergyBonus(state, { manualDays: daysAdvanced, stipendDays }, params);
+	if (isEnergyEnabled()) {
+		const stipendDays = countStipendDays(prevDay, state.day);
+		state = grantEnergyBonus(state, { manualDays: daysAdvanced, stipendDays }, params);
+	}
 	syncPlayerProgressionToMp();
 }
 
 function tickEnergyRegen() {
-	if (isAutoAdvanceRunning() || autoAdvancePaused) return;
+	if (!isEnergyEnabled() || isAutoAdvanceRunning() || autoAdvancePaused) return;
 
 	const now = Date.now();
 	const beforeEnergy = Number.isFinite(state.energy) ? state.energy : 0;
@@ -1161,7 +1200,7 @@ function beginAutoAdvance({ restart = false } = {}) {
 	if (autoAdvancePaused || !canAutoAdvanceNow()) return;
 	const now = Date.now();
 	const intervalMs = getAutoAdvanceIntervalMs();
-	if (!canRunAutoAdvanceAtInterval(state, intervalMs, params, now)) {
+	if (isEnergyEnabled() && !canRunAutoAdvanceAtInterval(state, intervalMs, params, now)) {
 		handleAutoAdvanceEnergyShortfall();
 		return;
 	}
@@ -1725,17 +1764,21 @@ function runMpAutoAdvanceSend() {
 	syncMarketCardAutobuysFromUi();
 	const now = Date.now();
 	const configMs = getAutoAdvanceIntervalMs();
-	if (!canRunAutoAdvanceAtInterval(state, configMs, params, now)) {
-		handleAutoAdvanceEnergyShortfall();
-		return;
+	if (isEnergyEnabled()) {
+		if (!canRunAutoAdvanceAtInterval(state, configMs, params, now)) {
+			handleAutoAdvanceEnergyShortfall();
+			return;
+		}
 	}
 	let batch = computeMpAutoAdvanceBatch(configMs, mpAdvanceRttEma, mpAutoAdvanceDaysRemaining());
-	const energyCap = maxAutoAdvanceDaysForEnergy(state, configMs, params, now);
-	if (energyCap <= 0) {
-		handleAutoAdvanceEnergyShortfall();
-		return;
+	if (isEnergyEnabled()) {
+		const energyCap = maxAutoAdvanceDaysForEnergy(state, configMs, params, now);
+		if (energyCap <= 0) {
+			handleAutoAdvanceEnergyShortfall();
+			return;
+		}
+		if (Number.isFinite(energyCap)) batch = Math.min(batch, energyCap);
 	}
-	if (Number.isFinite(energyCap)) batch = Math.min(batch, energyCap);
 	mpAdvanceStartDay = state.day;
 	mpLastBatchSize = batch;
 	mpLastAdvanceWasAuto = true;
@@ -1832,7 +1875,7 @@ function syncAutoAdvanceUi(opts = {}) {
 			})()
 			: "";
 	if (pauseBtn) {
-		if (autoAdvanceEnergyPaused && !running && !autoAdvancePaused) {
+		if (isEnergyEnabled() && autoAdvanceEnergyPaused && !running && !autoAdvancePaused) {
 			pauseBtn.textContent = `⚡ Recharging · ${fmtEnergy(energyNow)}/${fmtEnergy(energyMax)}`;
 		} else {
 			pauseBtn.textContent = autoAdvancePaused
@@ -1846,7 +1889,7 @@ function syncAutoAdvanceUi(opts = {}) {
 				? "Run complete"
 				: autoAdvancePaused
 					? "Use Resume on the overlay"
-					: autoAdvanceEnergyPaused && !running
+					: isEnergyEnabled() && autoAdvanceEnergyPaused && !running
 						? "Auto-advance paused — recharging energy"
 						: "Pause auto-advance";
 	}
@@ -1854,13 +1897,21 @@ function syncAutoAdvanceUi(opts = {}) {
 	if (speedDisplay) speedDisplay.textContent = `${msStr} ms`;
 	const energyCostEl = document.getElementById("auto-advance-energy-cost");
 	if (energyCostEl) {
-		const warn = !sustainable && costPerDay > energyNow && !running;
-		energyCostEl.textContent = `Cost: ${fmtEnergy(costPerDay)} energy/day${warn ? " (low energy)" : ""}${sustainable ? " · sustainable" : ""}`;
-		energyCostEl.style.color = warn ? "#ff8866" : sustainable ? "#66aa88" : "#888";
+		if (!isEnergyEnabled()) {
+			energyCostEl.hidden = true;
+		} else {
+			energyCostEl.hidden = false;
+			const warn = !sustainable && costPerDay > energyNow && !running;
+			energyCostEl.textContent = `Cost: ${fmtEnergy(costPerDay)} energy/day${warn ? " (low energy)" : ""}${sustainable ? " · sustainable" : ""}`;
+			energyCostEl.style.color = warn ? "#ff8866" : sustainable ? "#66aa88" : "#888";
+		}
 	}
 	const noticeEl = document.getElementById("auto-advance-energy-notice");
 	if (noticeEl) {
-		if (autoAdvanceEnergyThrottled && autoAdvanceThrottledFromMs != null) {
+		if (!isEnergyEnabled()) {
+			noticeEl.hidden = true;
+			noticeEl.textContent = "";
+		} else if (autoAdvanceEnergyThrottled && autoAdvanceThrottledFromMs != null) {
 			noticeEl.textContent = `⚡ Energy depleted — slowed from ${autoAdvanceThrottledFromMs.toLocaleString()} ms to ${ENERGY_DEPLETE_AUTO_ADVANCE_MS.toLocaleString()} ms/day`;
 			noticeEl.hidden = false;
 		} else if (autoAdvanceEnergyPaused && !running && !autoAdvancePaused) {
@@ -2747,6 +2798,14 @@ function setChange(elId, history, lookbackDays = 1) {
     const energyPanel = document.getElementById("black-market-energy");
     const insightEl = document.getElementById("black-market-insight");
     if (!list) return;
+
+    if (!isEnergyEnabled()) {
+      if (energyPanel) energyPanel.innerHTML = "";
+      if (summary) summary.textContent = "Energy upgrades are disabled in multiplayer.";
+      if (insightEl) insightEl.textContent = "";
+      list.innerHTML = "";
+      return;
+    }
 
     if (insightEl) {
       insightEl.textContent = fmtInsight(normalizeInsight(s.insight));
@@ -5598,6 +5657,7 @@ window._playCasinoHiLo = (guessHi) => {
 };
 
 window._buyBlackMarketUpgrade = upgradeId => {
+	if (!isEnergyEnabled()) return;
 	dispatchGameAction("buyBlackMarketUpgrade", { upgradeId }, s => buyBlackMarketUpgrade(s, upgradeId, params));
 };
 window._sellBond = (id) => {

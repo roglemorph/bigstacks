@@ -4,6 +4,14 @@
 
 import { autoAdvanceCostMultiplier, effectiveEnergyMax, energyPerDayBonus } from "./blackMarket.js";
 
+/** Multiplayer runs without energy drain, regen, or advance gating when false. */
+export const ENERGY_ENABLED_IN_MULTIPLAYER = false;
+
+export function energyEnabledForMode(mode) {
+  if (mode === "multiplayer") return ENERGY_ENABLED_IN_MULTIPLAYER;
+  return true;
+}
+
 export const DEFAULT_ENERGY_MAX = 1000;
 export const DEFAULT_ENERGY_START = 1000;
 export const DEFAULT_ENERGY_IDLE_REGEN_PER_SEC = 6;

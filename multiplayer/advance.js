@@ -13,6 +13,7 @@ import { processTreasuryBondAutobuy } from "../investments/treasuryBonds.js";
 import { processMarketCardAutobuys } from "../investments/marketAutobuy.js";
 import { grantXpForDays } from "../investments/progression.js";
 import { grantEnergyPerGameDay } from "../investments/blackMarket.js";
+import { ENERGY_ENABLED_IN_MULTIPLAYER } from "../investments/energy.js";
 import { mergeForRender, slimPlayerAssets } from "./state.js";
 import { indexFundsPortfolioValue } from "../investments/indexFunds.js";
 import { bondPortfolioValue } from "../investments/treasuryBonds.js";
@@ -246,7 +247,9 @@ export function advancePlayerAfterShared(player, prevShared, shared, params) {
     };
   }
 
-  return grantEnergyPerGameDay(grantXpForDays(nextPlayer, 1, params), 1, params);
+  const withXp = grantXpForDays(nextPlayer, 1, params);
+  if (!ENERGY_ENABLED_IN_MULTIPLAYER) return withXp;
+  return grantEnergyPerGameDay(withXp, 1, params);
 }
 
 function settleDelistedAssets(player, prevShared, shared, newDay) {
