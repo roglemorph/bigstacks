@@ -1,0 +1,11 @@
+{
+  "bumpFiles": [
+    {
+      "filename": "server/package.json",
+      "type": "json"
+    }
+  ],
+  "scripts": {
+    "postbump": "node scripts/sync-version.mjs && git add version.js index.html scripts/trim-index-html.js scripts/patch-app.js ui/app.js server/package.json"
+  }
+}

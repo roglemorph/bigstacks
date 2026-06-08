@@ -1,9 +1,18 @@
 {
   "name": "bigstacks",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "server": "node server/index.js",
-    "test:mp": "node scripts/test-multiplayer.mjs"
+    "test:mp": "node scripts/test-multiplayer.mjs",
+    "sync-version": "node scripts/sync-version.mjs",
+    "release": "standard-version",
+    "release:patch": "standard-version --release-as patch",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major"
+  },
+  "devDependencies": {
+    "standard-version": "^9.5.0"
   }
 }

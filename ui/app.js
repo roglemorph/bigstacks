@@ -1,4 +1,4 @@
-﻿import { newState, nextDay, buyIndexFund, sellIndexFund, normalizeIndexFundAutobuy, normalizeTreasuryBondAutobuy, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, sellOptionLot, exerciseOptionLot, openPerp, closePerp, closePerpLot, playCasinoHiLo, portfolioValue, netWorth, snapshotNetWorthStack, totalReturn, YIELD_CURVE, yieldForTerm, setOptionMarketDte, normalizeOptionMarketDte, openOptionHoldings, markOptionHolding, optionLotUnrealizedPLAtMark, optionLotUnrealizedPLIfExercised, optionsHoldingsUnrealizedPL, openPerpPositions, perpMarkPrice, perpFundingRateAnnual, perpOpenPremiumTotal, perpHoldingsMarkValue, perpHoldingsUnrealizedPL, perpPositionUnrealizedPL, perpPositionTotalPL, MONTHLY_INCOME_AMOUNT, normalizeMarketCardAutobuy, marketCardAutobuyKey, computeStockDailyDrift, computeStockEffectiveVol, computeIndexFundDailyDrift, computeIndexFundEffectiveVol, stockPeRatio, STOCK_DRIFT_DISPLAY_MIN, STOCK_DRIFT_DISPLAY_MAX, STOCK_VOL_DISPLAY_MIN, STOCK_VOL_DISPLAY_MAX, DRIFT_TICK_WIDTH_MIN, DRIFT_TICK_WIDTH_MAX, buyBlackMarketUpgrade } from "../game.js?v=jobs";
+﻿import { newState, nextDay, buyIndexFund, sellIndexFund, normalizeIndexFundAutobuy, normalizeTreasuryBondAutobuy, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, sellOptionLot, exerciseOptionLot, openPerp, closePerp, closePerpLot, playCasinoHiLo, portfolioValue, netWorth, snapshotNetWorthStack, totalReturn, YIELD_CURVE, yieldForTerm, setOptionMarketDte, normalizeOptionMarketDte, openOptionHoldings, markOptionHolding, optionLotUnrealizedPLAtMark, optionLotUnrealizedPLIfExercised, optionsHoldingsUnrealizedPL, openPerpPositions, perpMarkPrice, perpFundingRateAnnual, perpOpenPremiumTotal, perpHoldingsMarkValue, perpHoldingsUnrealizedPL, perpPositionUnrealizedPL, perpPositionTotalPL, MONTHLY_INCOME_AMOUNT, normalizeMarketCardAutobuy, marketCardAutobuyKey, computeStockDailyDrift, computeStockEffectiveVol, computeIndexFundDailyDrift, computeIndexFundEffectiveVol, stockPeRatio, STOCK_DRIFT_DISPLAY_MIN, STOCK_DRIFT_DISPLAY_MAX, STOCK_VOL_DISPLAY_MIN, STOCK_VOL_DISPLAY_MAX, DRIFT_TICK_WIDTH_MIN, DRIFT_TICK_WIDTH_MAX, buyBlackMarketUpgrade } from "../game.js?v=0.1.0";
 import {
 	fmt, fmtSigned, fmtIncomeAmount, formatPlPct, plTintIntensity, plTintDir,
 	applyPlTintToElement, plTintHtml, setPlDisplay, formatMarketCardOrderTotal,
@@ -10,6 +10,7 @@ import {
 	hasSavedGame, saveGameToStorage, loadGameFromStorage, formatSaveTimestamp,
 	downloadSaveFile, readSaveFromFile, writeParsedSaveToStorage,
 } from "./storage.js";
+import { APP_VERSION } from "../version.js";
 import { loadAssetPartials } from "./partials.js";
 import { enhanceQuantityInputs } from "./numberSpinners.js";
 import { setupTutorial, maybeShowIntro, maybeShowTabTip } from "./tutorial.js";
@@ -1392,6 +1393,10 @@ async function loadAboutPage() {
 	const res = await fetch(ABOUT_PAGE_URL);
 	if (!res.ok) throw new Error(`Failed to load ${ABOUT_PAGE_URL}: ${res.status}`);
 	body.innerHTML = await res.text();
+	const versionEl = document.createElement("p");
+	versionEl.style.cssText = "font-size:0.72em; color:#666; margin-top:1.5em;";
+	versionEl.textContent = `Version ${APP_VERSION}`;
+	body.appendChild(versionEl);
 	aboutPageLoaded = true;
 }
 
@@ -1429,6 +1434,8 @@ function setupAboutPage() {
 }
 
 function setupStartScreen() {
+	const versionEl = document.getElementById("start-screen-version");
+	if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
 	const continueBtn = document.getElementById("continue-game-btn");
 	const hint = document.getElementById("start-screen-save-hint");
 	if (!hasSavedGame()) {

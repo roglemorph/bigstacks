@@ -4,7 +4,7 @@ const path = require("path");
 const appPath = path.join(__dirname, "..", "ui", "app.js");
 let src = fs.readFileSync(appPath, "utf8");
 
-const newImports = `import { newState, nextDay, buyIndexFund, sellIndexFund, normalizeIndexFundAutobuy, normalizeTreasuryBondAutobuy, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, sellOptionLot, exerciseOptionLot, openPerp, closePerp, closePerpLot, playCasinoHiLo, portfolioValue, netWorth, snapshotNetWorthStack, totalReturn, YIELD_CURVE, yieldForTerm, setOptionMarketDte, normalizeOptionMarketDte, openOptionHoldings, markOptionHolding, optionLotUnrealizedPLAtMark, optionLotUnrealizedPLIfExercised, optionsHoldingsUnrealizedPL, openPerpPositions, perpMarkPrice, perpFundingRateAnnual, perpOpenPremiumTotal, perpHoldingsMarkValue, perpHoldingsUnrealizedPL, perpPositionUnrealizedPL, perpPositionTotalPL, unlockBonds, unlockStocks, unlockCrypto, unlockOptions, UNLOCK_COST_BONDS, UNLOCK_COST_STOCKS, UNLOCK_COST_CRYPTOS, UNLOCK_COST_OPTIONS, MONTHLY_INCOME_AMOUNT, normalizeMarketCardAutobuy, marketCardAutobuyKey } from "../game.js?v=jobs";
+const newImports = `import { newState, nextDay, buyIndexFund, sellIndexFund, normalizeIndexFundAutobuy, normalizeTreasuryBondAutobuy, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, sellOptionLot, exerciseOptionLot, openPerp, closePerp, closePerpLot, playCasinoHiLo, portfolioValue, netWorth, snapshotNetWorthStack, totalReturn, YIELD_CURVE, yieldForTerm, setOptionMarketDte, normalizeOptionMarketDte, openOptionHoldings, markOptionHolding, optionLotUnrealizedPLAtMark, optionLotUnrealizedPLIfExercised, optionsHoldingsUnrealizedPL, openPerpPositions, perpMarkPrice, perpFundingRateAnnual, perpOpenPremiumTotal, perpHoldingsMarkValue, perpHoldingsUnrealizedPL, perpPositionUnrealizedPL, perpPositionTotalPL, unlockBonds, unlockStocks, unlockCrypto, unlockOptions, UNLOCK_COST_BONDS, UNLOCK_COST_STOCKS, UNLOCK_COST_CRYPTOS, UNLOCK_COST_OPTIONS, MONTHLY_INCOME_AMOUNT, normalizeMarketCardAutobuy, marketCardAutobuyKey } from "../game.js?v=0.1.0";
 import {
 	fmt, fmtSigned, fmtIncomeAmount, formatPlPct, plTintIntensity, plTintDir,
 	applyPlTintToElement, plTintHtml, setPlDisplay, formatMarketCardOrderTotal,
@@ -16,7 +16,7 @@ import {
 } from "./storage.js";
 `;
 
-src = src.replace(/^import \{ newState[\s\S]*?from "\.\/game\.js\?v=jobs";\n\n/, `${newImports}\n`);
+src = src.replace(/^import \{ newState[\s\S]*?from "\.\/game\.js\?v=0.1.0";\n\n/, `${newImports}\n`);
 
 src = src.replace(
 	/\nconst fmt = n => "\$" \+ Math\.round\(n\)\.toLocaleString\(\);\nconst fmtSigned = n => `\$\{n >= 0 \? "\+" : "-"\}\$\{fmt\(Math\.abs\(n\)\)\}`;\nfunction fmtIncomeAmount\(n\) \{[\s\S]*?\n\}\nfunction stipendPer30d\(params\) \{[\s\S]*?\n\}\n/,
