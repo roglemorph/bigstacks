@@ -97,9 +97,28 @@ function bucketStackSnapshot(buckets, day) {
   return null;
 }
 
+function netWorthStackAtDayZero(source) {
+  const view = netWorthHistoryView(source);
+  if (view.stackDaily.length) return view.stackDaily[0];
+  if (source && !Array.isArray(source)) {
+    const cash = source.startNetWorth ?? source.startCash ?? source.cash ?? 0;
+    return { cash, indexFunds: 0, bonds: 0, stocks: 0, cryptos: 0, options: 0 };
+  }
+  if (view.daily.length) {
+    return { cash: view.daily[0], indexFunds: 0, bonds: 0, stocks: 0, cryptos: 0, options: 0 };
+  }
+  return null;
+}
+
 export function netWorthScalarAtDay(source, day) {
   const d = Math.floor(day);
-  if (d < 1) return null;
+  if (d === 0) {
+    const stack = netWorthStackAtDayZero(source);
+    if (!stack) return null;
+    return (stack.cash || 0) + (stack.indexFunds || 0) + (stack.bonds || 0)
+      + (stack.stocks || 0) + (stack.cryptos || 0) + (stack.options || 0);
+  }
+  if (d < 0) return null;
   const view = netWorthHistoryView(source);
   const idx = d - view.dailyStartDay;
   if (idx >= 0 && idx < view.daily.length) return view.daily[idx];
@@ -108,7 +127,8 @@ export function netWorthScalarAtDay(source, day) {
 
 export function netWorthStackAtDay(source, day) {
   const d = Math.floor(day);
-  if (d < 1) return null;
+  if (d === 0) return netWorthStackAtDayZero(source);
+  if (d < 0) return null;
   const view = netWorthHistoryView(source);
   const idx = d - view.dailyStartDay;
   if (idx >= 0 && idx < view.stackDaily.length) return view.stackDaily[idx];
