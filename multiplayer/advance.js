@@ -229,6 +229,7 @@ export function advancePlayerAfterShared(player, prevShared, shared, params) {
     xp: player.xp,
     level: player.level,
     blackMarketLevels: player.blackMarketLevels,
+    insight: updated.insight ?? player.insight ?? 0,
   };
 
   const nwMerged = mergeForRender(shared, split);

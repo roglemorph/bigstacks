@@ -19,7 +19,7 @@ const INTRO_CARDS = [
 	},
 	{
 		title: "Unlock more markets",
-		body: `Bonds and the index fund are open from the start. Other markets unlock as you level up from advancing days (1 XP per day):<br><br>Stocks <strong>level ${MARKET_UNLOCK_LEVELS.stocks}</strong> → Crypto <strong>level ${MARKET_UNLOCK_LEVELS.crypto}</strong> → Options <strong>level ${MARKET_UNLOCK_LEVELS.options}</strong> → Casino <strong>level ${MARKET_UNLOCK_LEVELS.casino}</strong><br><br>The <strong>Black Market</strong> is always available for cash upgrades.`,
+		body: `Bonds and the index fund are open from the start. Other markets unlock as you level up from advancing days (1 XP per day):<br><br>Stocks <strong>level ${MARKET_UNLOCK_LEVELS.stocks}</strong> → Crypto <strong>level ${MARKET_UNLOCK_LEVELS.crypto}</strong> → Options <strong>level ${MARKET_UNLOCK_LEVELS.options}</strong> → Casino <strong>level ${MARKET_UNLOCK_LEVELS.casino}</strong><br><br>Open the <strong>Black Market</strong> from the sidebar (below your portfolio stats) for Insight upgrades (+1 energy/day base, plus Energy Yield and more).`,
 	},
 ];
 
@@ -54,7 +54,7 @@ const TAB_TIPS = {
 	},
 	"black-market": {
 		title: "Black market",
-		body: "Spend cash on under-the-table upgrades. <strong>Energy Yield</strong> adds bonus energy each game day (+0.5 per level). <strong>Efficient Auto-Advance</strong> cuts auto-advance energy cost by 10% per level (max 5). <strong>Expanded Reservoir</strong> raises your energy cap by 200 per level (base cap 1,000). Prices rise with each purchase.",
+		body: "Open from the sidebar below your portfolio stats. Its own page — not an investment tab. Spend <strong>Insight</strong> on upgrades: <strong>Energy Yield</strong> (+0.5/day per level on top of the base +1/day), <strong>Efficient Auto-Advance</strong>, and <strong>Expanded Reservoir</strong>. Earn Insight from level-ups and profitable closed trades — spending it does not reduce your XP level.",
 	},
 };
 
@@ -97,7 +97,7 @@ const HELP_SECTIONS = [
 	},
 	{
 		title: "Unlock order",
-		body: `Bonds from the start → Stocks level ${MARKET_UNLOCK_LEVELS.stocks} → Crypto level ${MARKET_UNLOCK_LEVELS.crypto} → Options level ${MARKET_UNLOCK_LEVELS.options} → Casino level ${MARKET_UNLOCK_LEVELS.casino}. Black Market is always open.`,
+		body: `Bonds from the start → Stocks level ${MARKET_UNLOCK_LEVELS.stocks} → Crypto level ${MARKET_UNLOCK_LEVELS.crypto} → Options level ${MARKET_UNLOCK_LEVELS.options} → Casino level ${MARKET_UNLOCK_LEVELS.casino}. Black Market is in the sidebar below your portfolio stats.`,
 	},
 ];
 

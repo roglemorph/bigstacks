@@ -1,4 +1,5 @@
 import { resolveRng } from "./rng.js";
+import { grantInsightForPositivePL } from "./blackMarket.js";
 
 /** Box-Muller normal draw using params.rng when present. */
 export function randn(paramsOrRng = {}) {
@@ -42,7 +43,11 @@ export function addCumulativeRealizedPL(state, bucket, delta) {
   const cur = { ...EMPTY_CUMULATIVE_REALIZED_PL, ...(state.cumulativeRealizedPL || {}) };
   const prev = cur[bucket];
   const base = Number.isFinite(prev) ? prev : 0;
-  return { ...state, cumulativeRealizedPL: { ...cur, [bucket]: base + delta } };
+  let next = { ...state, cumulativeRealizedPL: { ...cur, [bucket]: base + delta } };
+  if (delta > 0) {
+    next = grantInsightForPositivePL(next, delta);
+  }
+  return next;
 }
 
 /** @typedef {{ qty: number, unitCost: number, purchaseDay: number }} AssetTaxLot */

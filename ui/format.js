@@ -1,5 +1,15 @@
 export const fmt = n => "$" + Math.round(n).toLocaleString();
+
+export function fmtInsight(n) {
+	const v = Math.max(0, Math.floor(n ?? 0));
+	return `${v.toLocaleString()} Insight`;
+}
 export const fmtSigned = n => `${n >= 0 ? "+" : "-"}${fmt(Math.abs(n))}`;
+
+export function fmtEnergy(n) {
+	if (!Number.isFinite(n)) return "—";
+	return Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 export function fmtIncomeAmount(n) {
 	if (!Number.isFinite(n)) return "—";

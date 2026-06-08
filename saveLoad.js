@@ -12,6 +12,12 @@ import { backfillStockFundamentals } from "./investments/stocks.js";
 import { applyIdleRegen, initialEnergyFields, resolveEnergyParams } from "./investments/energy.js";
 import { initialProgressionFields, levelFromXp } from "./investments/progression.js";
 import { syncMarketUnlocksFromLevel } from "./investments/assetUnlockLevels.js";
+import {
+  normalizeBlackMarketLevels,
+  normalizeInsight,
+  retroactiveInsightForLevel,
+  syncEnergyMaxFromUpgrades,
+} from "./investments/blackMarket.js";
 
 const EMPTY_ASSET_UNLOCK_DAYS = {
   bonds: null,
@@ -105,6 +111,12 @@ export function normalizeLoadedState(raw) {
   state.level = levelFromXp(state.xp);
 
   state.blackMarketLevels = normalizeBlackMarketLevels(state.blackMarketLevels);
+
+  if (!Number.isFinite(state.insight)) {
+    state.insight = retroactiveInsightForLevel(state.level);
+  } else {
+    state.insight = normalizeInsight(state.insight);
+  }
 
   const unlockSync = syncMarketUnlocksFromLevel(state, {});
   state.unlockedBonds = unlockSync.unlockedBonds;

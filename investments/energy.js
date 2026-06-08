@@ -10,8 +10,20 @@ export const DEFAULT_ENERGY_IDLE_REGEN_PER_SEC = 6;
 export const DEFAULT_ENERGY_MANUAL_ADVANCE_BONUS = 10;
 export const DEFAULT_ENERGY_STIPEND_BONUS = 50;
 export const DEFAULT_ENERGY_COST_REF_MS = 500;
-export const ENERGY_COST_MIN = 1;
+/** Base energy granted each game day advanced (before black market bonuses). */
+export const DEFAULT_ENERGY_PER_GAME_DAY = 1;
+/** Minimum auto-advance energy cost per game day (allows sub-1 costs at slow speeds). */
+export const ENERGY_COST_MIN = 0.01;
 export const ENERGY_COST_MAX = 25;
+
+function roundEnergyValue(n) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+function clampEnergyCost(n) {
+  return roundEnergyValue(Math.max(ENERGY_COST_MIN, Math.min(ENERGY_COST_MAX, n)));
+}
 
 export function resolveEnergyParams(params = {}) {
   return {
@@ -29,6 +41,9 @@ export function resolveEnergyParams(params = {}) {
     energyCostRefMs: Number.isFinite(params.energyCostRefMs)
       ? params.energyCostRefMs
       : DEFAULT_ENERGY_COST_REF_MS,
+    energyPerGameDay: Number.isFinite(params.energyPerGameDay)
+      ? params.energyPerGameDay
+      : DEFAULT_ENERGY_PER_GAME_DAY,
   };
 }
 
@@ -47,10 +62,10 @@ export function energyCostForIntervalMs(intervalMs, params = {}, state = null) {
   const ep = resolveEnergyParams(params);
   const ms = Number.isFinite(intervalMs) ? intervalMs : ep.energyCostRefMs;
   const safeMs = Math.max(1, ms);
-  const raw = Math.round(ep.energyCostRefMs / safeMs);
-  let cost = Math.max(ENERGY_COST_MIN, Math.min(ENERGY_COST_MAX, raw));
+  let cost = ep.energyCostRefMs / safeMs;
+  cost = clampEnergyCost(cost);
   if (state) {
-    cost = Math.max(1, Math.round(cost * autoAdvanceCostMultiplier(state)));
+    cost = clampEnergyCost(cost * autoAdvanceCostMultiplier(state));
   }
   return cost;
 }
@@ -67,7 +82,7 @@ export function countStipendDays(fromDay, toDay) {
 }
 
 function clampEnergy(value, max) {
-  return Math.min(max, Math.max(0, value));
+  return roundEnergyValue(Math.min(max, Math.max(0, value)));
 }
 
 export function applyIdleRegen(state, nowMs, params = {}) {
@@ -125,6 +140,7 @@ export function grantEnergyBonus(state, { manualDays = 0, stipendDays = 0 }, par
 }
 
 export function maxAutoAdvanceDaysForEnergy(state, intervalMs, params = {}, nowMs = Date.now()) {
+  if (canSustainAutoAdvanceAtInterval(state, intervalMs, params)) return Infinity;
   const costPerDay = energyCostForIntervalMs(intervalMs, params, state);
   if (costPerDay <= 0) return Infinity;
   const s = applyIdleRegen(state, nowMs, params);
@@ -132,8 +148,24 @@ export function maxAutoAdvanceDaysForEnergy(state, intervalMs, params = {}, nowM
 }
 
 /** Black market + other per-game-day energy grants (excludes manual/stipend bonuses). */
-export function energyGainPerGameDay(state) {
-  return energyPerDayBonus(state);
+export function energyGainPerGameDay(state, params = {}) {
+  const ep = resolveEnergyParams(params);
+  return roundEnergyValue(ep.energyPerGameDay + energyPerDayBonus(state));
+}
+
+export function grantEnergyPerGameDay(state, days, params = {}) {
+  const grant = energyGainPerGameDay(state, params) * Math.max(0, days);
+  if (grant <= 0) return state;
+
+  const nowMs = Date.now();
+  const max = effectiveEnergyMax(state, params);
+  const energy = clampEnergy((state.energy ?? max) + grant, max);
+  return {
+    ...state,
+    energy,
+    energyMax: max,
+    energyUpdatedAt: nowMs,
+  };
 }
 
 /** Auto-advance energy cost per game day at the given tick interval. */
@@ -142,5 +174,40 @@ export function energyDrainPerGameDay(state, intervalMs, params = {}) {
 }
 
 export function energyNetPerGameDay(state, intervalMs, params = {}) {
-  return energyGainPerGameDay(state) - energyDrainPerGameDay(state, intervalMs, params);
+  return energyGainPerGameDay(state, params) - energyDrainPerGameDay(state, intervalMs, params);
+}
+
+/** True when per-day gain covers auto-advance drain at this speed. */
+export function canSustainAutoAdvanceAtInterval(state, intervalMs, params = {}) {
+  return energyDrainPerGameDay(state, intervalMs, params) <= energyGainPerGameDay(state, params);
+}
+
+/** Can run at least one auto-advance day (sustainable net, or enough stored energy). */
+export function canRunAutoAdvanceAtInterval(state, intervalMs, params = {}, nowMs = Date.now()) {
+  if (canSustainAutoAdvanceAtInterval(state, intervalMs, params)) return true;
+  const cost = energyDrainPerGameDay(state, intervalMs, params);
+  if (cost <= 0) return true;
+  const s = applyIdleRegen(state, nowMs, params);
+  return s.energy >= cost;
+}
+
+/**
+ * Fastest auto-advance interval (lowest ms) whose daily drain is covered by daily gain.
+ * @returns {number|null}
+ */
+export function fastestSustainableAutoAdvanceMs(
+  state,
+  params = {},
+  minMs = 5,
+  maxMs = 1000,
+) {
+  if (energyGainPerGameDay(state, params) <= 0) return null;
+  const lo = Math.max(1, Math.floor(minMs));
+  const hi = Math.max(lo, Math.floor(maxMs));
+  for (let ms = lo; ms <= hi; ms++) {
+    if (energyCostForIntervalMs(ms, params, state) <= energyGainPerGameDay(state, params)) {
+      return ms;
+    }
+  }
+  return null;
 }

@@ -54,6 +54,7 @@ export function stripPlayerFields(state) {
   delete shared.xp;
   delete shared.level;
   delete shared.blackMarketLevels;
+  delete shared.insight;
   return {
     ...shared,
     indexFunds: zeroHoldings(state.indexFunds, "shares"),
@@ -210,6 +211,7 @@ export function splitPlayerFromMerged(merged, shared) {
     xp: merged.xp,
     level: merged.level,
     blackMarketLevels: merged.blackMarketLevels,
+    insight: merged.insight,
   };
 }
 

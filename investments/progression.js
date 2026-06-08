@@ -4,6 +4,7 @@
 
 import { trimLog } from "./shared.js";
 import { applyMarketUnlocksWithLog } from "./assetUnlockLevels.js";
+import { grantInsightForLevelUps } from "./blackMarket.js";
 
 export const DEFAULT_XP_PER_DAY = 1;
 export const DEFAULT_XP_LEVEL_BASE = 25;
@@ -84,6 +85,7 @@ export function grantXpForDays(state, days, params = {}) {
       log.push({ msg: `Level up! Now level ${lv}`, type: "good", day: logDay });
     }
     next = { ...next, log: trimLog(log) };
+    next = grantInsightForLevelUps(next, prevLevel, nextLevel);
   }
 
   return applyMarketUnlocksWithLog(next, params);
