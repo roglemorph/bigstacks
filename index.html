@@ -26,8 +26,28 @@
 				display: flex;
 				flex-direction: column;
 				padding: 14px 14px 16px;
-				gap: 11px;
+				gap: 0;
+				overflow: hidden;
+				height: 100vh;
+				}
+
+				.sidebar-top {
+				flex: 1 1 auto;
+				min-height: 0;
 				overflow-y: auto;
+				display: flex;
+				flex-direction: column;
+				gap: 11px;
+				padding-bottom: 11px;
+				}
+
+				.sidebar-bottom {
+				flex-shrink: 0;
+				margin-top: auto;
+				display: flex;
+				flex-direction: column;
+				gap: 5px;
+				padding-top: 11px;
 				}
 
 				#sidebar h1 { color: #00ff88; font-size: 0.88em; line-height: 1.25; }
@@ -46,6 +66,49 @@
 				}
 				.side-value-line .side-val-main { color: #e0e0e0; }
 				.side-value-line .side-pl { font-size: 0.95em; }
+				.sidebar-portfolio-stat { gap: 4px; }
+				.sidebar-portfolio-trigger {
+					display: flex;
+					align-items: flex-start;
+					justify-content: space-between;
+					gap: 10px;
+					width: 100%;
+					padding: 0;
+					margin: 0;
+					border: none;
+					background: transparent;
+					color: inherit;
+					cursor: pointer;
+					text-align: left;
+				}
+				.sidebar-portfolio-trigger__text {
+					display: flex;
+					flex-direction: column;
+					gap: 2px;
+					min-width: 0;
+				}
+				.sidebar-portfolio-trigger:hover .side-label,
+				.sidebar-portfolio-trigger:hover .sidebar-portfolio-chevron { color: #aaa; }
+				.sidebar-portfolio-chevron {
+					color: #888;
+					font-size: 2.35em;
+					line-height: 1;
+					flex-shrink: 0;
+					margin-top: 2px;
+					transition: transform 0.15s ease, color 0.15s ease;
+				}
+				.sidebar-portfolio--collapsed .sidebar-portfolio-chevron { transform: rotate(-90deg); }
+				.sidebar-portfolio--collapsed .sidebar-portfolio-breakdown { display: none !important; }
+				.sidebar-portfolio-breakdown {
+					display: flex;
+					flex-direction: column;
+					gap: 6px;
+					margin-top: 4px;
+					padding-left: 6px;
+					border-left: 2px solid #333;
+				}
+				.sidebar-asset-row { display: flex; flex-direction: column; gap: 2px; }
+				.sidebar-asset-row .side-label { font-size: 0.68em; }
 
 				.year-bar { height: 2px; background: #222; border-radius: 2px; margin-top: 2px; }
 				.year-fill { height: 100%; background: #00ff88; border-radius: 2px; transition: width 0.1s; }
@@ -106,6 +169,32 @@
 					display: grid;
 					grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 					gap: 16px;
+				}
+				.sidebar-page-nav {
+					display: flex;
+					flex-direction: column;
+					gap: 6px;
+				}
+				.sidebar-page-tab {
+					width: 100%;
+					text-align: left;
+					padding: 8px 10px;
+					font-size: 0.78em;
+					color: #888;
+					background: #161616;
+					border: 1px solid #2a2a2a;
+					border-radius: 4px;
+					cursor: pointer;
+					transition: color 0.15s, border-color 0.15s, background 0.15s;
+				}
+				.sidebar-page-tab:hover {
+					color: #ccc;
+					border-color: #444;
+				}
+				.sidebar-page-tab.active {
+					color: #00ff88;
+					border-color: #00ff88;
+					background: rgba(0, 255, 136, 0.08);
 				}
 				.black-market-card {
 					background: #141018;
@@ -307,6 +396,24 @@
 				opacity: 0.55;
 				}
 				.nav-tab--locked:hover { color: #444; }
+				.nav-tab--upcoming {
+				color: #aaa !important;
+				cursor: pointer;
+				opacity: 0.92;
+				}
+				.nav-tab--upcoming:hover { color: #ccc; }
+				.nav-tab--upcoming.active { color: #00ff88 !important; }
+				.unlock-preview-chart-wrap {
+					max-width: 640px;
+					margin: 0 auto 14px;
+				}
+				.unlock-preview-chart-wrap .market-main-chart-head {
+					text-align: left;
+					margin-bottom: 8px;
+				}
+				.unlock-preview-chart-wrap canvas.spark {
+					height: 140px !important;
+				}
 
 				/* ── CONTENT ── */
 				#content { flex: 1; overflow-y: auto; padding: 30px; }
@@ -779,7 +886,29 @@
 					gap: 6px;
 					width: 100%;
 					padding: 2px 0;
+					border-radius: 6px;
+					transition: box-shadow 0.2s ease, background 0.2s ease;
 				}
+				.auto-advance-speed-slider-row--throttled {
+					background: rgba(255, 170, 60, 0.08);
+					box-shadow: 0 0 0 1px rgba(255, 170, 60, 0.45);
+					animation: auto-advance-throttle-pulse 1.2s ease-out 2;
+				}
+				@keyframes auto-advance-throttle-pulse {
+					0%, 100% { box-shadow: 0 0 0 1px rgba(255, 170, 60, 0.45); }
+					50% { box-shadow: 0 0 0 3px rgba(255, 170, 60, 0.35); }
+				}
+				.auto-advance-energy-notice {
+					width: 100%;
+					font-size: 0.72em;
+					line-height: 1.35;
+					color: #ffaa55;
+					padding: 6px 8px;
+					border-radius: 4px;
+					background: rgba(255, 170, 60, 0.1);
+					border: 1px solid rgba(255, 170, 60, 0.25);
+				}
+				.auto-advance-energy-notice[hidden] { display: none; }
 				.auto-advance-speed-slider {
 					width: 100%;
 					height: 22px;
@@ -2726,10 +2855,11 @@
 
 		<!-- ── SIDEBAR ── -->
 		<div id="sidebar">
-			<h1>
-				INVEST<br>ROGUE</h1>
-			<button type="button" class="btn tutorial-help-btn" id="help-btn">? Help</button>
-			<hr class="side-divider">
+			<div class="sidebar-top">
+				<h1>
+					INVEST<br>ROGUE</h1>
+				<button type="button" class="btn tutorial-help-btn" id="help-btn">? Help</button>
+				<hr class="side-divider">
 
 				<div class="side-stat" id="level-stat">
 					<div class="side-label">Level / XP</div>
@@ -2745,10 +2875,10 @@
 				<div class="side-stat" id="energy-stat">
 					<div class="side-label">Energy</div>
 					<div class="energy-row">
-						<span class="energy-flow energy-flow--gain" id="s-energy-gain" title="Energy gained per game day">+0/d</span>
+						<span class="energy-flow energy-flow--gain" id="s-energy-gain" title="Energy gained per game day">+1.00/d</span>
 						<div class="energy-main">
 							<div class="side-value-line">
-								<span class="side-val-main" id="s-energy">1000 / 1000</span>
+								<span class="side-val-main" id="s-energy">1000.00 / 1000.00</span>
 							</div>
 							<div class="year-bar"><div class="year-fill year-fill--energy" id="s-energy-fill" style="width:100%"></div></div>
 						</div>
@@ -2761,39 +2891,15 @@
 					<div class="side-value" id="s-cash"></div>
 				</div>
 
-				<div class="side-stat">
-					<div class="side-label">Portfolio</div>
-					<div class="side-value yellow" id="s-portfolio"></div>
-					<div class="side-label" style="margin-top:3px;">Index Funds</div>
-					<div class="side-value-line">
-						<span class="side-val-main" id="s-portfolio-index"></span>
-						<span class="side-pl" id="s-pl-index"></span>
-					</div>
-					<div class="side-label">Bonds</div>
-					<div class="side-value-line">
-						<span class="side-val-main" id="s-portfolio-bonds"></span>
-						<span class="side-pl" id="s-pl-bonds"></span>
-					</div>
-					<div class="side-label">Stocks</div>
-					<div class="side-value-line">
-						<span class="side-val-main" id="s-portfolio-stocks"></span>
-						<span class="side-pl" id="s-pl-stocks"></span>
-					</div>
-					<div class="side-label">Crypto</div>
-					<div class="side-value-line">
-						<span class="side-val-main" id="s-portfolio-crypto"></span>
-						<span class="side-pl" id="s-pl-crypto"></span>
-					</div>
-					<div class="side-label">Options</div>
-					<div class="side-value-line">
-						<span class="side-val-main" id="s-portfolio-options"></span>
-						<span class="side-pl" id="s-pl-options"></span>
-					</div>
-					<div class="side-label">Casino</div>
-					<div class="side-value-line">
-						<span class="side-val-main" id="s-portfolio-casino"></span>
-						<span class="side-pl" id="s-pl-casino"></span>
-					</div>
+				<div class="side-stat sidebar-portfolio-stat sidebar-portfolio--collapsed" id="sidebar-portfolio-section">
+					<button type="button" class="sidebar-portfolio-trigger" id="sidebar-portfolio-collapse-btn" aria-expanded="false" aria-controls="sidebar-portfolio-breakdown">
+						<span class="sidebar-portfolio-trigger__text">
+							<span class="side-label">Portfolio</span>
+							<span class="side-value yellow" id="s-portfolio"></span>
+						</span>
+						<span class="sidebar-portfolio-chevron" aria-hidden="true">▾</span>
+					</button>
+					<div class="sidebar-portfolio-breakdown" id="sidebar-portfolio-breakdown"></div>
 				</div>
 
 				<div class="side-stat">
@@ -2805,8 +2911,19 @@
 					<div class="side-value white" id="s-return"></div>
 				</div>
 
+				<div class="side-stat">
+					<div class="sidebar-page-nav">
+						<button type="button" class="sidebar-page-tab" data-page="black-market">🏴 Black Market</button>
+					</div>
+					<div class="side-label">Insight</div>
+					<div class="side-value yellow" id="s-insight" title="Earn from level-ups and profitable trades">0</div>
+				</div>
+			</div>
+
+			<div class="sidebar-bottom">
+				<hr class="side-divider">
+
 				<div id="mp-panel" hidden>
-					<hr class="side-divider">
 					<div class="side-label">Multiplayer</div>
 					<div class="side-value white">Room <span id="mp-room-code">—</span></div>
 					<div class="mp-host-note" id="mp-host-note"></div>
@@ -2816,41 +2933,41 @@
 					<button class="btn" id="mp-leave-ingame-btn" type="button" onclick="document.getElementById('mp-leave-btn')?.click()">Leave room</button>
 				</div>
 
-				<hr class="side-divider">
-
-					<div class="side-actions">
-						<div class="side-action-row side-action-row--day-advance">
-							<button class="btn primary work" id="day-btn">⏭ Next day</button>
-							<div class="side-advance-stack">
-								<input id="advance-days" class="amount-input" type="number" value="30" min="1" aria-label="Days to advance">
-								<button class="btn" id="advance-btn">Advance</button>
-							</div>
+				<div class="side-actions">
+					<div class="side-action-row side-action-row--day-advance">
+						<button class="btn primary work" id="day-btn">⏭ Next day</button>
+						<div class="side-advance-stack">
+							<input id="advance-days" class="amount-input" type="number" value="30" min="1" aria-label="Days to advance">
+							<button class="btn" id="advance-btn">Advance</button>
 						</div>
-						<div class="auto-advance-panel">
-							<button type="button" class="btn auto-advance-pause-btn" id="auto-advance-pause-btn">⏸ Pause</button>
-							<div class="auto-advance-speed-row">
-								<div class="auto-advance-speed-slider-row">
-									<input type="range" id="auto-advance-speed-slider" class="auto-advance-speed-slider" min="5" max="1000" step="5" value="500" aria-label="Auto-advance speed in milliseconds">
-									<div class="auto-advance-speed-labels">
-										<span>5 ms</span>
-										<span class="auto-advance-speed-display" id="auto-advance-speed-display">500 ms</span>
-										<span>1000 ms</span>
-									</div>
-								</div>
-								<div class="auto-advance-energy-cost" id="auto-advance-energy-cost">Cost: 1 energy/day</div>
-							</div>
-						</div>
-						<div class="mp-advance-note" id="mp-advance-note" hidden>Advance controlled by host</div>
-						<button class="btn" id="reset-btn">↺ New Run</button>
-						<hr class="side-divider">
-						<div class="side-action-row side-action-row--equal-btns">
-							<button class="btn" id="export-btn" type="button">⬇ Export</button>
-							<button class="btn" id="import-btn" type="button">⬆ Import</button>
-						</div>
-						<input type="file" id="save-import-input" accept=".json,application/json" hidden>
-						<div class="save-status" id="save-status" aria-live="polite"></div>
 					</div>
+					<div class="auto-advance-panel">
+						<button type="button" class="btn auto-advance-pause-btn" id="auto-advance-pause-btn">⏸ Pause</button>
+						<div class="auto-advance-energy-notice" id="auto-advance-energy-notice" hidden></div>
+						<div class="auto-advance-speed-row">
+							<div class="auto-advance-speed-slider-row">
+								<input type="range" id="auto-advance-speed-slider" class="auto-advance-speed-slider" min="5" max="1000" step="5" value="500" aria-label="Auto-advance speed in milliseconds">
+								<div class="auto-advance-speed-labels">
+									<span>5 ms</span>
+									<span class="auto-advance-speed-display" id="auto-advance-speed-display">500 ms</span>
+									<span>1000 ms</span>
+								</div>
+							</div>
+							<div class="auto-advance-energy-cost" id="auto-advance-energy-cost">Cost: 1.00 energy/day</div>
+						</div>
+					</div>
+					<div class="mp-advance-note" id="mp-advance-note" hidden>Advance controlled by host</div>
+					<button class="btn" id="reset-btn">↺ New Run</button>
+					<hr class="side-divider">
+					<div class="side-action-row side-action-row--equal-btns">
+						<button class="btn" id="export-btn" type="button">⬇ Export</button>
+						<button class="btn" id="import-btn" type="button">⬆ Import</button>
+					</div>
+					<input type="file" id="save-import-input" accept=".json,application/json" hidden>
+					<div class="save-status" id="save-status" aria-live="polite"></div>
 				</div>
+			</div>
+		</div>
 
 		<!-- ── MAIN ── -->
 		<div id="main">
@@ -2863,7 +2980,6 @@
 					<button class="nav-tab" data-page="crypto" data-unlock-level="10">🪙 Crypto</button>
 					<button class="nav-tab" data-page="options" data-unlock-level="15">🧩 Options</button>
 					<button class="nav-tab" data-page="casino" data-unlock-level="20">🎰 Casino</button>
-					<button class="nav-tab" data-page="black-market">🏴 Black Market</button>
 					<button class="nav-tab" data-page="debug">⚙ Debug</button>
 				</div>
 				<div class="topnav-time" id="topnav-time">
@@ -3071,9 +3187,10 @@
 
 				<div class="page" id="page-black-market">
 					<div class="page-title">Black Market</div>
-					<p style="font-size:0.82em; color:#666; margin-bottom:12px; max-width:640px;">
-						Off-the-books upgrades paid in cash. More categories coming later — for now, energy enhancements only.
+					<p style="font-size:0.82em; color:#666; margin-bottom:8px; max-width:640px;">
+						Off-the-books energy upgrades paid in <strong>Insight</strong> — separate from cash and XP level. Earn Insight from level-ups (+3 each) and positive realized P/L (+1 per $1,000 profit).
 					</p>
+					<div id="black-market-insight" style="font-size:0.95em; color:#ffcc00; margin-bottom:12px;"></div>
 					<div class="black-market-energy" id="black-market-energy"></div>
 					<div class="black-market-summary" id="black-market-summary"></div>
 					<div class="black-market-list" id="black-market-list"></div>
