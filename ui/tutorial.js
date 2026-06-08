@@ -1,10 +1,5 @@
 import { fmt } from "./format.js";
-import {
-	UNLOCK_COST_BONDS,
-	UNLOCK_COST_STOCKS,
-	UNLOCK_COST_CRYPTOS,
-	UNLOCK_COST_OPTIONS,
-} from "../investments/marketUnlock.js";
+import { MARKET_UNLOCK_LEVELS } from "../investments/assetUnlockLevels.js";
 
 export const GOAL_NET_WORTH = 100_000_000;
 export const TUTORIAL_STORAGE_KEY = "bigstacks-tutorial-v1";
@@ -16,7 +11,7 @@ const INTRO_CARDS = [
 	},
 	{
 		title: "Core loop",
-		body: `Use <strong>Next day</strong> or <strong>Advance</strong> in the sidebar to move time forward. Prices change, income arrives, and your portfolio updates. Track progress on <strong>Overview</strong>: net worth history, asset summaries, and the activity log.`,
+		body: `Use <strong>Next day</strong> or <strong>Advance</strong> in the sidebar to move time forward. Prices change, income arrives, and your portfolio updates. <strong>Auto-advance</strong> spends <strong>energy</strong> (faster speeds cost more per day); manual days and 30-day stipends restore it. Each day also earns <strong>1 XP</strong> toward your level. Track progress on <strong>Overview</strong>: net worth history, asset summaries, and the activity log.`,
 	},
 	{
 		title: "First move",
@@ -24,7 +19,7 @@ const INTRO_CARDS = [
 	},
 	{
 		title: "Unlock more markets",
-		body: `Other asset classes need a one-time unlock fee paid from cash:<br><br>Bonds <strong>${fmt(UNLOCK_COST_BONDS)}</strong> → Stocks <strong>${fmt(UNLOCK_COST_STOCKS)}</strong> → Crypto <strong>${fmt(UNLOCK_COST_CRYPTOS)}</strong> → Options <strong>${fmt(UNLOCK_COST_OPTIONS)}</strong><br><br>Visit each tab and pay the fee when you are ready to trade.`,
+		body: `Bonds and the index fund are open from the start. Other markets unlock as you level up from advancing days (1 XP per day):<br><br>Stocks <strong>level ${MARKET_UNLOCK_LEVELS.stocks}</strong> → Crypto <strong>level ${MARKET_UNLOCK_LEVELS.crypto}</strong> → Options <strong>level ${MARKET_UNLOCK_LEVELS.options}</strong> → Casino <strong>level ${MARKET_UNLOCK_LEVELS.casino}</strong><br><br>The <strong>Black Market</strong> is always available for cash upgrades.`,
 	},
 ];
 
@@ -39,23 +34,27 @@ const TAB_TIPS = {
 	},
 	bonds: {
 		title: "Bonds",
-		body: `Unlock the bond market for a one-time <strong>${fmt(UNLOCK_COST_BONDS)}</strong> fee. <strong>Treasuries</strong> pay daily coupon income until maturity. <strong>Corporate bonds</strong> pay higher yields but carry default risk. Early treasury sales cost a 15% penalty.`,
+		body: "Available from the start. <strong>Treasuries</strong> pay daily coupon income until maturity. <strong>Corporate bonds</strong> pay higher yields but carry default risk. Early treasury sales cost a 15% penalty.",
 	},
 	stocks: {
 		title: "Stocks",
-		body: `Unlock the stock market for <strong>${fmt(UNLOCK_COST_STOCKS)}</strong>. The main chart overlays every stock as a colored line — left-click a chart toggle to pick the featured stock; right-click to show/hide its line. <strong>Double-click a market card</strong> to show that stock in the large panel above; single-click still trades on any card normally. Wider drift tick = higher volatility. Fundamentals update every 90 days; dividends pay quarterly. High debt plus negative earnings raises bankruptcy risk. Delisted stocks never relist.`,
+		body: `Unlocks at <strong>level ${MARKET_UNLOCK_LEVELS.stocks}</strong>. The main chart overlays every stock as a colored line — left-click a chart toggle to pick the featured stock; right-click to show/hide its line. <strong>Double-click a market card</strong> to show that stock in the large panel above; single-click still trades on any card normally. Wider drift tick = higher volatility. Fundamentals update every 90 days; dividends pay quarterly. High debt plus negative earnings raises bankruptcy risk. Delisted stocks never relist.`,
 	},
 	crypto: {
 		title: "Crypto",
-		body: `Unlock crypto for <strong>${fmt(UNLOCK_COST_CRYPTOS)}</strong>. Prices are volatile. Coins that die are cash-settled and replaced with new listings over time.`,
+		body: `Unlocks at <strong>level ${MARKET_UNLOCK_LEVELS.crypto}</strong>. Prices are volatile. Coins that die are cash-settled and replaced with new listings over time.`,
 	},
 	options: {
 		title: "Options desk",
-		body: `Unlock options for <strong>${fmt(UNLOCK_COST_OPTIONS)}</strong>. Trade calls and puts on the index fund. Pick a days-to-expiry (DTE) tenor — premiums update live. <strong>Perpetuals</strong> are advanced leveraged positions with funding costs.`,
+		body: `Unlocks at <strong>level ${MARKET_UNLOCK_LEVELS.options}</strong>. Trade calls and puts on the index fund. Pick a days-to-expiry (DTE) tenor — premiums update live. <strong>Perpetuals</strong> are advanced leveraged positions with funding costs.`,
 	},
 	casino: {
 		title: "Casino",
-		body: "Optional side game on cash only — not part of your portfolio. The anchor is a number 1–100. Bet whether the next roll is strictly higher or lower. Ties are a push. Even money on wins.",
+		body: `Unlocks at <strong>level ${MARKET_UNLOCK_LEVELS.casino}</strong>. Optional side game on cash only — not part of your portfolio. The anchor is a number 1–100. Bet whether the next roll is strictly higher or lower. Ties are a push. Even money on wins.`,
+	},
+	"black-market": {
+		title: "Black market",
+		body: "Spend cash on under-the-table upgrades. <strong>Energy Yield</strong> adds bonus energy each game day (+0.5 per level). <strong>Efficient Auto-Advance</strong> cuts auto-advance energy cost by 10% per level (max 5). <strong>Expanded Reservoir</strong> raises your energy cap by 200 per level (base cap 1,000). Prices rise with each purchase.",
 	},
 };
 
@@ -66,7 +65,7 @@ const HELP_SECTIONS = [
 	},
 	{
 		title: "Controls",
-		body: "<strong>Next day</strong> advances one day. <strong>Advance</strong> jumps multiple days at once. <strong>Auto-advance</strong> runs days automatically at a chosen speed. <strong>New Run</strong> starts fresh. Export/Import saves your progress.",
+		body: "<strong>Next day</strong> advances one day. <strong>Advance</strong> jumps multiple days at once. <strong>Auto-advance</strong> runs days automatically at a chosen speed and drains energy (idle regen refills when stopped). Manual advances grant bonus energy. Each day earns 1 XP; levels take slightly more XP as you progress. <strong>New Run</strong> starts fresh. Export/Import saves your progress.",
 	},
 	{
 		title: "Net worth & return",
@@ -78,27 +77,27 @@ const HELP_SECTIONS = [
 	},
 	{
 		title: "Bonds",
-		body: `Unlock: ${fmt(UNLOCK_COST_BONDS)}. Treasuries pay coupon income until maturity. Corporates offer higher yield with bankruptcy risk. Yield curve reprices every 90 days; coupons on held bonds stay fixed.`,
+		body: "Available from the start. Treasuries pay coupon income until maturity. Corporates offer higher yield with bankruptcy risk. Yield curve reprices every 90 days; coupons on held bonds stay fixed.",
 	},
 	{
 		title: "Stocks",
-		body: `Unlock: ${fmt(UNLOCK_COST_STOCKS)}. Chart toggles: left-click = featured stock, right-click = line visibility. Double-click grid cards for featured panel; trade any card with one click. Buy all at the bottom.`,
+		body: `Unlocks at level ${MARKET_UNLOCK_LEVELS.stocks}. Chart toggles: left-click = featured stock, right-click = line visibility. Double-click grid cards for featured panel; trade any card with one click. Buy all at the bottom.`,
 	},
 	{
 		title: "Crypto",
-		body: `Unlock: ${fmt(UNLOCK_COST_CRYPTOS)}. High volatility. Dead coins settle to cash; new listings rotate in.`,
+		body: `Unlocks at level ${MARKET_UNLOCK_LEVELS.crypto}. High volatility. Dead coins settle to cash; new listings rotate in.`,
 	},
 	{
 		title: "Options",
-		body: `Unlock: ${fmt(UNLOCK_COST_OPTIONS)}. Calls and puts on the index. Manage DTE, sell at mark or exercise for intrinsic value. Perps add leverage and funding.`,
+		body: `Unlocks at level ${MARKET_UNLOCK_LEVELS.options}. Calls and puts on the index. Manage DTE, sell at mark or exercise for intrinsic value. Perps add leverage and funding.`,
 	},
 	{
 		title: "Casino",
-		body: "Hi-Lo game on cash. Anchor 1–100, bet higher or lower, push on tie, even money wins.",
+		body: `Unlocks at level ${MARKET_UNLOCK_LEVELS.casino}. Hi-Lo game on cash. Anchor 1–100, bet higher or lower, push on tie, even money wins.`,
 	},
 	{
 		title: "Unlock order",
-		body: `Bonds ${fmt(UNLOCK_COST_BONDS)} → Stocks ${fmt(UNLOCK_COST_STOCKS)} → Crypto ${fmt(UNLOCK_COST_CRYPTOS)} → Options ${fmt(UNLOCK_COST_OPTIONS)}. Fees are one-time and paid from cash.`,
+		body: `Bonds from the start → Stocks level ${MARKET_UNLOCK_LEVELS.stocks} → Crypto level ${MARKET_UNLOCK_LEVELS.crypto} → Options level ${MARKET_UNLOCK_LEVELS.options} → Casino level ${MARKET_UNLOCK_LEVELS.casino}. Black Market is always open.`,
 	},
 ];
 

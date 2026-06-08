@@ -1,6 +1,7 @@
 import { appendLog, fmt, addCumulativeRealizedPL } from "./shared.js";
 import { yieldForTerm } from "./yieldCurve.js";
 import { resolveRng } from "./rng.js";
+import { marketLockedMessage } from "./assetUnlockLevels.js";
 
 export const TREASURY_BOND_TERMS = [1, 2, 5, 10, 30];
 
@@ -27,7 +28,7 @@ export function normalizeTreasuryBondAutobuy(cfg) {
 
 function purchaseOneTreasuryBond(state, faceValue, term) {
   if (!state.unlockedBonds) {
-    return { ok: false, state, msg: "Bond market locked — unlock on the Bonds tab (one-time fee).", type: "bad" };
+    return { ok: false, state, msg: marketLockedMessage("bonds"), type: "bad" };
   }
   if (faceValue > state.cash) {
     return { ok: false, state, msg: `Need ${fmt(faceValue)} — only have ${fmt(state.cash)}.`, type: "bad" };
@@ -94,7 +95,7 @@ export function buyBond(state, faceValue, term, qty = 1) {
 
 export function sellBondEarly(state, bondId) {
   if (!state.unlockedBonds) {
-    return appendLog(state, "Bond market locked — unlock on the Bonds tab (one-time fee).", "bad");
+    return appendLog(state, marketLockedMessage("bonds"), "bad");
   }
   const bond = (state.bondHoldings || []).find(b => b.id === bondId);
   if (!bond) return appendLog(state, "Bond not found.", "bad");

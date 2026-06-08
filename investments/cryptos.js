@@ -1,6 +1,6 @@
 import { tradeAsset, evolveTrackedAssets, appendLog, fmt, fmtSignedMoney2, DEFAULT_MARKET_DRIFT, costBasisForHifoSale } from "./shared.js";
 import { resolveRng } from "./rng.js";
-import { UNLOCK_COST_CRYPTOS } from "./marketUnlock.js";
+import { marketLockedMessage } from "./assetUnlockLevels.js";
 
 /** Canonical OG listings (always three). */
 export const OG_CRYPTO_SPECS = [
@@ -123,14 +123,14 @@ export function buildInitialCryptos(params = {}) {
 
 export function buyCrypto(state, assetId, qty) {
   if (!state.unlockedCrypto) {
-    return appendLog(state, `Crypto market locked — pay ${fmt(UNLOCK_COST_CRYPTOS)} on the Crypto tab to unlock.`, "bad");
+    return appendLog(state, marketLockedMessage("crypto"), "bad");
   }
   return tradeAsset(state, "cryptos", assetId, qty, "buy", "coin");
 }
 
 export function sellCrypto(state, assetId, qty) {
   if (!state.unlockedCrypto) {
-    return appendLog(state, `Crypto market locked — pay ${fmt(UNLOCK_COST_CRYPTOS)} on the Crypto tab to unlock.`, "bad");
+    return appendLog(state, marketLockedMessage("crypto"), "bad");
   }
   return tradeAsset(state, "cryptos", assetId, qty, "sell", "coin");
 }

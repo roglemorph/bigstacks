@@ -1,6 +1,7 @@
 import { appendLog, fmt, fmtSignedMoney2 } from "./shared.js";
 import { rollYieldInBand } from "./yieldCurve.js";
 import { resolveRng } from "./rng.js";
+import { marketLockedMessage } from "./assetUnlockLevels.js";
 
 /** Active corporate listings on the primary market (always refilled to this count). */
 export const CORPORATE_OFFER_COUNT = 5;
@@ -120,7 +121,7 @@ function isOfferActive(offer) {
 
 export function buyCorporateBond(state, offerId, qty = 1) {
   if (!state.unlockedBonds) {
-    return appendLog(state, "Bond market locked — unlock on the Bonds tab (one-time fee).", "bad");
+    return appendLog(state, marketLockedMessage("bonds"), "bad");
   }
 
   const want = Math.max(1, Math.floor(Number(qty)) || 1);

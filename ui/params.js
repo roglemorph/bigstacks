@@ -23,6 +23,14 @@ const PARAM_FIELDS = [
 	["dbg-option-strike-offset-pct", "optionStrikeOffsetPct", v => parseFloat(v) / 100 || 0.08],
 	["dbg-option-market-dte", "optionMarketDte", v => parseInt(v, 10)],
 	["dbg-monthly-income", "monthlyIncomeAmount", v => parseFloat(v)],
+	["dbg-energy-max", "energyMax", v => parseFloat(v)],
+	["dbg-energy-regen", "energyIdleRegenPerSec", v => parseFloat(v)],
+	["dbg-energy-manual-bonus", "energyManualAdvanceBonus", v => parseFloat(v)],
+	["dbg-energy-stipend-bonus", "energyStipendBonus", v => parseFloat(v)],
+	["dbg-energy-cost-ref", "energyCostRefMs", v => parseFloat(v)],
+	["dbg-xp-per-day", "xpPerDay", v => parseFloat(v)],
+	["dbg-xp-level-base", "xpLevelBase", v => parseFloat(v)],
+	["dbg-xp-level-exp", "xpLevelExponent", v => parseFloat(v)],
 ];
 
 export function readParams() {
@@ -61,6 +69,14 @@ export function applyParamsToForm(params) {
 		optionStrikeOffsetPct: ["dbg-option-strike-offset-pct", v => (v * 100).toFixed(1)],
 		optionMarketDte: ["dbg-option-market-dte", v => v],
 		monthlyIncomeAmount: ["dbg-monthly-income", v => v],
+		energyMax: ["dbg-energy-max", v => v],
+		energyIdleRegenPerSec: ["dbg-energy-regen", v => v],
+		energyManualAdvanceBonus: ["dbg-energy-manual-bonus", v => v],
+		energyStipendBonus: ["dbg-energy-stipend-bonus", v => v],
+		energyCostRefMs: ["dbg-energy-cost-ref", v => v],
+		xpPerDay: ["dbg-xp-per-day", v => v],
+		xpLevelBase: ["dbg-xp-level-base", v => v],
+		xpLevelExponent: ["dbg-xp-level-exp", v => v],
 	};
 
 	for (const [key, [id, format]] of Object.entries(setters)) {

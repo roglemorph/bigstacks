@@ -21,6 +21,10 @@ import {
   optionHoldingsMarkValue,
   normalizeOptionMarketDte,
 } from "./investments/options.js";
+import { initialEnergyFields } from "./investments/energy.js";
+import { initialProgressionFields } from "./investments/progression.js";
+import { initialBlackMarketFields, buyBlackMarketUpgrade } from "./investments/blackMarket.js";
+import { syncMarketUnlocksFromLevel, marketLockedMessage } from "./investments/assetUnlockLevels.js";
 import {
   perpHoldingsMarkValue,
   processPerpsForDay,
@@ -145,62 +149,31 @@ function withAssetUnlockDay(state, key) {
 }
 
 export function unlockBonds(state) {
-  if (state.unlockedBonds) return appendLog(state, "Bond market already unlocked.", "info");
-  if (state.cash < UNLOCK_COST_BONDS) {
-    return appendLog(state, `Need ${fmt(UNLOCK_COST_BONDS)} to unlock bonds — only have ${fmt(state.cash)}.`, "bad");
-  }
-  const next = {
-    ...state,
-    cash: state.cash - UNLOCK_COST_BONDS,
-    unlockedBonds: true,
-    assetUnlockDays: withAssetUnlockDay(state, "bonds"),
-  };
-  return appendLog(next, `Paid ${fmt(UNLOCK_COST_BONDS)} to unlock the bond market.`, "good");
+  const synced = syncMarketUnlocksFromLevel(state);
+  if (synced.unlockedBonds) return appendLog(state, "Bond market already unlocked.", "info");
+  return appendLog(state, marketLockedMessage("bonds"), "bad");
 }
 
 export function unlockStocks(state) {
-  if (state.unlockedStocks) return appendLog(state, "Stock market already unlocked.", "info");
-  if (state.cash < UNLOCK_COST_STOCKS) {
-    return appendLog(state, `Need ${fmt(UNLOCK_COST_STOCKS)} to unlock stocks — only have ${fmt(state.cash)}.`, "bad");
-  }
-  const next = {
-    ...state,
-    cash: state.cash - UNLOCK_COST_STOCKS,
-    unlockedStocks: true,
-    assetUnlockDays: withAssetUnlockDay(state, "stocks"),
-  };
-  return appendLog(next, `Paid ${fmt(UNLOCK_COST_STOCKS)} to unlock the stock market.`, "good");
+  const synced = syncMarketUnlocksFromLevel(state);
+  if (synced.unlockedStocks) return appendLog(state, "Stock market already unlocked.", "info");
+  return appendLog(state, marketLockedMessage("stocks"), "bad");
 }
 
 export function unlockCrypto(state) {
-  if (state.unlockedCrypto) return appendLog(state, "Crypto market already unlocked.", "info");
-  if (state.cash < UNLOCK_COST_CRYPTOS) {
-    return appendLog(state, `Need ${fmt(UNLOCK_COST_CRYPTOS)} to unlock crypto — only have ${fmt(state.cash)}.`, "bad");
-  }
-  const next = {
-    ...state,
-    cash: state.cash - UNLOCK_COST_CRYPTOS,
-    unlockedCrypto: true,
-    assetUnlockDays: withAssetUnlockDay(state, "cryptos"),
-  };
-  return appendLog(next, `Paid ${fmt(UNLOCK_COST_CRYPTOS)} to unlock the crypto market.`, "good");
+  const synced = syncMarketUnlocksFromLevel(state);
+  if (synced.unlockedCrypto) return appendLog(state, "Crypto market already unlocked.", "info");
+  return appendLog(state, marketLockedMessage("crypto"), "bad");
 }
 
 export function unlockOptions(state) {
-  if (state.unlockedOptions) return appendLog(state, "Options market already unlocked.", "info");
-  if (state.cash < UNLOCK_COST_OPTIONS) {
-    return appendLog(state, `Need ${fmt(UNLOCK_COST_OPTIONS)} to unlock options — only have ${fmt(state.cash)}.`, "bad");
-  }
-  const next = {
-    ...state,
-    cash: state.cash - UNLOCK_COST_OPTIONS,
-    unlockedOptions: true,
-    assetUnlockDays: withAssetUnlockDay(state, "options"),
-  };
-  return appendLog(next, `Paid ${fmt(UNLOCK_COST_OPTIONS)} to unlock the options market.`, "good");
+  const synced = syncMarketUnlocksFromLevel(state);
+  if (synced.unlockedOptions) return appendLog(state, "Options market already unlocked.", "info");
+  return appendLog(state, marketLockedMessage("options"), "bad");
 }
 
 export { playCasinoHiLo } from "./investments/casino.js";
+export { buyBlackMarketUpgrade } from "./investments/blackMarket.js";
 
 export function newState(params = {}) {
   const cash = params.startCash ?? 10_000;
@@ -228,7 +201,7 @@ export function newState(params = {}) {
     optionHoldings: [],
     ...initialPerpMarketState(),
     casino: initialCasinoState(),
-    unlockedBonds: false,
+    unlockedBonds: true,
     unlockedStocks: false,
     unlockedCrypto: false,
     unlockedOptions: false,
@@ -239,15 +212,18 @@ export function newState(params = {}) {
     treasuryBondAutobuy: { ...DEFAULT_TREASURY_BOND_AUTOBUY },
     marketCardAutobuy: {},
     log: [],
+    ...initialEnergyFields(params),
+    ...initialProgressionFields(),
+    ...initialBlackMarketFields(),
   };
   const startNetWorth = netWorth(st);
   const startStack = snapshotNetWorthStack(st);
-  return {
+  return syncMarketUnlocksFromLevel({
     ...st,
     startNetWorth,
     lastOptionRealized: null,
     ...initialNetWorthHistoryFields(startNetWorth, startStack),
-  };
+  });
 }
 
 export function portfolioValue(state) {

@@ -8,6 +8,9 @@ import { initialNetWorthHistoryFields, netWorthHistoryForLeaderboard } from "../
 import { DEFAULT_INDEX_FUND_AUTOBUY } from "../investments/indexFunds.js";
 import { DEFAULT_TREASURY_BOND_AUTOBUY } from "../investments/treasuryBonds.js";
 import { initialCasinoState } from "../investments/casino.js";
+import { initialEnergyFields } from "../investments/energy.js";
+import { initialProgressionFields } from "../investments/progression.js";
+import { initialBlackMarketFields } from "../investments/blackMarket.js";
 import { totalReturn } from "../game.js";
 
 export const EMPTY_ASSET_UNLOCK_DAYS = {
@@ -45,6 +48,12 @@ export function stripPlayerFields(state) {
   delete shared.casino;
   delete shared.playerId;
   delete shared.displayName;
+  delete shared.energy;
+  delete shared.energyMax;
+  delete shared.energyUpdatedAt;
+  delete shared.xp;
+  delete shared.level;
+  delete shared.blackMarketLevels;
   return {
     ...shared,
     indexFunds: zeroHoldings(state.indexFunds, "shares"),
@@ -91,7 +100,7 @@ export function newPlayerState(shared, params = {}, meta = {}) {
     bondHoldings: [],
     optionHoldings: [],
     perpHoldings: [],
-    unlockedBonds: false,
+    unlockedBonds: true,
     unlockedStocks: false,
     unlockedCrypto: false,
     unlockedOptions: false,
@@ -115,6 +124,9 @@ export function newPlayerState(shared, params = {}, meta = {}) {
     indexFunds: slimHoldingsFromMarket(shared.indexFunds, "shares"),
     stocks: slimHoldingsFromMarket(shared.stocks, "shares"),
     cryptos: slimHoldingsFromMarket(shared.cryptos, "coins"),
+    ...initialEnergyFields(params),
+    ...initialProgressionFields(),
+    ...initialBlackMarketFields(),
   };
 }
 
@@ -192,6 +204,12 @@ export function splitPlayerFromMerged(merged, shared) {
     indexFunds: slimPlayerAssets(merged.indexFunds, "shares"),
     stocks: slimPlayerAssets(merged.stocks, "shares"),
     cryptos: slimPlayerAssets(merged.cryptos, "coins"),
+    energy: merged.energy,
+    energyMax: merged.energyMax,
+    energyUpdatedAt: merged.energyUpdatedAt,
+    xp: merged.xp,
+    level: merged.level,
+    blackMarketLevels: merged.blackMarketLevels,
   };
 }
 

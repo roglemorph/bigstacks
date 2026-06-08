@@ -11,6 +11,8 @@ import { settleExpiredOptionLots } from "../investments/options.js";
 import { processIndexFundAutobuy } from "../investments/indexFunds.js";
 import { processTreasuryBondAutobuy } from "../investments/treasuryBonds.js";
 import { processMarketCardAutobuys } from "../investments/marketAutobuy.js";
+import { grantXpForDays } from "../investments/progression.js";
+import { grantEnergyPerGameDay } from "../investments/blackMarket.js";
 import { mergeForRender, slimPlayerAssets } from "./state.js";
 import { indexFundsPortfolioValue } from "../investments/indexFunds.js";
 import { bondPortfolioValue } from "../investments/treasuryBonds.js";
@@ -221,6 +223,12 @@ export function advancePlayerAfterShared(player, prevShared, shared, params) {
     netWorthDailyStartDay: player.netWorthDailyStartDay ?? 1,
     netWorthHistoryBuckets: player.netWorthHistoryBuckets || [],
     netWorthStackBuckets: player.netWorthStackBuckets || [],
+    energy: player.energy,
+    energyMax: player.energyMax,
+    energyUpdatedAt: player.energyUpdatedAt,
+    xp: player.xp,
+    level: player.level,
+    blackMarketLevels: player.blackMarketLevels,
   };
 
   const nwMerged = mergeForRender(shared, split);
@@ -237,7 +245,7 @@ export function advancePlayerAfterShared(player, prevShared, shared, params) {
     };
   }
 
-  return nextPlayer;
+  return grantEnergyPerGameDay(grantXpForDays(nextPlayer, 1, params), 1, params);
 }
 
 function settleDelistedAssets(player, prevShared, shared, newDay) {

@@ -23,6 +23,7 @@ import {
   unlockOptions,
   playCasinoHiLo,
   setOptionMarketDte,
+  buyBlackMarketUpgrade,
   netWorth,
 } from "../game.js";
 import {
@@ -69,6 +70,7 @@ const ACTION_HANDLERS = {
   unlockOptions,
   playCasinoHiLo,
   setOptionMarketDte,
+  buyBlackMarketUpgrade,
 };
 
 export class RoomManager {

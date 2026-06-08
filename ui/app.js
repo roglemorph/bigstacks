@@ -1,4 +1,4 @@
-﻿import { newState, nextDay, buyIndexFund, sellIndexFund, normalizeIndexFundAutobuy, normalizeTreasuryBondAutobuy, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, sellOptionLot, exerciseOptionLot, openPerp, closePerp, closePerpLot, playCasinoHiLo, portfolioValue, netWorth, snapshotNetWorthStack, totalReturn, YIELD_CURVE, yieldForTerm, setOptionMarketDte, normalizeOptionMarketDte, openOptionHoldings, markOptionHolding, optionLotUnrealizedPLAtMark, optionLotUnrealizedPLIfExercised, optionsHoldingsUnrealizedPL, openPerpPositions, perpMarkPrice, perpFundingRateAnnual, perpOpenPremiumTotal, perpHoldingsMarkValue, perpHoldingsUnrealizedPL, perpPositionUnrealizedPL, perpPositionTotalPL, unlockBonds, unlockStocks, unlockCrypto, unlockOptions, UNLOCK_COST_BONDS, UNLOCK_COST_STOCKS, UNLOCK_COST_CRYPTOS, UNLOCK_COST_OPTIONS, MONTHLY_INCOME_AMOUNT, normalizeMarketCardAutobuy, marketCardAutobuyKey, computeStockDailyDrift, computeStockEffectiveVol, computeIndexFundDailyDrift, computeIndexFundEffectiveVol, stockPeRatio, STOCK_DRIFT_DISPLAY_MIN, STOCK_DRIFT_DISPLAY_MAX, STOCK_VOL_DISPLAY_MIN, STOCK_VOL_DISPLAY_MAX, DRIFT_TICK_WIDTH_MIN, DRIFT_TICK_WIDTH_MAX } from "../game.js?v=jobs";
+﻿import { newState, nextDay, buyIndexFund, sellIndexFund, normalizeIndexFundAutobuy, normalizeTreasuryBondAutobuy, buyBond, buyCorporateBond, sellBondEarly, buyCrypto, sellCrypto, buyStock, sellStock, buyOption, sellOption, sellOptionLot, exerciseOptionLot, openPerp, closePerp, closePerpLot, playCasinoHiLo, portfolioValue, netWorth, snapshotNetWorthStack, totalReturn, YIELD_CURVE, yieldForTerm, setOptionMarketDte, normalizeOptionMarketDte, openOptionHoldings, markOptionHolding, optionLotUnrealizedPLAtMark, optionLotUnrealizedPLIfExercised, optionsHoldingsUnrealizedPL, openPerpPositions, perpMarkPrice, perpFundingRateAnnual, perpOpenPremiumTotal, perpHoldingsMarkValue, perpHoldingsUnrealizedPL, perpPositionUnrealizedPL, perpPositionTotalPL, MONTHLY_INCOME_AMOUNT, normalizeMarketCardAutobuy, marketCardAutobuyKey, computeStockDailyDrift, computeStockEffectiveVol, computeIndexFundDailyDrift, computeIndexFundEffectiveVol, stockPeRatio, STOCK_DRIFT_DISPLAY_MIN, STOCK_DRIFT_DISPLAY_MAX, STOCK_VOL_DISPLAY_MIN, STOCK_VOL_DISPLAY_MAX, DRIFT_TICK_WIDTH_MIN, DRIFT_TICK_WIDTH_MAX, buyBlackMarketUpgrade } from "../game.js?v=jobs";
 import {
 	fmt, fmtSigned, fmtIncomeAmount, formatPlPct, plTintIntensity, plTintDir,
 	applyPlTintToElement, plTintHtml, setPlDisplay, formatMarketCardOrderTotal,
@@ -15,6 +15,37 @@ import { enhanceQuantityInputs } from "./numberSpinners.js";
 import { setupTutorial, maybeShowIntro, maybeShowTabTip } from "./tutorial.js";
 import { MultiplayerClient } from "./multiplayer.js";
 import { mergeForRender } from "../multiplayer/state.js";
+import {
+	applyIdleRegen,
+	canAffordAutoAdvance,
+	countStipendDays,
+	drainEnergyForAutoAdvance,
+	effectiveEnergy,
+	energyCostForIntervalMs,
+	energyGainPerGameDay,
+	energyDrainPerGameDay,
+	energyNetPerGameDay,
+	grantEnergyBonus,
+	maxAutoAdvanceDaysForEnergy,
+	resolveEnergyParams,
+} from "../investments/energy.js";
+import { grantXpForDays, xpProgressInLevel } from "../investments/progression.js";
+import {
+	BLACK_MARKET_UPGRADE_IDS,
+	blackMarketUpgradeSummary,
+	energyPerDayBonus,
+	autoAdvanceCostMultiplier,
+	effectiveEnergyMax,
+	grantEnergyPerGameDay,
+	getBlackMarketLevel,
+} from "../investments/blackMarket.js";
+import {
+	MARKET_DISPLAY_NAMES,
+	marketUnlockLevel,
+	playerLevel,
+	isCasinoUnlocked,
+	marketLockedMessage,
+} from "../investments/assetUnlockLevels.js";
 import {
 	DAILY_CHART_TRIM_DAYS,
 	CHART_TRAILING_BLANK_SLOTS,
@@ -45,10 +76,7 @@ let mpRoomState = null;
 let lastMpActionType = null;
 
 const MP_FULL_RENDER_ACTIONS = new Set([
-	"unlockBonds",
-	"unlockStocks",
-	"unlockCrypto",
-	"unlockOptions",
+	"buyBlackMarketUpgrade",
 ]);
 
 const MP_NW_OVERLAY_COLORS = ["#ff6644", "#44aaff", "#ff44aa", "#aaaa44", "#66ffcc", "#cc88ff"];
@@ -59,6 +87,69 @@ function isMultiplayer() {
 
 function isMpHost() {
 	return isMultiplayer() && mpClient.isHost();
+}
+
+function levelUnlockPanelHtml(market) {
+	const lv = marketUnlockLevel(market);
+	const name = MARKET_DISPLAY_NAMES[market] || market;
+	const pl = playerLevel(state, params);
+	return `<div class="asset-unlock-panel">The ${name} market unlocks at <strong>level ${lv}</strong>.<br><br>You are level ${pl}.</div>`;
+}
+
+function sidebarLevelLockLabel(market) {
+	return `Lv ${marketUnlockLevel(market)}`;
+}
+
+function levelLockedOverviewHtml(market) {
+	const name = MARKET_DISPLAY_NAMES[market] || market;
+	return `<div class="overview-card-breakdown-empty">Locked — reach level ${marketUnlockLevel(market)} to trade ${name.toLowerCase()}.</div>`;
+}
+
+const LOG_SCROLL_PIN_THRESHOLD_PX = 24;
+
+function logElNearBottom(logEl) {
+	if (!logEl) return true;
+	return logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight <= LOG_SCROLL_PIN_THRESHOLD_PX;
+}
+
+/** Append new log rows only; preserve scroll unless the user was already at the bottom. */
+function patchActivityLog(s, { liveOnly = false } = {}) {
+	const logEl = document.getElementById("log");
+	if (!logEl || !Array.isArray(s.log)) return;
+
+	const logLen = s.log.length;
+	const trimmed = logLen < renderedLogCount;
+	if (liveOnly && !trimmed && logLen === renderedLogCount) return;
+
+	const pinToBottom = logElNearBottom(logEl);
+	if (trimmed) {
+		logEl.innerHTML = "";
+		renderedLogCount = 0;
+	}
+
+	const prevCount = renderedLogCount;
+	for (const { msg, type, day } of s.log.slice(renderedLogCount)) {
+		const div = document.createElement("div");
+		div.className = "log-entry " + (type || "");
+		div.textContent = `[Day ${day}] ${msg}`;
+		logEl.appendChild(div);
+	}
+	renderedLogCount = logLen;
+
+	if (renderedLogCount > prevCount && pinToBottom) {
+		logEl.scrollTop = logEl.scrollHeight;
+	}
+}
+
+function syncNavTabLocks(s) {
+	const level = playerLevel(s, params);
+	document.querySelectorAll(".nav-tab[data-unlock-level]").forEach(tab => {
+		const req = parseInt(tab.dataset.unlockLevel, 10) || 1;
+		const locked = level < req;
+		tab.dataset.locked = locked ? "true" : "false";
+		tab.title = locked ? `Reach level ${req} to unlock` : "";
+		tab.classList.toggle("nav-tab--locked", locked);
+	});
 }
 
 function syncStateFromMultiplayer() {
@@ -202,10 +293,25 @@ function setupMultiplayerUi() {
 		const mpRttMs = mpAdvanceSentAt ? performance.now() - mpAdvanceSentAt : 0;
 		mpAdvanceSentAt = 0;
 		mpAdvanceInFlight = false;
+		const wasAuto = mpLastAdvanceWasAuto;
+		const prevDayForRewards = mpAdvanceStartDay;
 		syncStateFromMultiplayer();
 		mpClient.leaderboard = payload.leaderboard || [];
 		const daysAdvanced = Math.max(0, state.day - mpAdvanceStartDay);
 		const batch = mpLastBatchSize || daysAdvanced || 1;
+		const now = Date.now();
+		if (wasAuto) {
+			const configMs = getAutoAdvanceIntervalMs();
+			state = drainEnergyForAutoAdvance(
+				state,
+				{ days: daysAdvanced || batch, intervalMs: configMs, nowMs: now },
+				params
+			);
+		} else if (isMpHost()) {
+			applyManualAdvanceRewards(prevDayForRewards);
+		}
+		syncPlayerProgressionToMp();
+		mpLastAdvanceWasAuto = false;
 		updateMpAdvanceRttEma(mpRttMs);
 		const renderStart = autoAdvanceDebug.enabled && isAutoAdvanceRunning() ? performance.now() : 0;
 		render(state, { liveOnly: true });
@@ -686,6 +792,9 @@ let mpAutoAdvanceActive = false;
 let mpAdvanceRttEma = 0;
 let mpAdvanceStartDay = 0;
 let mpLastBatchSize = 0;
+let mpLastAdvanceWasAuto = false;
+let autoAdvanceEnergyPaused = false;
+let energyRegenIntervalId = null;
 const AUTO_ADVANCE_MS_MIN = 5;
 const AUTO_ADVANCE_MS_MAX = 1000;
 const MP_AUTO_ADVANCE_RTT_DEFAULT = 130;
@@ -707,6 +816,119 @@ const autoAdvanceDebug = {
 	last: {},
 	lastMpCompleted: null,
 };
+
+function syncPlayerProgressionToMp() {
+	if (!isMultiplayer() || !mpClient?.playerState) return;
+	mpClient.playerState = {
+		...mpClient.playerState,
+		energy: state.energy,
+		energyMax: state.energyMax,
+		energyUpdatedAt: state.energyUpdatedAt,
+		xp: state.xp,
+		level: state.level,
+		log: state.log,
+		blackMarketLevels: state.blackMarketLevels,
+	};
+}
+
+function patchEnergyFlowIndicators(s) {
+	const intervalMs = getAutoAdvanceIntervalMs();
+	const gain = energyGainPerGameDay(s);
+	const drain = energyDrainPerGameDay(s, intervalMs, params);
+	const yieldLv = getBlackMarketLevel(s, "energyPerDay");
+
+	const gainEl = document.getElementById("s-energy-gain");
+	if (gainEl) {
+		const gainText = gain > 0 ? `+${gain % 1 === 0 ? gain.toFixed(0) : gain.toFixed(1)}` : "+0";
+		gainEl.textContent = `${gainText}/d`;
+		gainEl.title = yieldLv > 0
+			? `+${gain.toFixed(1)} energy per game day (Energy Yield Lv ${yieldLv})`
+			: "Energy gained per game day (buy Energy Yield on the Black Market)";
+	}
+
+	const drainEl = document.getElementById("s-energy-drain");
+	if (drainEl) {
+		drainEl.textContent = `−${drain}/d`;
+		const costPct = Math.round(autoAdvanceCostMultiplier(s) * 100);
+		drainEl.title = `Auto-advance costs ${drain} energy per game day at ${intervalMs.toLocaleString()} ms/day (${costPct}% of base cost)`;
+	}
+}
+
+function patchProgressionEnergySidebar(s) {
+	const now = Date.now();
+	const displayEnergy = isAutoAdvanceRunning()
+		? Math.max(0, s.energy ?? 0)
+		: effectiveEnergy(s, now, params);
+	const energyMax = effectiveEnergyMax(s, params);
+	const xpProg = xpProgressInLevel(s.xp ?? 0, params);
+
+	const levelEl = document.getElementById("s-level");
+	if (levelEl) levelEl.textContent = String(xpProg.level);
+
+	const xpEl = document.getElementById("s-xp");
+	if (xpEl) xpEl.textContent = `${xpProg.xpIntoLevel.toLocaleString()} / ${xpProg.xpForNext.toLocaleString()}`;
+
+	const xpFill = document.getElementById("s-xp-fill");
+	if (xpFill) xpFill.style.width = `${xpProg.pct}%`;
+
+	const energyEl = document.getElementById("s-energy");
+	if (energyEl) {
+		energyEl.textContent = `${Math.floor(displayEnergy).toLocaleString()} / ${Math.floor(energyMax).toLocaleString()}`;
+	}
+
+	const energyFill = document.getElementById("s-energy-fill");
+	if (energyFill) energyFill.style.width = `${Math.min(100, (displayEnergy / energyMax) * 100)}%`;
+
+	patchEnergyFlowIndicators(s);
+}
+
+function haltAutoAdvanceForEnergy() {
+	autoAdvanceEnergyPaused = true;
+	clearAutoAdvanceTimers();
+	syncAutoAdvanceUi();
+	patchProgressionEnergySidebar(state);
+}
+
+function applyManualAdvanceRewards(prevDay) {
+	const daysAdvanced = Math.max(0, state.day - prevDay);
+	if (daysAdvanced <= 0) return;
+	if (!isMultiplayer()) {
+		state = grantXpForDays(state, daysAdvanced, params);
+		state = grantEnergyPerGameDay(state, daysAdvanced, params);
+	}
+	const stipendDays = countStipendDays(prevDay, state.day);
+	state = grantEnergyBonus(state, { manualDays: daysAdvanced, stipendDays }, params);
+	syncPlayerProgressionToMp();
+}
+
+function tickEnergyRegen() {
+	if (isAutoAdvanceRunning() || autoAdvancePaused) return;
+
+	const now = Date.now();
+	const beforeEnergy = Number.isFinite(state.energy) ? state.energy : 0;
+	state = applyIdleRegen(state, now, params);
+	syncPlayerProgressionToMp();
+	patchProgressionEnergySidebar(state);
+
+	if (
+		autoAdvanceEnergyPaused &&
+		!autoAdvancePaused &&
+		canAutoAdvanceNow()
+	) {
+		const cost = energyCostForIntervalMs(getAutoAdvanceIntervalMs(), params, state);
+		if (state.energy >= cost) {
+			autoAdvanceEnergyPaused = false;
+			beginAutoAdvance({ restart: false });
+		}
+	} else if (state.energy !== beforeEnergy) {
+		scheduleSave();
+	}
+}
+
+function startEnergyRegenLoop() {
+	if (energyRegenIntervalId !== null) return;
+	energyRegenIntervalId = setInterval(tickEnergyRegen, 500);
+}
 
 function isAutoAdvanceRunning() {
 	return autoAdvanceTimerId !== null || mpAutoAdvanceActive;
@@ -745,6 +967,7 @@ function clearAutoAdvanceTimers() {
 
 function haltAutoAdvance({ fullRender = false } = {}) {
 	autoAdvancePaused = false;
+	autoAdvanceEnergyPaused = false;
 	clearAutoAdvanceTimers();
 	hideAutoAdvancePauseOverlay();
 	if (autoAdvanceDebug.enabled) document.getElementById("auto-advance-debug-panel")?.remove();
@@ -754,6 +977,12 @@ function haltAutoAdvance({ fullRender = false } = {}) {
 
 function beginAutoAdvance({ restart = false } = {}) {
 	if (autoAdvancePaused || !canAutoAdvanceNow()) return;
+	const now = Date.now();
+	const cost = energyCostForIntervalMs(getAutoAdvanceIntervalMs(), params, state);
+	if (!canAffordAutoAdvance(state, cost, params, now)) {
+		haltAutoAdvanceForEnergy();
+		return;
+	}
 	if (restart) clearAutoAdvanceTimers();
 	if (isAutoAdvanceRunning()) return;
 	if (autoAdvanceDebug.enabled && !restart) {
@@ -773,6 +1002,7 @@ function beginAutoAdvance({ restart = false } = {}) {
 function pauseAutoAdvance() {
 	if (autoAdvancePaused || !canAutoAdvanceNow()) return;
 	autoAdvancePaused = true;
+	autoAdvanceEnergyPaused = false;
 	clearAutoAdvanceTimers();
 	showAutoAdvancePauseOverlay();
 	syncAutoAdvanceUi();
@@ -781,6 +1011,7 @@ function pauseAutoAdvance() {
 function resumeAutoAdvance() {
 	if (!autoAdvancePaused) return;
 	autoAdvancePaused = false;
+	autoAdvanceEnergyPaused = false;
 	hideAutoAdvancePauseOverlay();
 	beginAutoAdvance({ restart: false });
 	syncAutoAdvanceUi();
@@ -1151,6 +1382,52 @@ async function handleSaveImportFile(file) {
 	return beginImportedRun(saved);
 }
 
+const ABOUT_PAGE_URL = "pages/about.html";
+let aboutPageLoaded = false;
+
+async function loadAboutPage() {
+	if (aboutPageLoaded) return;
+	const body = document.getElementById("about-body");
+	if (!body) return;
+	const res = await fetch(ABOUT_PAGE_URL);
+	if (!res.ok) throw new Error(`Failed to load ${ABOUT_PAGE_URL}: ${res.status}`);
+	body.innerHTML = await res.text();
+	aboutPageLoaded = true;
+}
+
+function showAboutPage() {
+	const overlay = document.getElementById("about-overlay");
+	if (!overlay) return;
+	loadAboutPage().catch(() => {
+		const body = document.getElementById("about-body");
+		if (body) body.textContent = "Could not load about page.";
+	});
+	overlay.classList.remove("tutorial-overlay--hidden");
+	overlay.setAttribute("aria-hidden", "false");
+	document.getElementById("about-back-btn")?.focus();
+}
+
+function hideAboutPage() {
+	const overlay = document.getElementById("about-overlay");
+	if (!overlay) return;
+	overlay.classList.add("tutorial-overlay--hidden");
+	overlay.setAttribute("aria-hidden", "true");
+	document.getElementById("start-about-btn")?.focus();
+}
+
+function setupAboutPage() {
+	const overlay = document.getElementById("about-overlay");
+	document.getElementById("start-about-btn")?.addEventListener("click", () => showAboutPage());
+	document.getElementById("about-back-btn")?.addEventListener("click", () => hideAboutPage());
+	overlay?.addEventListener("click", e => {
+		if (e.target === overlay) hideAboutPage();
+	});
+	document.addEventListener("keydown", e => {
+		if (e.key !== "Escape") return;
+		if (!overlay?.classList.contains("tutorial-overlay--hidden")) hideAboutPage();
+	});
+}
+
 function setupStartScreen() {
 	const continueBtn = document.getElementById("continue-game-btn");
 	const hint = document.getElementById("start-screen-save-hint");
@@ -1222,10 +1499,23 @@ function runMpAutoAdvanceSend() {
 	if (mpAdvanceInFlight) return;
 
 	syncMarketCardAutobuysFromUi();
+	const now = Date.now();
 	const configMs = getAutoAdvanceIntervalMs();
-	const batch = computeMpAutoAdvanceBatch(configMs, mpAdvanceRttEma, mpAutoAdvanceDaysRemaining());
+	const cost = energyCostForIntervalMs(configMs, params, state);
+	if (!canAffordAutoAdvance(state, cost, params, now)) {
+		haltAutoAdvanceForEnergy();
+		return;
+	}
+	let batch = computeMpAutoAdvanceBatch(configMs, mpAdvanceRttEma, mpAutoAdvanceDaysRemaining());
+	const energyCap = maxAutoAdvanceDaysForEnergy(state, configMs, params, now);
+	if (energyCap <= 0) {
+		haltAutoAdvanceForEnergy();
+		return;
+	}
+	batch = Math.min(batch, energyCap);
 	mpAdvanceStartDay = state.day;
 	mpLastBatchSize = batch;
+	mpLastAdvanceWasAuto = true;
 	mpAdvanceInFlight = true;
 	const mpSendStart = autoAdvanceDebug.enabled ? performance.now() : 0;
 	try {
@@ -1266,10 +1556,20 @@ function autoAdvanceTimerCallback() {
 		return;
 	}
 	if (autoAdvancePaused) return;
+	const now = Date.now();
+	const configMs = getAutoAdvanceIntervalMs();
+	const cost = energyCostForIntervalMs(configMs, params, state);
+	if (!canAffordAutoAdvance(state, cost, params, now)) {
+		haltAutoAdvanceForEnergy();
+		return;
+	}
 	syncMarketCardAutobuysFromUi();
 	const prevDay = state.day;
 	const nextDayStart = autoAdvanceDebug.enabled ? performance.now() : 0;
+	state = drainEnergyForAutoAdvance(state, { days: 1, intervalMs: configMs, now }, params);
 	state = nextDay(state, params);
+	state = grantEnergyPerGameDay(state, 1, params);
+	state = grantXpForDays(state, 1, params);
 	if (autoAdvanceDebug.enabled) sample.nextDay = performance.now() - nextDayStart;
 	render(state, { liveOnly: true });
 	if (autoAdvanceDebug.enabled) {
@@ -1293,6 +1593,9 @@ function syncAutoAdvanceUi() {
 	const pauseBtn = document.getElementById("auto-advance-pause-btn");
 	const mpHostOnly = isMultiplayer() && !isMpHost();
 	const canRun = canAutoAdvanceNow();
+	const costPerDay = energyCostForIntervalMs(ms, params, state);
+	const energyNow = Math.floor(effectiveEnergy(state, Date.now(), params));
+	const energyMax = effectiveEnergyMax(state, params);
 	const mpBatchHint =
 		running && isMultiplayer() && isMpHost()
 			? (() => {
@@ -1301,9 +1604,13 @@ function syncAutoAdvanceUi() {
 			})()
 			: "";
 	if (pauseBtn) {
-		pauseBtn.textContent = autoAdvancePaused
-			? `⏸ Paused · ${msStr} ms/day`
-			: `⏸ Pause · ${msStr} ms/day${mpBatchHint}`;
+		if (autoAdvanceEnergyPaused && !running && !autoAdvancePaused) {
+			pauseBtn.textContent = `⚡ Recharging · ${energyNow}/${energyMax}`;
+		} else {
+			pauseBtn.textContent = autoAdvancePaused
+				? `⏸ Paused · ${msStr} ms/day`
+				: `⏸ Pause · ${msStr} ms/day${mpBatchHint}`;
+		}
 		pauseBtn.disabled = mpHostOnly || !canRun || autoAdvancePaused;
 		pauseBtn.title = mpHostOnly
 			? "Only the host can auto-advance days"
@@ -1311,10 +1618,19 @@ function syncAutoAdvanceUi() {
 				? "Run complete"
 				: autoAdvancePaused
 					? "Use Resume on the overlay"
-					: "Pause auto-advance";
+					: autoAdvanceEnergyPaused && !running
+						? "Auto-advance paused — recharging energy"
+						: "Pause auto-advance";
 	}
 	const speedDisplay = document.getElementById("auto-advance-speed-display");
 	if (speedDisplay) speedDisplay.textContent = `${msStr} ms`;
+	const energyCostEl = document.getElementById("auto-advance-energy-cost");
+	if (energyCostEl) {
+		const warn = costPerDay > energyNow && !running;
+		energyCostEl.textContent = `Cost: ${costPerDay} energy/day${warn ? " (low energy)" : ""}`;
+		energyCostEl.style.color = warn ? "#ff8866" : "#888";
+	}
+	patchEnergyFlowIndicators(state);
 }
 
 function getQtyPresetsForInput(amountId) {
@@ -1441,16 +1757,16 @@ function setChange(elId, history, lookbackDays = 1) {
     const bondPct = bondPillar ? (bondPillar.yield * 100) : 0;
     const bondLine = s.unlockedBonds
       ? `Treasury 5yr yield around ${bondPct.toFixed(2)}%`
-      : `Bond market locked — unlock on the Bonds tab for ${fmt(UNLOCK_COST_BONDS)}.`;
+      : marketLockedMessage("bonds");
     const stockLine = s.unlockedStocks
       ? `${stockLead?.name || "Lead stock"} trading near $${(stockLead?.price || 0).toFixed(2)}`
-      : `Stock market locked — unlock on the Stocks tab for ${fmt(UNLOCK_COST_STOCKS)}.`;
+      : marketLockedMessage("stocks");
     const cryptoLine = s.unlockedCrypto
       ? `${cryptoLead?.name || "Lead token"} at $${(cryptoLead?.price || 0).toFixed(2)}`
-      : `Crypto market locked — unlock on the Crypto tab for ${fmt(UNLOCK_COST_CRYPTOS)}.`;
+      : marketLockedMessage("crypto");
     const optionsLine = s.unlockedOptions
       ? (optionsHeld > 0 ? `Options desk active: ${optionsHeld} contracts open` : "Options desk quiet with no open contracts")
-      : `Options market locked — unlock on the Options tab for ${fmt(UNLOCK_COST_OPTIONS)}.`;
+      : marketLockedMessage("options");
     return [
       `Day ${s.day}: ${index?.name || "Index"} ${indexPct >= 0 ? "up" : "down"} ${Math.abs(indexPct).toFixed(2)}%`,
       bondLine,
@@ -1839,6 +2155,7 @@ function setChange(elId, history, lookbackDays = 1) {
   function render(s, renderOpts = {}) {
     const liveOnly = renderOpts.liveOnly === true;
     if (isAutoAdvanceDebugActive()) renderOpts._aaDbgRenderStart = performance.now();
+    syncNavTabLocks(s);
     const year = Math.floor((s.day - 1) / 365) + 1;
     const tradingLocked = false;
 
@@ -1847,6 +2164,7 @@ function setChange(elId, history, lookbackDays = 1) {
     document.getElementById("s-maxdays").textContent   = s.maxDays.toLocaleString();
     document.getElementById("s-year").textContent      = year;
     document.getElementById("s-day-fill").style.width  = (s.day / s.maxDays * 100) + "%";
+    patchProgressionEnergySidebar(s);
     document.getElementById("s-cash").textContent      = fmt(s.cash);
     document.getElementById("s-portfolio").textContent = fmt(portfolioValue(s));
     const sidebarIndexValue = (s.indexFunds || []).reduce((sum, a) => sum + ((a.shares || 0) * (a.price || 0)), 0);
@@ -1870,7 +2188,7 @@ function setChange(elId, history, lookbackDays = 1) {
       document.getElementById("s-portfolio-bonds").textContent = "Locked";
       const bpl = document.getElementById("s-pl-bonds");
       if (bpl) {
-        bpl.textContent = fmt(UNLOCK_COST_BONDS);
+        bpl.textContent = sidebarLevelLockLabel("bonds");
         bpl.className = "side-pl";
       }
     }
@@ -1881,7 +2199,7 @@ function setChange(elId, history, lookbackDays = 1) {
       document.getElementById("s-portfolio-stocks").textContent = "Locked";
       const sp = document.getElementById("s-pl-stocks");
       if (sp) {
-        sp.textContent = fmt(UNLOCK_COST_STOCKS);
+        sp.textContent = sidebarLevelLockLabel("stocks");
         sp.className = "side-pl";
       }
     }
@@ -1892,7 +2210,7 @@ function setChange(elId, history, lookbackDays = 1) {
       document.getElementById("s-portfolio-crypto").textContent = "Locked";
       const cp = document.getElementById("s-pl-crypto");
       if (cp) {
-        cp.textContent = fmt(UNLOCK_COST_CRYPTOS);
+        cp.textContent = sidebarLevelLockLabel("crypto");
         cp.className = "side-pl";
       }
     }
@@ -1903,7 +2221,7 @@ function setChange(elId, history, lookbackDays = 1) {
       document.getElementById("s-portfolio-options").textContent = "Locked";
       const op = document.getElementById("s-pl-options");
       if (op) {
-        op.textContent = fmt(UNLOCK_COST_OPTIONS);
+        op.textContent = sidebarLevelLockLabel("options");
         op.className = "side-pl";
       }
     }
@@ -1947,7 +2265,7 @@ function setChange(elId, history, lookbackDays = 1) {
     if (bondBanner && bondBody) {
       if (!liveOnly) {
         if (!s.unlockedBonds) {
-          bondBanner.innerHTML = `<div class="asset-unlock-panel">The bond market is closed until you buy access.<br><br>One-time fee: <strong>${fmt(UNLOCK_COST_BONDS)}</strong><br><button type="button" class="btn primary asset-unlock-panel__btn" onclick="window._unlockBonds()">Unlock bond market</button></div>`;
+          bondBanner.innerHTML = levelUnlockPanelHtml("bonds");
           bondBody.style.display = "none";
         } else {
           bondBanner.innerHTML = "";
@@ -2037,7 +2355,7 @@ function setChange(elId, history, lookbackDays = 1) {
     if (optBanner && optBody) {
       if (!liveOnly) {
         if (!s.unlockedOptions) {
-          optBanner.innerHTML = `<div class="asset-unlock-panel">The options desk is closed until you buy access.<br><br>One-time fee: <strong>${fmt(UNLOCK_COST_OPTIONS)}</strong><br><button type="button" class="btn primary asset-unlock-panel__btn" onclick="window._unlockOptions()">Unlock options market</button></div>`;
+          optBanner.innerHTML = levelUnlockPanelHtml("options");
           optBody.style.display = "none";
         } else {
           optBanner.innerHTML = "";
@@ -2088,25 +2406,31 @@ function setChange(elId, history, lookbackDays = 1) {
       syncOptionDteButtons(s);
     }
 
-    const casinoAnchorEl = document.getElementById("casino-hilo-anchor");
-    if (casinoAnchorEl) casinoAnchorEl.textContent = String(s.casino?.hiLoAnchor ?? "—");
-    const casinoTabPlEl = document.getElementById("casino-tab-pl");
-    if (casinoTabPlEl) setPlDisplay(casinoTabPlEl, cumRealized(s, "casino"), "stat-pl");
-
-    // Log — append new entries; rebuild if ring buffer dropped older rows
-    const logEl = document.getElementById("log");
-    if (s.log.length < renderedLogCount) {
-      logEl.innerHTML = "";
-      renderedLogCount = 0;
+    const casinoUnlocked = isCasinoUnlocked(s, params);
+    const casinoBanner = document.getElementById("casino-unlock-banner");
+    const casinoBody = document.getElementById("casino-trading-body");
+    if (casinoBanner && casinoBody) {
+      if (!liveOnly) {
+        if (!casinoUnlocked) {
+          casinoBanner.innerHTML = levelUnlockPanelHtml("casino");
+          casinoBody.style.display = "none";
+        } else {
+          casinoBanner.innerHTML = "";
+          casinoBody.style.display = "";
+        }
+      } else if (!casinoUnlocked) {
+        casinoBody.style.display = "none";
+      } else {
+        casinoBody.style.display = "";
+      }
     }
-    s.log.slice(renderedLogCount).forEach(({ msg, type, day }) => {
-      const div = document.createElement("div");
-      div.className = "log-entry " + (type || "");
-      div.textContent = `[Day ${day}] ${msg}`;
-      logEl.appendChild(div);
-    });
-    renderedLogCount = s.log.length;
-    logEl.scrollTop = logEl.scrollHeight;
+    const casinoAnchorEl = document.getElementById("casino-hilo-anchor");
+    if (casinoAnchorEl && casinoUnlocked) casinoAnchorEl.textContent = String(s.casino?.hiLoAnchor ?? "—");
+    const casinoTabPlEl = document.getElementById("casino-tab-pl");
+    if (casinoTabPlEl && casinoUnlocked) setPlDisplay(casinoTabPlEl, cumRealized(s, "casino"), "stat-pl");
+    renderBlackMarket(s);
+
+    patchActivityLog(s, { liveOnly });
 
     const aaDbg = isAutoAdvanceDebugActive();
     let aaDbgPatchMs = 0;
@@ -2130,6 +2454,85 @@ function setChange(elId, history, lookbackDays = 1) {
     if (!liveOnly) enhanceQuantityInputs();
   }
 
+  function renderBlackMarket(s) {
+    const list = document.getElementById("black-market-list");
+    const summary = document.getElementById("black-market-summary");
+    const energyPanel = document.getElementById("black-market-energy");
+    if (!list) return;
+
+    const intervalMs = getAutoAdvanceIntervalMs();
+    const gain = energyGainPerGameDay(s);
+    const drain = energyDrainPerGameDay(s, intervalMs, params);
+    const net = energyNetPerGameDay(s, intervalMs, params);
+    const cap = effectiveEnergyMax(s, params);
+    const costPct = Math.round(autoAdvanceCostMultiplier(s) * 100);
+    const ep = resolveEnergyParams(params);
+    const yieldLv = getBlackMarketLevel(s, "energyPerDay");
+    const cheaperLv = getBlackMarketLevel(s, "cheaperAutoAdvance");
+    const capLv = getBlackMarketLevel(s, "energyMaxCap");
+    const netClass = net >= 0 ? "black-market-energy__val--net-pos" : "black-market-energy__val--net-neg";
+    const netSign = net >= 0 ? "+" : "−";
+
+    if (energyPanel) {
+      energyPanel.innerHTML = `
+        <div class="black-market-energy__item">
+          <span class="black-market-energy__label">Gain / game day</span>
+          <span class="black-market-energy__val black-market-energy__val--gain">+${gain.toFixed(1)}</span>
+        </div>
+        <div class="black-market-energy__item">
+          <span class="black-market-energy__label">Drain / game day</span>
+          <span class="black-market-energy__val black-market-energy__val--drain">−${drain}</span>
+        </div>
+        <div class="black-market-energy__item">
+          <span class="black-market-energy__label">Net (auto-advance)</span>
+          <span class="black-market-energy__val ${netClass}">${netSign}${Math.abs(net).toFixed(1)}/day</span>
+        </div>
+        <div class="black-market-energy__item">
+          <span class="black-market-energy__label">Max energy</span>
+          <span class="black-market-energy__val">${cap.toLocaleString()}</span>
+        </div>
+        <div class="black-market-energy__item">
+          <span class="black-market-energy__label">Idle regen</span>
+          <span class="black-market-energy__val">+${ep.energyIdleRegenPerSec}/sec</span>
+        </div>
+        <div class="black-market-energy__item">
+          <span class="black-market-energy__label">Auto-advance speed</span>
+          <span class="black-market-energy__val">${intervalMs.toLocaleString()} ms/day</span>
+        </div>
+      `;
+    }
+
+    if (summary) {
+      summary.textContent =
+        `Upgrade levels — Energy Yield: ${yieldLv} · Efficient Auto-Advance: ${cheaperLv} (${costPct}% cost) · Expanded Reservoir: ${capLv}`;
+    }
+
+    list.innerHTML = BLACK_MARKET_UPGRADE_IDS.map(id => {
+      const info = blackMarketUpgradeSummary(s, id);
+      if (!info) return "";
+      const { def, level, maxed, nextCost, canBuy } = info;
+      return `
+        <div class="black-market-card">
+          <div class="black-market-card__head">
+            <div class="black-market-card__title">${def.name}</div>
+            <div class="black-market-card__level">Lv ${level}${maxed ? " · MAX" : ""}</div>
+          </div>
+          <p class="black-market-card__desc">${def.description}</p>
+          <div class="black-market-card__effect">${def.effectLabel}</div>
+          <div class="black-market-card__foot">
+            ${
+              maxed
+                ? `<span class="black-market-card__cost black-market-card__cost--maxed">Maxed out</span>`
+                : `<span class="black-market-card__cost">${fmt(nextCost)}</span>
+                   <button type="button" class="btn primary"${canBuy ? "" : " disabled"}
+                     onclick="window._buyBlackMarketUpgrade('${id}')">Buy upgrade</button>`
+            }
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
   function patchOverviewCardLocks(s) {
     const cards = [
       { id: "overview-card-bonds", locked: !s.unlockedBonds },
@@ -2148,7 +2551,7 @@ function setChange(elId, history, lookbackDays = 1) {
     const el = document.getElementById("overview-options-chain-preview");
     if (!el) return;
     if (!s.unlockedOptions) {
-      el.innerHTML = `<div class="overview-card-breakdown-empty">Locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab.</div>`;
+      el.innerHTML = levelLockedOverviewHtml("options");
       return;
     }
     const list = s.options || [];
@@ -2263,7 +2666,7 @@ function setChange(elId, history, lookbackDays = 1) {
     const elBondBr = document.getElementById("overview-card-bonds-breakdown");
     if (elBondBr) {
       if (!s.unlockedBonds) {
-        elBondBr.innerHTML = `<div class="overview-card-breakdown-empty">Locked — pay ${fmt(UNLOCK_COST_BONDS)} on the Bonds tab to trade.</div>`;
+        elBondBr.innerHTML = levelLockedOverviewHtml("bonds");
       } else {
         fill("overview-card-bonds-breakdown", bondLines);
       }
@@ -2272,7 +2675,7 @@ function setChange(elId, history, lookbackDays = 1) {
     const elStockBr = document.getElementById("overview-card-stocks-breakdown");
     if (elStockBr) {
       if (!s.unlockedStocks) {
-        elStockBr.innerHTML = `<div class="overview-card-breakdown-empty">Locked — pay ${fmt(UNLOCK_COST_STOCKS)} on the Stocks tab to trade.</div>`;
+        elStockBr.innerHTML = levelLockedOverviewHtml("stocks");
       } else {
         elStockBr.innerHTML = overviewHoldingsStyleGridHtml(s.stocks, "shares", "No stocks configured.");
       }
@@ -2280,7 +2683,7 @@ function setChange(elId, history, lookbackDays = 1) {
     const elCryptoBr = document.getElementById("overview-card-crypto-breakdown");
     if (elCryptoBr) {
       if (!s.unlockedCrypto) {
-        elCryptoBr.innerHTML = `<div class="overview-card-breakdown-empty">Locked — pay ${fmt(UNLOCK_COST_CRYPTOS)} on the Crypto tab to trade.</div>`;
+        elCryptoBr.innerHTML = levelLockedOverviewHtml("crypto");
       } else {
         elCryptoBr.innerHTML = overviewHoldingsStyleGridHtml(s.cryptos, "coins", "No crypto configured.");
       }
@@ -2288,7 +2691,7 @@ function setChange(elId, history, lookbackDays = 1) {
     const elOptBr = document.getElementById("overview-card-options-breakdown");
     if (elOptBr) {
       if (!s.unlockedOptions) {
-        elOptBr.innerHTML = `<div class="overview-card-breakdown-empty">Locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to trade.</div>`;
+        elOptBr.innerHTML = levelLockedOverviewHtml("options");
       } else {
         elOptBr.innerHTML = overviewOptionLotsHoldingsStyleHtml(s, "No options holdings.");
       }
@@ -4511,7 +4914,7 @@ const holdEl = document.getElementById("stock-holdings-list");
 	if (bulkEl) bulkEl.innerHTML = "";
 	if (selectedEl) selectedEl.innerHTML = "";
 	if (listEl) {
-		listEl.innerHTML = `<div class="asset-unlock-panel">The stock market is closed until you buy access.<br><br>One-time fee: <strong>${fmt(UNLOCK_COST_STOCKS)}</strong><br><button type="button" class="btn primary asset-unlock-panel__btn" onclick="window._unlockStocks()">Unlock stock market</button></div>`;
+		listEl.innerHTML = levelUnlockPanelHtml("stocks");
 	}
 	const brEl = document.getElementById("stock-bankrupt-list");
 	if (brEl) brEl.innerHTML = "";
@@ -4552,7 +4955,7 @@ const holdEl = document.getElementById("crypto-holdings-list");
 if (!s.unlockedCrypto) {
 	if (panel) panel.style.display = "none";
 	if (listEl) {
-		listEl.innerHTML = `<div class="asset-unlock-panel">The crypto market is closed until you buy access.<br><br>One-time fee: <strong>${fmt(UNLOCK_COST_CRYPTOS)}</strong><br><button type="button" class="btn primary asset-unlock-panel__btn" onclick="window._unlockCrypto()">Unlock crypto market</button></div>`;
+		listEl.innerHTML = levelUnlockPanelHtml("crypto");
 	}
 	if (holdEl) holdEl.innerHTML = `<div style="color:#444;font-size:0.8em;">Unlock the crypto market to trade.</div>`;
 	selectedCryptoId = null;
@@ -4868,22 +5271,14 @@ function renderOptionsChain(s, isTradeLocked = false) {
       }
 
 window._playCasinoHiLo = (guessHi) => {
+	if (!isCasinoUnlocked(state, params)) return;
 	const betEl = document.getElementById("casino-hilo-bet");
 	const bet = betEl ? parseFloat(betEl.value) : 50;
 	dispatchGameAction("playCasinoHiLo", { bet, guessHi }, s => playCasinoHiLo(s, bet, guessHi, params));
 };
 
-window._unlockBonds = () => {
-	dispatchGameAction("unlockBonds", {}, unlockBonds);
-};
-window._unlockStocks = () => {
-	dispatchGameAction("unlockStocks", {}, unlockStocks);
-};
-window._unlockCrypto = () => {
-	dispatchGameAction("unlockCrypto", {}, unlockCrypto);
-};
-window._unlockOptions = () => {
-	dispatchGameAction("unlockOptions", {}, unlockOptions);
+window._buyBlackMarketUpgrade = upgradeId => {
+	dispatchGameAction("buyBlackMarketUpgrade", { upgradeId }, s => buyBlackMarketUpgrade(s, upgradeId, params));
 };
 window._sellBond = (id) => {
 	dispatchGameAction("sellBondEarly", { id }, s => sellBondEarly(s, id));
@@ -5364,16 +5759,6 @@ drawChart(
 document.getElementById("price-graph"), series, "#00ff88",
 document.getElementById("if-yaxis"), document.getElementById("if-xaxis"), xLabels
 );
-const leadFund = (s.indexFunds || [])[0];
-if (leadFund) {
-	const ifDriftEl = document.getElementById("if-chart-drift-vol");
-	if (ifDriftEl) {
-		if (!ifDriftEl.querySelector("[data-drift-tick]")) {
-			ifDriftEl.innerHTML = assetDriftVolInnerHtml(indexFundDriftVolMetrics(leadFund, readParams()));
-		}
-		patchIndexFundDriftVol(ifDriftEl, leadFund, readParams());
-	}
-}
 const nw = netWorth(s);
 const nwHistoryPeak = netWorthHistoryPeak(s, nw);
 let mpHistoryPeak = 0;
@@ -5433,6 +5818,8 @@ syncAllAutobuysFromUi();
 const steps = Math.max(1, parseInt(count) || 1);
 if (isMultiplayer()) {
 	if (!isMpHost()) return;
+	mpAdvanceStartDay = state.day;
+	mpLastAdvanceWasAuto = false;
 	try {
 		mpClient.advanceDay(steps, autobuyConfigFromState());
 	} catch (err) {
@@ -5440,15 +5827,24 @@ if (isMultiplayer()) {
 	}
 	return;
 }
+const prevDay = state.day;
 for (let i = 0; i < steps; i++) {
-	const prevDay = state.day;
+	const prev = state.day;
 	state = nextDay(state, params);
-	if (state.day === prevDay) break;
+	if (state.day === prev) break;
 }
+applyManualAdvanceRewards(prevDay);
 render(state);
 }
 
-document.getElementById("day-btn").onclick         = () => { if (isMultiplayer()) { advanceDays(1); return; } syncAllAutobuysFromUi(); state = nextDay(state, params); render(state); };
+document.getElementById("day-btn").onclick         = () => {
+	if (isMultiplayer()) { advanceDays(1); return; }
+	syncAllAutobuysFromUi();
+	const prevDay = state.day;
+	state = nextDay(state, params);
+	applyManualAdvanceRewards(prevDay);
+	render(state);
+};
 document.getElementById("advance-btn").onclick     = () => {
 	const days = parseInt(document.getElementById("advance-days").value) || 1;
 	advanceDays(days);
@@ -5630,7 +6026,9 @@ document.getElementById("start-import-input")?.addEventListener("change", async 
 	await handleSaveImportFile(file);
 });
 setupStartScreen();
+setupAboutPage();
 setupTutorial();
+startEnergyRegenLoop();
 setupMultiplayerUi();
 if (autoAdvanceDebug.enabled) {
 	autoAdvanceDebugEnsurePanel();

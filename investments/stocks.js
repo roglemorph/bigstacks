@@ -8,7 +8,7 @@ import {
   costBasisForHifoSale,
 } from "./shared.js";
 import { resolveRng } from "./rng.js";
-import { UNLOCK_COST_STOCKS } from "./marketUnlock.js";
+import { marketLockedMessage } from "./assetUnlockLevels.js";
 import { isBondQuarterEnd } from "./bondRepricing.js";
 
 /** Number of listings at a new run (market may shrink as names delist; nothing refills). */
@@ -226,14 +226,14 @@ export function buildInitialStocks(params = {}) {
 
 export function buyStock(state, assetId, qty) {
   if (!state.unlockedStocks) {
-    return appendLog(state, `Stock market locked — pay ${fmt(UNLOCK_COST_STOCKS)} on the Stocks tab to unlock.`, "bad");
+    return appendLog(state, marketLockedMessage("stocks"), "bad");
   }
   return tradeAsset(state, "stocks", assetId, qty, "buy", "share");
 }
 
 export function sellStock(state, assetId, qty) {
   if (!state.unlockedStocks) {
-    return appendLog(state, `Stock market locked — pay ${fmt(UNLOCK_COST_STOCKS)} on the Stocks tab to unlock.`, "bad");
+    return appendLog(state, marketLockedMessage("stocks"), "bad");
   }
   return tradeAsset(state, "stocks", assetId, qty, "sell", "share");
 }

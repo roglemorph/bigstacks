@@ -1,6 +1,6 @@
 import { appendLog, fmt, fmtSignedMoney2, randn, addCumulativeRealizedPL } from "./shared.js";
 import { resolveRng } from "./rng.js";
-import { UNLOCK_COST_OPTIONS } from "./marketUnlock.js";
+import { marketLockedMessage } from "./assetUnlockLevels.js";
 
 /** Default / legacy listed-tenor when `optionMarketDte` is missing (older saves). */
 export const MARKET_OPTION_DTE = 30;
@@ -140,7 +140,7 @@ export function optionsHoldingsUnrealizedPL(state) {
 
 export function buyOption(state, assetId, qty) {
   if (!state.unlockedOptions) {
-    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+    return appendLog(state, marketLockedMessage("options"), "bad");
   }
   const list = state.options || [];
   const asset = list.find(a => a.id === assetId);
@@ -179,7 +179,7 @@ export function buyOption(state, assetId, qty) {
 /** Sell contracts HIFO across open lots for this listed option id. */
 export function sellOption(state, assetId, qty) {
   if (!state.unlockedOptions) {
-    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+    return appendLog(state, marketLockedMessage("options"), "bad");
   }
   const requested = Math.max(1, parseInt(qty, 10) || 1);
   let remaining = requested;
@@ -243,7 +243,7 @@ export function sellOption(state, assetId, qty) {
 /** Sell from a specific lot by holding id (partial or full). */
 export function sellOptionLot(state, holdingId, qty) {
   if (!state.unlockedOptions) {
-    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+    return appendLog(state, marketLockedMessage("options"), "bad");
   }
   const requested = Math.max(1, parseInt(qty, 10) || 1);
   const day = state.day;
@@ -281,7 +281,7 @@ export function sellOptionLot(state, holdingId, qty) {
 /** Exercise 1+ contracts: cash settle intrinsic (per share × multiplier), remove from holdings. */
 export function exerciseOptionLot(state, holdingId, qty) {
   if (!state.unlockedOptions) {
-    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+    return appendLog(state, marketLockedMessage("options"), "bad");
   }
   const remaining = Math.max(1, parseInt(qty, 10) || 1);
   const day = state.day;
@@ -393,7 +393,7 @@ export function snapRepriceListedOptionsForTenor(s, params = {}) {
 /** Switch listed tenor and refresh listed MTO immediately. */
 export function setOptionMarketDte(state, params, dte) {
   if (!state.unlockedOptions) {
-    return appendLog(state, `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`, "bad");
+    return appendLog(state, marketLockedMessage("options"), "bad");
   }
   const optionMarketDte = normalizeOptionMarketDte(dte);
   const prev = normalizeOptionMarketDte(state.optionMarketDte);

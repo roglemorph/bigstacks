@@ -1,5 +1,6 @@
 import { appendLog, fmt, addCumulativeRealizedPL } from "./shared.js";
 import { resolveRng } from "./rng.js";
+import { isCasinoUnlocked, marketLockedMessage } from "./assetUnlockLevels.js";
 
 function roll1to100(params = {}) {
   const rng = resolveRng(params);
@@ -16,6 +17,9 @@ export function initialCasinoState(params = {}) {
  * @param {boolean} guessHi true = bet the next roll is strictly greater than the anchor
  */
 export function playCasinoHiLo(state, bet, guessHi, params = {}) {
+  if (!isCasinoUnlocked(state, params)) {
+    return appendLog(state, marketLockedMessage("casino"), "bad");
+  }
   const stake = Math.floor(Number(bet));
   if (!Number.isFinite(stake) || stake <= 0) {
     return appendLog(state, "Enter a whole-dollar bet greater than zero.", "bad");

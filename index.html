@@ -49,6 +49,153 @@
 
 				.year-bar { height: 2px; background: #222; border-radius: 2px; margin-top: 2px; }
 				.year-fill { height: 100%; background: #00ff88; border-radius: 2px; transition: width 0.1s; }
+				.year-fill--xp { background: #66aaff; }
+				.year-fill--energy { background: #ffcc44; }
+				.auto-advance-energy-cost {
+					font-size: 0.72em;
+					color: #888;
+					text-align: center;
+					margin-top: 4px;
+				}
+				.energy-row {
+					display: flex;
+					align-items: center;
+					gap: 8px;
+				}
+				.energy-main {
+					flex: 1;
+					min-width: 0;
+				}
+				.energy-flow {
+					flex-shrink: 0;
+					font-size: 0.72em;
+					font-variant-numeric: tabular-nums;
+					white-space: nowrap;
+					line-height: 1.2;
+				}
+				.energy-flow--gain { color: #66cc88; }
+				.energy-flow--drain { color: #cc8866; }
+				.level-xp-row {
+					display: flex;
+					align-items: center;
+					gap: 8px;
+				}
+				.level-xp-badge {
+					flex-shrink: 0;
+					font-size: 1.05em;
+					color: #e0e0e0;
+					min-width: 1.25em;
+					text-align: center;
+					line-height: 1;
+				}
+				.level-xp-bar {
+					flex: 1;
+					min-width: 0;
+					height: 6px;
+					margin-top: 0;
+				}
+				.level-xp-text {
+					flex-shrink: 0;
+					font-size: 0.72em;
+					color: #888;
+					font-variant-numeric: tabular-nums;
+					white-space: nowrap;
+				}
+
+				.black-market-list {
+					display: grid;
+					grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+					gap: 16px;
+				}
+				.black-market-card {
+					background: #141018;
+					border: 1px solid #3a2848;
+					border-left: 3px solid #aa66ff;
+					border-radius: 3px;
+					padding: 16px 18px;
+					display: flex;
+					flex-direction: column;
+					gap: 10px;
+				}
+				.black-market-card__head {
+					display: flex;
+					justify-content: space-between;
+					align-items: baseline;
+					gap: 12px;
+				}
+				.black-market-card__title {
+					color: #e8d4ff;
+					font-size: 1.05em;
+					font-weight: 600;
+				}
+				.black-market-card__level {
+					color: #8866aa;
+					font-size: 0.78em;
+					text-transform: uppercase;
+					letter-spacing: 0.06em;
+					white-space: nowrap;
+				}
+				.black-market-card__desc {
+					color: #888;
+					font-size: 0.82em;
+					line-height: 1.45;
+					margin: 0;
+				}
+				.black-market-card__effect {
+					color: #66aaff;
+					font-size: 0.78em;
+					font-family: monospace;
+				}
+				.black-market-card__foot {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					gap: 12px;
+					margin-top: 4px;
+				}
+				.black-market-card__cost {
+					color: #ffcc00;
+					font-size: 1.05em;
+					font-variant-numeric: tabular-nums;
+				}
+				.black-market-card__cost--maxed { color: #555; }
+				.black-market-summary {
+					color: #777;
+					font-size: 0.82em;
+					margin-bottom: 18px;
+					font-family: monospace;
+				}
+				.black-market-energy {
+					display: grid;
+					grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+					gap: 10px 16px;
+					padding: 14px 16px;
+					margin-bottom: 18px;
+					background: #141018;
+					border: 1px solid #3a2848;
+					border-radius: 6px;
+				}
+				.black-market-energy__item {
+					display: flex;
+					flex-direction: column;
+					gap: 3px;
+					min-width: 0;
+				}
+				.black-market-energy__label {
+					font-size: 0.68em;
+					color: #666;
+					text-transform: uppercase;
+					letter-spacing: 0.06em;
+				}
+				.black-market-energy__val {
+					font-size: 0.95em;
+					font-variant-numeric: tabular-nums;
+					color: #ccc;
+				}
+				.black-market-energy__val--gain { color: #66cc88; }
+				.black-market-energy__val--drain { color: #cc8866; }
+				.black-market-energy__val--net-pos { color: #66cc88; }
+				.black-market-energy__val--net-neg { color: #cc8866; }
 				.side-divider { border: none; border-top: 1px solid #1e1e1e; }
 				.side-actions { display: flex; flex-direction: column; gap: 5px; }
 				.side-action-row { display: flex; gap: 6px; align-items: center; }
@@ -95,7 +242,51 @@
 				#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
 				/* ── TOP NAV ── */
-				#topnav { display: flex; border-bottom: 1px solid #2a2a2a; background: #111; flex-shrink: 0; }
+				#topnav {
+					display: flex;
+					align-items: stretch;
+					border-bottom: 1px solid #2a2a2a;
+					background: #111;
+					flex-shrink: 0;
+				}
+				.topnav-tabs {
+					display: flex;
+					flex: 1;
+					min-width: 0;
+					overflow-x: auto;
+				}
+				.topnav-time {
+					flex-shrink: 0;
+					display: flex;
+					flex-direction: column;
+					justify-content: center;
+					padding: 8px 20px;
+					border-left: 1px solid #2a2a2a;
+					min-width: 148px;
+				}
+				.topnav-time-row {
+					display: flex;
+					justify-content: flex-end;
+					align-items: baseline;
+					gap: 8px;
+					font-family: monospace;
+					font-size: 0.85em;
+					line-height: 1.35;
+				}
+				.topnav-time-label {
+					color: #555;
+					text-transform: uppercase;
+					font-size: 0.72em;
+					letter-spacing: 0.06em;
+				}
+				.topnav-time-value {
+					color: #fff;
+					font-variant-numeric: tabular-nums;
+				}
+				.topnav-day-bar {
+					width: 100%;
+					margin-top: 5px;
+				}
 				.nav-tab {
 				padding: 14px 22px;
 				font-family: monospace;
@@ -110,6 +301,12 @@
 				}
 				.nav-tab:hover { color: #aaa; }
 				.nav-tab.active { color: #00ff88; border-bottom-color: #00ff88; }
+				.nav-tab--locked {
+				color: #444 !important;
+				cursor: not-allowed;
+				opacity: 0.55;
+				}
+				.nav-tab--locked:hover { color: #444; }
 
 				/* ── CONTENT ── */
 				#content { flex: 1; overflow-y: auto; padding: 30px; }
@@ -188,6 +385,18 @@
 					font-size: 1rem;
 					margin: 6px 8px;
 				}
+				.about-body {
+					color: #aaa;
+					font-size: 0.86em;
+					line-height: 1.55;
+					overflow-y: auto;
+					flex: 1;
+					min-height: 0;
+				}
+				.about-body p { margin-bottom: 0.85em; }
+				.about-body p:last-child { margin-bottom: 0; }
+				.about-body strong { color: #ddd; }
+				.about-body a { color: #66aaff; }
 				.save-status {
 					font-size: 0.72em;
 					color: #558866;
@@ -2522,19 +2731,29 @@
 			<button type="button" class="btn tutorial-help-btn" id="help-btn">? Help</button>
 			<hr class="side-divider">
 
-				<div class="side-stat">
-					<div class="side-label">Day</div>
-					<div class="side-value white">
-						<span id="s-day">1</span> / <span id="s-maxdays"></span>
-					</div>
-					<div class="year-bar">
-						<div class="year-fill" id="s-day-fill" style="width:0%"></div>
+				<div class="side-stat" id="level-stat">
+					<div class="side-label">Level / XP</div>
+					<div class="level-xp-row">
+						<span class="level-xp-badge" id="s-level">1</span>
+						<div class="year-bar level-xp-bar">
+							<div class="year-fill year-fill--xp" id="s-xp-fill" style="width:0%"></div>
+						</div>
+						<span class="level-xp-text" id="s-xp">0 / 25</span>
 					</div>
 				</div>
 
-				<div class="side-stat">
-					<div class="side-label">Year</div>
-					<div class="side-value white" id="s-year">1</div>
+				<div class="side-stat" id="energy-stat">
+					<div class="side-label">Energy</div>
+					<div class="energy-row">
+						<span class="energy-flow energy-flow--gain" id="s-energy-gain" title="Energy gained per game day">+0/d</span>
+						<div class="energy-main">
+							<div class="side-value-line">
+								<span class="side-val-main" id="s-energy">1000 / 1000</span>
+							</div>
+							<div class="year-bar"><div class="year-fill year-fill--energy" id="s-energy-fill" style="width:100%"></div></div>
+						</div>
+						<span class="energy-flow energy-flow--drain" id="s-energy-drain" title="Auto-advance cost per game day">−0/d</span>
+					</div>
 				</div>
 
 				<div class="side-stat">
@@ -2618,6 +2837,7 @@
 										<span>1000 ms</span>
 									</div>
 								</div>
+								<div class="auto-advance-energy-cost" id="auto-advance-energy-cost">Cost: 1 energy/day</div>
 							</div>
 						</div>
 						<div class="mp-advance-note" id="mp-advance-note" hidden>Advance controlled by host</div>
@@ -2635,14 +2855,30 @@
 		<!-- ── MAIN ── -->
 		<div id="main">
 			<nav id="topnav">
-				<button class="nav-tab active" data-page="overview">Overview</button>
-				<button class="nav-tab" data-page="index-fund">📊 Index Fund</button>
-				<button class="nav-tab" data-page="bonds">💵 Bonds</button>
-				<button class="nav-tab" data-page="stocks">📈 Stocks</button>
-				<button class="nav-tab" data-page="crypto">🪙 Crypto</button>
-				<button class="nav-tab" data-page="options">🧩 Options</button>
-				<button class="nav-tab" data-page="casino">🎰 Casino</button>
-				<button class="nav-tab" data-page="debug">⚙ Debug</button>
+				<div class="topnav-tabs">
+					<button class="nav-tab active" data-page="overview">Overview</button>
+					<button class="nav-tab" data-page="index-fund">📊 Index Fund</button>
+					<button class="nav-tab" data-page="bonds">💵 Bonds</button>
+					<button class="nav-tab" data-page="stocks" data-unlock-level="5">📈 Stocks</button>
+					<button class="nav-tab" data-page="crypto" data-unlock-level="10">🪙 Crypto</button>
+					<button class="nav-tab" data-page="options" data-unlock-level="15">🧩 Options</button>
+					<button class="nav-tab" data-page="casino" data-unlock-level="20">🎰 Casino</button>
+					<button class="nav-tab" data-page="black-market">🏴 Black Market</button>
+					<button class="nav-tab" data-page="debug">⚙ Debug</button>
+				</div>
+				<div class="topnav-time" id="topnav-time">
+					<div class="topnav-time-row">
+						<span class="topnav-time-label">Day</span>
+						<span class="topnav-time-value"><span id="s-day">1</span> / <span id="s-maxdays"></span></span>
+					</div>
+					<div class="topnav-time-row">
+						<span class="topnav-time-label">Year</span>
+						<span class="topnav-time-value" id="s-year">1</span>
+					</div>
+					<div class="year-bar topnav-day-bar">
+						<div class="year-fill" id="s-day-fill" style="width:0%"></div>
+					</div>
+				</div>
 			</nav>
 
 			<div id="content">
@@ -2833,6 +3069,16 @@
 					<div data-asset-partial="pages/assets/casino.html"></div>
 				</div>
 
+				<div class="page" id="page-black-market">
+					<div class="page-title">Black Market</div>
+					<p style="font-size:0.82em; color:#666; margin-bottom:12px; max-width:640px;">
+						Off-the-books upgrades paid in cash. More categories coming later — for now, energy enhancements only.
+					</p>
+					<div class="black-market-energy" id="black-market-energy"></div>
+					<div class="black-market-summary" id="black-market-summary"></div>
+					<div class="black-market-list" id="black-market-list"></div>
+				</div>
+
 				<!-- DEBUG -->
 				<div class="page" id="page-debug">
 					<div class="page-title">Debug — Parameters</div>
@@ -2847,6 +3093,28 @@
 							<input class="amount-input" id="dbg-max-days" type="number" value="30000" min="30" step="30">
 							<label>30-day stipend ($)</label>
 							<input class="amount-input" id="dbg-monthly-income" type="number" value="1000" min="0" step="100">
+        </div>
+					</div>
+
+					<div class="section">
+						<div class="section-title">Energy &amp; Progression</div>
+						<div class="debug-grid">
+							<label>Energy max</label>
+							<input class="amount-input" id="dbg-energy-max" type="number" value="1000" min="1" step="10">
+							<label>Idle regen (/sec)</label>
+							<input class="amount-input" id="dbg-energy-regen" type="number" value="6" min="0" step="1">
+							<label>Manual advance bonus</label>
+							<input class="amount-input" id="dbg-energy-manual-bonus" type="number" value="10" min="0" step="1">
+							<label>Stipend energy bonus</label>
+							<input class="amount-input" id="dbg-energy-stipend-bonus" type="number" value="50" min="0" step="5">
+							<label>Cost ref (ms)</label>
+							<input class="amount-input" id="dbg-energy-cost-ref" type="number" value="500" min="1" step="50">
+							<label>XP per day</label>
+							<input class="amount-input" id="dbg-xp-per-day" type="number" value="1" min="0" step="1">
+							<label>XP level base</label>
+							<input class="amount-input" id="dbg-xp-level-base" type="number" value="25" min="1" step="1">
+							<label>XP level exponent</label>
+							<input class="amount-input" id="dbg-xp-level-exp" type="number" value="1.2" min="1" max="3" step="0.05">
         </div>
 					</div>
 
@@ -2977,6 +3245,15 @@
 				</div>
 			</div>
 		</div>
+		<div id="about-overlay" class="tutorial-overlay tutorial-overlay--hidden" role="dialog" aria-modal="true" aria-labelledby="about-heading" aria-hidden="true">
+			<div class="tutorial-panel tutorial-panel--wide">
+				<div class="tutorial-panel__title" id="about-heading">About</div>
+				<div id="about-body" class="about-body"></div>
+				<div class="tutorial-panel__actions">
+					<button type="button" class="btn primary" id="about-back-btn">Back</button>
+				</div>
+			</div>
+		</div>
 		<div id="start-screen" role="dialog" aria-modal="true" aria-labelledby="start-screen-title">
 			<div class="start-screen__inner">
 				<h1 class="start-screen__title" id="start-screen-title">Invest Rogue</h1>
@@ -2986,6 +3263,7 @@
 				<button type="button" class="btn start-screen__btn" id="start-multiplayer-btn">Multiplayer room</button>
 				<button type="button" class="btn start-screen__btn" id="start-import-btn">Import run</button>
 				<button type="button" class="btn start-screen__btn" id="start-game-btn">Begin run</button>
+				<button type="button" class="btn start-screen__btn" id="start-about-btn">About</button>
 				<input type="file" id="start-import-input" accept=".json,application/json" hidden>
 			</div>
 		</div>

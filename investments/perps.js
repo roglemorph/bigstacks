@@ -1,6 +1,6 @@
 import { appendLog, fmt, fmtSignedMoney2, randn, addCumulativeRealizedPL } from "./shared.js";
 import { resolveRng } from "./rng.js";
-import { UNLOCK_COST_OPTIONS } from "./marketUnlock.js";
+import { marketLockedMessage } from "./assetUnlockLevels.js";
 import { OPTION_SHARES_PER_CONTRACT } from "./options.js";
 
 export const PERP_ID = "spy-perp";
@@ -93,7 +93,7 @@ function ensureUnlocked(state) {
       ok: false,
       state: appendLog(
         state,
-        `Options market locked — pay ${fmt(UNLOCK_COST_OPTIONS)} on the Options tab to unlock.`,
+        marketLockedMessage("options"),
         "bad"
       ),
     };
@@ -276,15 +276,6 @@ export function processPerpsForDay(s, cash, params = {}) {
     holdings[idx] = { ...lot, fundingPaid };
   }
   perpFundingPLDelta = totalFunding;
-
-  if (Math.abs(totalFunding) >= 0.01) {
-    const annualPct = (dailyRate * 365 * 100).toFixed(2);
-    logLines.push({
-      msg: `Perp funding (${annualPct}% ann.): ${totalFunding >= 0 ? "+" : ""}${fmt(totalFunding)} cash.`,
-      type: totalFunding >= 0 ? "good" : "info",
-      day: s.day,
-    });
-  }
 
   const baseAnnual = Number.isFinite(params.perpFundingRateAnnual)
     ? params.perpFundingRateAnnual

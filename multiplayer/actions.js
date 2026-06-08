@@ -27,6 +27,7 @@ const ACTION_MAP = {
   unlockOptions: "unlockOptions",
   playCasinoHiLo: "playCasinoHiLo",
   setOptionMarketDte: "setOptionMarketDte",
+  buyBlackMarketUpgrade: "buyBlackMarketUpgrade",
 };
 
 /**
@@ -101,6 +102,9 @@ export function applyPlayerAction(player, shared, actionType, args, params, hand
         break;
       case "setOptionMarketDte":
         next = fn(merged, params, args.dte);
+        break;
+      case "buyBlackMarketUpgrade":
+        next = fn(merged, args.upgradeId, params);
         break;
       default:
         return { ok: false, error: `Unhandled action: ${actionType}` };

@@ -9,6 +9,9 @@ import { normalizeOptionMarketDte } from "./investments/options.js";
 import { normalizeMarketCardAutobuy } from "./investments/marketAutobuy.js";
 import { ensureAssetLots, EMPTY_CUMULATIVE_REALIZED_PL, trimLog } from "./investments/shared.js";
 import { backfillStockFundamentals } from "./investments/stocks.js";
+import { applyIdleRegen, initialEnergyFields, resolveEnergyParams } from "./investments/energy.js";
+import { initialProgressionFields, levelFromXp } from "./investments/progression.js";
+import { syncMarketUnlocksFromLevel } from "./investments/assetUnlockLevels.js";
 
 const EMPTY_ASSET_UNLOCK_DAYS = {
   bonds: null,
@@ -80,6 +83,43 @@ export function normalizeLoadedState(raw) {
   if (state.casino == null || typeof state.casino !== "object") {
     state.casino = { hiLoAnchor: 50 };
   }
+
+  const energyDefaults = initialEnergyFields({}, Date.now());
+  const ep = resolveEnergyParams({});
+  if (!Number.isFinite(state.energy)) {
+    state.energy = energyDefaults.energy;
+  }
+  if (!Number.isFinite(state.energyMax)) {
+    state.energyMax = ep.energyMax;
+  }
+  if (!Number.isFinite(state.energyUpdatedAt)) {
+    state.energyUpdatedAt = Date.now();
+  }
+  state.energy = Math.min(state.energyMax, Math.max(0, state.energy));
+
+  const progDefaults = initialProgressionFields();
+  if (!Number.isFinite(state.xp)) {
+    state.xp = progDefaults.xp;
+  }
+  state.xp = Math.max(0, Math.floor(state.xp));
+  state.level = levelFromXp(state.xp);
+
+  state.blackMarketLevels = normalizeBlackMarketLevels(state.blackMarketLevels);
+
+  const unlockSync = syncMarketUnlocksFromLevel(state, {});
+  state.unlockedBonds = unlockSync.unlockedBonds;
+  state.unlockedStocks = unlockSync.unlockedStocks;
+  state.unlockedCrypto = unlockSync.unlockedCrypto;
+  state.unlockedOptions = unlockSync.unlockedOptions;
+
+  const synced = syncEnergyMaxFromUpgrades(state, {});
+  state.energyMax = synced.energyMax;
+  state.energy = synced.energy;
+  state.energyUpdatedAt = synced.energyUpdatedAt;
+
+  const regenApplied = applyIdleRegen(state, Date.now(), {});
+  state.energy = regenApplied.energy;
+  state.energyUpdatedAt = regenApplied.energyUpdatedAt;
 
   return state;
 }
